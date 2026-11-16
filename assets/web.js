@@ -456,7 +456,7 @@
     const tp = tipoDe(a.torneo.tipo);
     const byId = new Map(a.participantes.map((p) => [p.id, p]));
     const filas = new Map((jd ? jd.clasificacion : []).map((r) => [r.id, r]));
-    const campo = el('input', { type: 'search', id: 'quien', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', placeholder: 'Tu nombre, tu apellido o tu número', value: E.quien });
+    const campo = el('input', { type: 'search', id: 'quien', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', placeholder: 'Tu nombre o tu número', value: E.quien });
     const salida = el('ul', { id: 'quien-res', class: 'fichas', 'aria-live': 'polite' });
     const mio = el('ul', { id: 'quien-mia', class: 'fichas' });
     const guardado = () => { const id = window.Cifra.quienGuardado(E.id); return a.participantes.find((x) => x.id === id) || null; };
