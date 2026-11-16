@@ -1,0 +1,11 @@
+{
+ "version": 1,
+ "kdf": "PBKDF2-SHA-256",
+ "iteraciones": 600000,
+ "sal": "msrjc318XxyuuhIgfqptyg==",
+ "verificador": {
+  "v": 1,
+  "iv": "SB8x3oXlWSjgwp6F",
+  "ct": "lPY269Ck4dCOuBnVyU+gd77qxlYSvL3qngKljM0egRw/3V7Z+rTjs1du0aOq"
+ }
+}
