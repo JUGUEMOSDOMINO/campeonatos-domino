@@ -1,4 +1,4 @@
-/* tu mesa · web pública. Lee los JSON del contrato (datos/…), cifrados con la contraseña de la web (assets/cifra.js), y pinta todo como texto. */
+/* Campeonatos de dominó · web pública. Lee los JSON del contrato (datos/…), cifrados con la contraseña de la web (assets/cifra.js), y pinta todo como texto. */
 (function () {
   'use strict';
 
@@ -327,7 +327,7 @@
 
   function cabecera() {
     const a = E.actual, t = a.torneo, tp = tipoDe(t.tipo);
-    document.title = `${t.nombre} · tu mesa`;
+    document.title = t.nombre;
     const datos = [t.tipo === 'sp' ? null : fechaLarga(t.fecha), t.temporada && 'Temporada ' + t.temporada, t.lugar, `${t.n_participantes} ${tp.unidades}`, `${tp.jornada} ${a.jornada.numero} de ${t.n_jornadas}`].filter(Boolean);
     $('#cab').replaceChildren(
       el('div', null, el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado), el('span', { class: 'etiqueta' }, tp.nombre)),
