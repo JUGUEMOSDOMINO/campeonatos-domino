@@ -101,6 +101,76 @@ const top3A = (t) => dato(t).clasificacion.filter((r) => r.grupo === 'A').slice(
     assert(/jugador\s+6/i.test(await pg.locator('.ficha[data-id="6"]').innerText()));
     bien('individual: ficha «Jugador N»');
 
+    // sin resultados todavía: mensaje en lugar de podio, y el buscador sigue
+    await pg.goto(`${base}/torneo.html?t=sp-sin-resultados&${D}`); await pg.waitForSelector('.vacio');
+    assert.strictEqual(await pg.locator('.podio').count(), 0);
+    assert(/El podio aparecerá/.test(await pg.locator('.vacio').innerText()));
+    await pg.fill('#quien', 'escr'); await pg.waitForSelector('#quien-res .ficha[data-id="1"]');
+    assert(/Aún sin clasificación|Todavía no tiene clasificación/.test(await pg.locator('.ficha').innerText()));
+    assert.strictEqual(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    bien('sin resultados: sin podio, con aviso; la ficha lo dice');
+
+    // historial jornada a jornada
+    const hist = async (t, id) => {
+      await abrir(t); await pg.fill('#quien', String(id));
+      await pg.waitForSelector(`#quien-res .ficha[data-id="${id}"] .historial li`);
+      return pg.locator(`#quien-res .ficha[data-id="${id}"] .historial li`).allInnerTexts();
+    };
+    let hs = await hist('sp-ejemplo-anterior', 7);
+    assert.strictEqual(hs.length, 6, hs.join('|'));
+    assert(/Incomparecencia/.test(hs[0]) && /perdida/.test(hs[0]), hs[0]);
+    assert(/ND/.test(hs[4]) && /0-0/.test(hs[4]), hs[4]);
+    assert(/Jornada 1/i.test(hs[0]) && /contra/.test(hs[0]) && /Mesa/.test(hs[0]));
+    bien('historial SP: una fila por jornada, con incomparecencia y ND');
+    hs = await hist('parejas-ejemplo-2026-11-14', 5);
+    assert(/Descansa/.test(hs[0]) && !/ganada/.test(hs[0]) && /150-0/.test(hs[0]), hs[0]);
+    assert(/Partida 1/i.test(hs[0]));
+    bien('historial parejas: «Descansa» con sus 150 tantos');
+    hs = await hist('sp-ejemplo', 4);
+    assert(/Retirada/.test(hs[2]), hs[2]);
+    bien('historial: retirada');
+    hs = await hist('sp-ejemplo-anterior', 5);
+    assert(/Jugaban: Rosa Beltrán/.test(hs[0]) && /Jugaban: Hugo Lorente/.test(hs[2]) && !/Hugo/.test(hs[1] + hs[0]), hs.join('|'));
+    bien('historial con sustitución: el nombre de cada jornada');
+    hs = await hist('individual-ejemplo-2026-11-14', 6);
+    assert(/Partida 1/i.test(hs[0]) && /Perdida|Ganada/.test(hs[0]));
+    bien('historial individual');
+    assert.strictEqual(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, 'historial desborda');
+    if (capt) await pg.screenshot({ path: `${capt}/resumen_historial_${w}.png`, fullPage: true });
+
+    // recordar en este dispositivo: solo el número, por campeonato
+    await abrir('sp-ejemplo-anterior');
+    await pg.fill('#quien', 'lorente'); await pg.waitForSelector('#quien-res .ficha[data-id="5"]');
+    await pg.click('#quien-res .ficha[data-id="5"] button:text-is("Soy yo")');
+    await pg.waitForSelector('#quien-mia .ficha.mia[data-id="5"]');
+    assert.strictEqual(await pg.locator('#quien-res .ficha').count(), 0);
+    const guardado = await pg.evaluate(() => Object.fromEntries(Object.entries(localStorage).filter(([k]) => k.startsWith('tumesa.quien'))));
+    assert.deepStrictEqual(guardado, { 'tumesa.quien:sp-ejemplo-anterior': '5' });
+    await pg.reload(); await pg.waitForSelector('#quien-mia .ficha.mia[data-id="5"] .historial li');
+    assert.strictEqual(await pg.inputValue('#quien'), '');
+    bien('«Soy yo» guarda solo el número y la ficha sale sola al recargar');
+    await abrir('sp-ejemplo');
+    assert.strictEqual(await pg.locator('#quien-mia .ficha').count(), 0);
+    bien('lo recordado es de un campeonato, no de otro');
+    await abrir('sp-ejemplo-anterior');
+    await pg.waitForSelector('#quien-mia .ficha.mia');
+    assert.strictEqual(await pg.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    if (capt) await pg.screenshot({ path: `${capt}/resumen_mia_${w}.png`, fullPage: true });
+    await pg.click('#quien-mia button:text-is("No soy yo")');
+    assert.strictEqual(await pg.locator('#quien-mia .ficha').count(), 0);
+    assert.deepStrictEqual(await pg.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('tumesa.quien'))), []);
+    await pg.reload(); await pg.waitForSelector('.podio');
+    assert.strictEqual(await pg.locator('#quien-mia .ficha').count(), 0);
+    bien('«No soy yo» lo borra');
+    // sin localStorage (bloqueado): no pasa nada
+    await pg.addInitScript(() => { for (const f of ['getItem', 'setItem', 'removeItem']) { const o = Storage.prototype[f]; Storage.prototype[f] = function (k, ...r) { if (String(k).startsWith('tumesa.quien')) throw new Error('bloqueado'); return o.call(this, k, ...r); }; } });
+    await pg.reload(); await pg.waitForSelector('.podio');
+    await pg.fill('#quien', 'lorente'); await pg.waitForSelector('#quien-res .ficha[data-id="5"]');
+    await pg.click('#quien-res .ficha[data-id="5"] button:text-is("Soy yo")');
+    assert.deepStrictEqual(errs, []);
+    bien('con el almacenamiento bloqueado no falla');
+    errs.length = 0;
+
     // ver= antiguos y nuevos
     for (const [ver, sel] of [['clasificacion', 'table.clasi'], ['mesas', '.mesa'], ['parejas', '.lista-parejas'], ['resumen', '.podio']]) {
       await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=${ver}&${D}`); await pg.waitForSelector(sel);

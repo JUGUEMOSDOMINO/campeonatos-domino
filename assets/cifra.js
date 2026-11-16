@@ -83,7 +83,13 @@
   }
   function olvidarPendiente() { try { localStorage.removeItem(PENDIENTE); } catch (e) { /* nada */ } }
 
+  // «Quién eres» (pestaña Resumen): solo el número de pareja o jugador, uno por campeonato. Nunca nombres. Si el navegador lo impide, no pasa nada.
+  const QUIEN = 'tumesa.quien:';
+  function quienGuardado(torneo) { try { const v = raiz.localStorage.getItem(QUIEN + torneo); return /^\d{1,3}$/.test(v) ? +v : null; } catch (e) { return null; } }
+  function guardarQuien(torneo, id) { try { raiz.localStorage.setItem(QUIEN + torneo, String(+id)); return true; } catch (e) { return false; } }
+  function olvidarQuien(torneo) { try { raiz.localStorage.removeItem(QUIEN + torneo); } catch (e) { /* nada */ } }
+
   const Cifra = { ITERACIONES, MIN_CARACTERES, esSobre, esSobreTexto, cifrar, descifrar, cifrarTexto, descifrarTexto, crearClaveJson, abrir, comprobar, claveJsonValido,
-    exportar, importar, frase, contrasenaValida, guardarClave, cargarClave, olvidarClave, hayClaveGuardada, guardarPendiente, cargarPendiente, olvidarPendiente, get PALABRAS() { return lista(); } };
+    exportar, importar, frase, contrasenaValida, guardarClave, cargarClave, olvidarClave, hayClaveGuardada, quienGuardado, guardarQuien, olvidarQuien, guardarPendiente, cargarPendiente, olvidarPendiente, get PALABRAS() { return lista(); } };
   if (typeof module !== 'undefined' && module.exports) module.exports = Cifra; else raiz.Cifra = Cifra;
 })(typeof window !== 'undefined' ? window : globalThis);

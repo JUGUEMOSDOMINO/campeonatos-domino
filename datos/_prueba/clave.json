@@ -2,10 +2,10 @@
  "version": 1,
  "kdf": "PBKDF2-SHA-256",
  "iteraciones": 600000,
- "sal": "pHkz7fkMa7PBOoH3e2jFEQ==",
+ "sal": "ksBpyQZkq/sDPurahXotxw==",
  "verificador": {
   "v": 1,
-  "iv": "o1EerkmSK35knUbh",
-  "ct": "rX2e3ZSq//UGMMKzkF1EoxphZdukqiqmvdKJlc01YWROVwRfe5mDp1iwirUL"
+  "iv": "7WX1S2CwL7W2ZZ3s",
+  "ct": "gDK7/Ff4yCCoPPkCzy3q4UzI63Dw9vBr+0wF5exp5TH/hTLp25XFET7I6axf"
  }
 }

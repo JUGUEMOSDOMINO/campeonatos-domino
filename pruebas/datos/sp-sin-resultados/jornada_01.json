@@ -1,0 +1,267 @@
+{
+  "version": "1.0",
+  "publicado": "2026-10-12T18:00:00Z",
+  "torneo": {
+    "id": "sp-sin-resultados",
+    "nombre": "CAMPEONATO SÚPER-PRESTIGIO SIN RESULTADOS",
+    "organizador": "FVD EJEMPLO",
+    "tipo": "sp",
+    "temporada": "2026-27",
+    "fecha": "2026-10-13",
+    "lugar": null,
+    "n_jornadas": 14,
+    "tantos_meta": 300,
+    "puntos_ausencia": 300,
+    "n_participantes": 6,
+    "hay_b": false,
+    "jornada_b": null,
+    "n_b": null,
+    "estado": "proximo",
+    "contacto": "Jesús Eduardo Elián C.",
+    "normativa_url": null,
+    "criterios": [
+      "Encuentros ganados",
+      "Diferencia de partidas",
+      "Diferencia de tantos",
+      "Tantos a favor",
+      "Criterio informático"
+    ]
+  },
+  "jornada": {
+    "numero": 1,
+    "completa": false,
+    "mesas_pendientes": 3,
+    "sorteo": "A",
+    "sin_sortear": false,
+    "emparejamiento": "fijado",
+    "plazo_desde": "2026-10-13",
+    "plazo_hasta": "2026-10-26"
+  },
+  "participantes": [
+    {
+      "id": 1,
+      "j1_nombre": "Nuria",
+      "j1_apellido1": "Escrivá",
+      "j2_nombre": "Pau",
+      "j2_apellido1": "Tomás",
+      "corto": "Escrivá-Tomás",
+      "zona": "Norte",
+      "grupo": "A",
+      "ret": false,
+      "ret_desde": null
+    },
+    {
+      "id": 2,
+      "j1_nombre": "Amparo",
+      "j1_apellido1": "Bou",
+      "j2_nombre": "Raúl",
+      "j2_apellido1": "Talens",
+      "corto": "Bou-Talens",
+      "zona": "Sur",
+      "grupo": "A",
+      "ret": false,
+      "ret_desde": null
+    },
+    {
+      "id": 3,
+      "j1_nombre": "Vicent",
+      "j1_apellido1": "Pons",
+      "j2_nombre": "Marta",
+      "j2_apellido1": "Dols",
+      "corto": "Pons-Dols",
+      "zona": "Norte",
+      "grupo": "A",
+      "ret": false,
+      "ret_desde": null
+    },
+    {
+      "id": 4,
+      "j1_nombre": "Ferran",
+      "j1_apellido1": "Peris",
+      "j2_nombre": "Júlia",
+      "j2_apellido1": "Soler",
+      "corto": "Peris-Soler",
+      "zona": "MIX",
+      "grupo": "A",
+      "ret": false,
+      "ret_desde": null
+    },
+    {
+      "id": 5,
+      "j1_nombre": "Enric",
+      "j1_apellido1": "Climent",
+      "j2_nombre": "Sonia",
+      "j2_apellido1": "Ros",
+      "corto": "Climent-Ros",
+      "zona": "Sur",
+      "grupo": "A",
+      "ret": false,
+      "ret_desde": null
+    },
+    {
+      "id": 6,
+      "j1_nombre": "Carles",
+      "j1_apellido1": "Ferrer",
+      "j2_nombre": "Paula",
+      "j2_apellido1": "Gil",
+      "corto": "Ferrer-Gil",
+      "zona": "Norte",
+      "grupo": "A",
+      "ret": false,
+      "ret_desde": null
+    }
+  ],
+  "sustituciones": [],
+  "clasificacion": [
+    {
+      "grupo": "A",
+      "puesto": 1,
+      "id": 1,
+      "jug": 0,
+      "gan": 0,
+      "pg": 0,
+      "pp": 0,
+      "dp": 0,
+      "tf": 0,
+      "tc": 0,
+      "dt": 0,
+      "pendiente": true,
+      "desempate": null
+    },
+    {
+      "grupo": "A",
+      "puesto": 2,
+      "id": 2,
+      "jug": 0,
+      "gan": 0,
+      "pg": 0,
+      "pp": 0,
+      "dp": 0,
+      "tf": 0,
+      "tc": 0,
+      "dt": 0,
+      "pendiente": true,
+      "desempate": null
+    },
+    {
+      "grupo": "A",
+      "puesto": 3,
+      "id": 3,
+      "jug": 0,
+      "gan": 0,
+      "pg": 0,
+      "pp": 0,
+      "dp": 0,
+      "tf": 0,
+      "tc": 0,
+      "dt": 0,
+      "pendiente": true,
+      "desempate": null
+    },
+    {
+      "grupo": "A",
+      "puesto": 4,
+      "id": 4,
+      "jug": 0,
+      "gan": 0,
+      "pg": 0,
+      "pp": 0,
+      "dp": 0,
+      "tf": 0,
+      "tc": 0,
+      "dt": 0,
+      "pendiente": true,
+      "desempate": null
+    },
+    {
+      "grupo": "A",
+      "puesto": 5,
+      "id": 5,
+      "jug": 0,
+      "gan": 0,
+      "pg": 0,
+      "pp": 0,
+      "dp": 0,
+      "tf": 0,
+      "tc": 0,
+      "dt": 0,
+      "pendiente": true,
+      "desempate": null
+    },
+    {
+      "grupo": "A",
+      "puesto": 6,
+      "id": 6,
+      "jug": 0,
+      "gan": 0,
+      "pg": 0,
+      "pp": 0,
+      "dp": 0,
+      "tf": 0,
+      "tc": 0,
+      "dt": 0,
+      "pendiente": true,
+      "desempate": null
+    }
+  ],
+  "emparejamientos": [
+    {
+      "grupo": "A",
+      "mesa": 1,
+      "mesa_grupo": 1,
+      "izq": [
+        1
+      ],
+      "dcha": [
+        5
+      ],
+      "estado": "pendiente",
+      "ausentes": [],
+      "p_izq": null,
+      "p_dcha": null,
+      "t_izq": null,
+      "t_dcha": null
+    },
+    {
+      "grupo": "A",
+      "mesa": 2,
+      "mesa_grupo": 2,
+      "izq": [
+        3
+      ],
+      "dcha": [
+        2
+      ],
+      "estado": "pendiente",
+      "ausentes": [],
+      "p_izq": null,
+      "p_dcha": null,
+      "t_izq": null,
+      "t_dcha": null
+    },
+    {
+      "grupo": "A",
+      "mesa": 3,
+      "mesa_grupo": 3,
+      "izq": [
+        4
+      ],
+      "dcha": [
+        6
+      ],
+      "estado": "pendiente",
+      "ausentes": [],
+      "p_izq": null,
+      "p_dcha": null,
+      "t_izq": null,
+      "t_dcha": null
+    }
+  ],
+  "jornadas": [
+    {
+      "numero": 1,
+      "completa": false,
+      "publicado": "2026-10-12T18:00:00Z"
+    }
+  ]
+}

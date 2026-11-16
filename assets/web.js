@@ -394,7 +394,40 @@
     return `${base}: ${(ETIQUETAS[m.estado] || m.estado).toLowerCase()}.`;
   }
 
-  function fichaPersona(a, p, fila, jn, byIdActual) {
+  // Una fila por jornada publicada: rival, resultado y puntos, con los nombres de esa jornada.
+  function filaHistorial(jd, id, tp, sp, conNombres) {
+    const m = jd.emparejamientos.find((x) => x.izq.includes(id) || x.dcha.includes(id));
+    const byId = new Map(jd.participantes.map((x) => [x.id, x]));
+    const cab = el('span', { class: 'hist-j' }, `${tp.jornada} ${jd.jornada.numero}`);
+    const yo = byId.get(id);
+    const quien = conNombres && yo ? el('small', { class: 'hist-quien' }, 'Jugaban: ' + nombresDe(yo).join(' y ')) : null;
+    if (!m) return el('li', { class: 'hist' }, cab, el('span', { class: 'hist-res' }, 'Sin mesa en esta ' + tp.jornada.toLowerCase()), quien);
+    const izq = m.izq.includes(id);
+    const rivales = (izq ? m.dcha : m.izq).map((i) => (byId.get(i) || {}).corto || i).join(' y ');
+    const [pf, pc, tf, tc] = izq ? [m.p_izq, m.p_dcha, m.t_izq, m.t_dcha] : [m.p_dcha, m.p_izq, m.t_dcha, m.t_izq];
+    const marcador = tf != null ? `${tf}-${tc}` : '';
+    let res, pts = marcador;
+    if (m.estado === 'pendiente') { res = 'Por jugar'; pts = ''; }
+    else if (m.estado === 'jugada' && pf != null) res = `${(sp ? pf > pc : tf > tc) ? 'Ganada' : 'Perdida'}${sp ? ` ${pf}-${pc}` : ''}`;
+    else res = (ETIQUETAS[m.estado] || m.estado) + (tf != null && tf !== tc && m.estado !== 'descanso' ? (tf > tc ? ' · ganada' : ' · perdida') : '');
+    return el('li', { class: 'hist' }, cab,
+      el('span', { class: 'hist-rival' }, m.mesa ? `Mesa ${m.mesa}` : null, m.mesa && rivales ? ' · ' : null, rivales ? 'contra ' + rivales : null),
+      el('span', { class: 'hist-res', title: TITULOS[m.estado] || null }, res),
+      pts ? el('span', { class: 'hist-pts' }, pts, el('span', { class: 'solo-lector' }, ' tantos')) : null, quien);
+  }
+  async function cargarHistorial(a, id, cont) {
+    const tp = tipoDe(a.torneo.tipo), sp = a.torneo.tipo === 'sp';
+    const conNombres = (a.sustituciones || []).some((s) => s.id === id);
+    const filas = [];
+    for (const j of jornadasDe(a).filter((x) => x.numero <= a.jornada.numero)) {
+      let jd = null;
+      try { jd = await datosJornada(j.numero); } catch (e) { /* se avisa en su fila */ }
+      filas.push(jd ? filaHistorial(jd, id, tp, sp, conNombres) : el('li', { class: 'hist' }, el('span', { class: 'hist-j' }, `${tp.jornada} ${j.numero}`), el('span', { class: 'hist-res' }, 'No se ha podido cargar')));
+    }
+    cont.replaceChildren(...(filas.length ? [el('h3', { class: 'hist-tit' }, `${tp.jornada} a ${tp.jornada.toLowerCase()}`), el('ol', { class: 'historial' }, filas)] : []));
+  }
+
+  function fichaPersona(a, p, fila, jn, byIdActual, mia, alElegir, alOlvidar) {
     const tp = tipoDe(a.torneo.tipo), sp = a.torneo.tipo === 'sp';
     const subs = (a.sustituciones || []).filter((s) => s.id === p.id);
     const puesto = fila
@@ -402,15 +435,20 @@
       : 'Todavía no tiene clasificación.';
     const mesa = lineaMesa(a, p.id, byIdActual);
     const enlace = (ver, txt) => el('a', { href: url('torneo.html', { t: E.id, ver, p: p.id }) }, txt);
-    return el('li', { class: 'ficha', 'data-id': p.id },
+    const hist = el('div', { class: 'ficha-hist' }, el('p', { class: 'nota sin-margen' }, 'Cargando el historial…'));
+    cargarHistorial(a, p.id, hist);
+    return el('li', { class: 'ficha' + (mia ? ' mia' : ''), 'data-id': p.id },
       el('div', { class: 'ficha-cab' },
         el('span', { class: 'ficha-num' }, el('i', null, cap(tp.unidad)), el('b', null, p.id)),
         el('span', { class: 'ficha-quien' }, nombresDe(p).map((x) => el('span', { class: 'nom' }, x)),
           p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null)),
       el('p', null, puesto),
       mesa ? el('p', null, mesa) : null,
+      hist,
       subs.map((s) => el('p', { class: 'nota sin-margen' }, `Cambio en la ${tp.jornada.toLowerCase()} ${s.desde}: entra ${s.entra_nombre} ${s.entra_apellido1} por ${s.sale_nombre} ${s.sale_apellido1}.`)),
-      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), enlace('mesas', 'Ver su mesa')));
+      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), enlace('mesas', 'Ver su mesa'),
+        mia ? el('button', { type: 'button', class: 'boton sec', onclick: alOlvidar }, 'No soy yo')
+          : el('button', { type: 'button', class: 'boton sec', onclick: () => alElegir(p.id) }, 'Soy yo')));
   }
 
   const MAX_FICHAS = 6;
@@ -420,6 +458,13 @@
     const filas = new Map((jd ? jd.clasificacion : []).map((r) => [r.id, r]));
     const campo = el('input', { type: 'search', id: 'quien', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', placeholder: 'Tu nombre, tu apellido o tu número', value: E.quien });
     const salida = el('ul', { id: 'quien-res', class: 'fichas', 'aria-live': 'polite' });
+    const mio = el('ul', { id: 'quien-mia', class: 'fichas' });
+    const guardado = () => { const id = window.Cifra.quienGuardado(E.id); return a.participantes.find((x) => x.id === id) || null; };
+    function pintarMia() {
+      const p = guardado();
+      mio.replaceChildren(...(p ? [fichaPersona(a, p, filas.get(p.id), n, byId, true, null, () => { window.Cifra.olvidarQuien(E.id); pintarMia(); buscar(); })] : []));
+    }
+    const elegir = (id) => { window.Cifra.guardarQuien(E.id, id); campo.value = ''; E.quien = ''; pintarMia(); buscar(); mio.scrollIntoView({ block: 'nearest' }); };
     const aviso = el('p', { class: 'nota', 'aria-live': 'polite' });
     // Un número es el de la pareja o jugador, exacto. Lo demás se busca como trozo del nombre, sin tildes ni mayúsculas.
     const claves = a.participantes.map((p) => ({ p, t: norm(nombresDe(p).join(' ')) }));
@@ -432,14 +477,17 @@
       if (!num && q.join('').length < 2) { salida.replaceChildren(); aviso.textContent = 'Escribe al menos dos letras.'; return; }
       const hay = claves.filter(({ p, t }) => (num ? p.id === +q[0] : q.every((w) => t.includes(w)))).map((x) => x.p).sort((x, y) => x.id - y.id);
       if (!hay.length) { salida.replaceChildren(); aviso.textContent = num ? `No encuentro ${tp.unidad === 'jugador' ? 'al jugador' : 'a la pareja'} ${q[0]}.` : 'No encuentro a nadie con ese nombre. Prueba con menos letras o con tu número.'; return; }
-      salida.replaceChildren(...hay.slice(0, MAX_FICHAS).map((p) => fichaPersona(a, p, filas.get(p.id), n, byId)));
+      const yo = guardado();
+      salida.replaceChildren(...hay.slice(0, MAX_FICHAS).filter((p) => !yo || p.id !== yo.id).map((p) => fichaPersona(a, p, filas.get(p.id), n, byId, false, elegir)));
+      if (yo && hay.length === 1 && hay[0].id === yo.id) aviso.textContent = 'Esa es tu ficha, la de arriba.';
       if (hay.length > MAX_FICHAS) aviso.textContent = `Hay ${hay.length} coincidencias y se enseñan ${MAX_FICHAS}. Escribe más letras para afinar.`;
     }
     campo.addEventListener('input', buscar);
     const bloque = el('section', { class: 'quien', 'aria-labelledby': 't-quien' },
       el('label', { for: 'quien', id: 't-quien' }, '¿Quién eres?'),
       el('p', { class: 'nota sin-margen' }, 'Escribe tu nombre o tu número y mira cómo vas.'),
-      campo, aviso, salida);
+      mio, campo, aviso, salida);
+    pintarMia();
     return { bloque, buscar };
   }
 
