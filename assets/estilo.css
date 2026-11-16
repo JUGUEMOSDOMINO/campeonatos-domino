@@ -272,22 +272,21 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .pie .boton.sec { color: var(--barra-texto); border-color: var(--barra-texto); margin-top: 8px; padding: 8px 14px; }
 .normativa { margin: 0 0 16px; }
 
-/* anuncio del libro (Normativa): blanco, negro y bloques gruesos, como la portada; no cambia con el modo oscuro */
+/* anuncio del libro (Normativa): verde de la barra superior, textos claros; la portada blanca destaca encima */
 .vacio + .libro, .normativa + .libro { margin-top: 20px; }
-.libro { display: grid; gap: 20px; margin: 16px 0 0; padding: 16px; background: #fff; color: #000; border: 4px solid #000; border-radius: 0; box-shadow: 8px 8px 0 #000; overflow-wrap: anywhere; }
-.libro-portada { display: block; width: min(100%, 240px); height: auto; margin: 0 auto; border: 3px solid #000; box-shadow: 6px 6px 0 #000; background: #fff; }
+.libro { display: grid; gap: 20px; margin: 16px 0 0; padding: 16px; background: var(--barra); color: var(--barra-texto); border-radius: var(--radio); overflow-wrap: anywhere; }
+.libro-portada { display: block; width: min(100%, 240px); height: auto; margin: 0 auto; background: #fff; border-radius: 4px; box-shadow: 0 6px 18px rgba(0, 0, 0, .35); }
 .libro-texto > * { margin-top: 0; }
-.libro-sello { display: inline-block; margin-bottom: 10px; padding: 3px 8px; background: #000; color: #fff; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.libro h2 { display: block; margin: 0 0 12px; padding: 10px 14px; background: #000; color: #fff; font-size: 1.9rem; line-height: 1.05; text-transform: uppercase; letter-spacing: .01em; }
-.libro-sub { margin-bottom: 6px; font-weight: 800; text-transform: uppercase; font-size: .9rem; letter-spacing: .03em; }
-.libro-autor { margin-bottom: 14px; font-size: .85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-top: 3px solid #000; padding-top: 6px; }
+.libro-sello { display: inline-block; margin-bottom: 10px; font-size: .75rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--barra-suave); }
+.libro h2 { margin: 0 0 12px; color: #fff; font-size: 1.9rem; line-height: 1.1; text-transform: uppercase; letter-spacing: .01em; }
+.libro-sub { margin-bottom: 6px; font-weight: 800; text-transform: uppercase; font-size: .9rem; letter-spacing: .03em; color: #fff; }
+.libro-autor { margin-bottom: 14px; padding-top: 6px; border-top: 1px solid var(--barra-suave); font-size: .85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--barra-suave); }
 .libro ul { margin: 0 0 14px; padding: 0; list-style: none; }
-.libro li { position: relative; padding: 5px 0 5px 22px; border-bottom: 1px solid #000; }
-.libro li::before { content: ""; position: absolute; left: 0; top: .85em; width: 11px; height: 11px; background: #000; }
+.libro li { position: relative; padding: 5px 0 5px 22px; border-bottom: 1px solid rgba(233, 243, 241, .22); }
+.libro li::before { content: ""; position: absolute; left: 0; top: .85em; width: 9px; height: 9px; border-radius: 2px; background: var(--barra-suave); }
 .libro-quien { font-size: .93rem; }
-.libro blockquote { margin: 16px 0; padding: 12px 14px; background: #000; color: #fff; font-weight: 800; font-size: 1.1rem; line-height: 1.25; }
-.libro-enlace { display: inline-block; padding: 12px 20px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 5px 5px 0 #000; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: .04em; }
-.libro-enlace:hover { background: #000; color: #fff; }
-.libro-enlace:active { box-shadow: 1px 1px 0 #000; transform: translate(4px, 4px); }
-.libro :focus-visible { outline: 3px solid var(--marca); outline-offset: 3px; }
-@media (max-width: 380px) { .libro { padding: 12px; box-shadow: 5px 5px 0 #000; } .libro h2 { font-size: 1.5rem; padding: 8px 10px; } }
+.libro blockquote { margin: 16px 0; padding: 2px 0 2px 14px; border-left: 3px solid var(--barra-suave); color: #fff; font-weight: 700; font-size: 1.1rem; line-height: 1.3; }
+.libro-enlace { display: inline-block; padding: 12px 20px; background: #fff; color: var(--barra); border-radius: var(--radio); font-weight: 800; text-decoration: none; letter-spacing: .02em; }
+.libro-enlace:hover { background: var(--barra-texto); text-decoration: underline; }
+.libro :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+@media (max-width: 380px) { .libro { padding: 12px; } .libro h2 { font-size: 1.5rem; } }
