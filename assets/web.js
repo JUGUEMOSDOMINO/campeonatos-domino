@@ -735,7 +735,7 @@
           'Aspectos psicológicos y sugerencias para mejorar',
           'Una evaluación final con situaciones frecuentes de partida',
         ].map((t) => el('li', null, t))),
-        el('p', { class: 'libro-quien' }, 'El autor está federado desde 2005 y vive en Valencia desde 2018. Lleva la mesa de control informático en las competiciones de la Federación Valenciana de Dominó Jaume I, el mismo equipo que publica esta web.'),
+        el('p', { class: 'libro-quien' }, ''),
         el('blockquote', null, '«Juguemos dominó. ¡Que comience la partida!»'),
         el('a', { class: 'libro-enlace', href: LIBRO, target: '_blank', rel: 'noopener noreferrer' }, 'Ver en Amazon', el('span', { class: 'solo-lector' }, ' (se abre en una pestaña nueva)'))));
   }
