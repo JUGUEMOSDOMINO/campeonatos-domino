@@ -296,10 +296,10 @@
       try { plan = M.planNormativa(e.id, new Uint8Array(await f.arrayBuffer())); si.disabled = false; nota.textContent = `${f.name} · ${Math.max(1, Math.round(f.size / 1024))} KB`; }
       catch (x) { nota.className = 'nota caja'; nota.textContent = x.message; }
     });
-    si.addEventListener('click', async () => { if (!plan) return; si.disabled = true; poner(panel); await correr(plan.pasos, reg(), 'Normativa subida. La web la ofrece en la pestaña Calendario en uno o dos minutos.', cargarTorneos); });
+    si.addEventListener('click', async () => { if (!plan) return; si.disabled = true; poner(panel); await correr(plan.pasos, reg(), 'Normativa subida. La web la ofrece en la pestaña Normativa en uno o dos minutos.', cargarTorneos); });
     poner(panel, el('div', { class: 'aviso-accion' },
       el('p', null, el('b', null, `Normativa de «${nombreDe(e)}»`)),
-      el('p', null, `Elige el PDF original. Se cifra en este ordenador con la contraseña de la web y se sube como datos/${e.id}/normativa.pdf.cifrado; si ya había una, se sustituye. Los jugadores la descargan desde la pestaña Calendario. Máximo ${M.MAX_PDF / 1048576} MB.`)),
+      el('p', null, `Elige el PDF original. Se cifra en este ordenador con la contraseña de la web y se sube como datos/${e.id}/normativa.pdf.cifrado; si ya había una, se sustituye. Los jugadores la descargan desde la pestaña Normativa. Máximo ${M.MAX_PDF / 1048576} MB.`)),
     archivo, nota, el('div', { class: 'acciones' }, si, cancelar(panel)));
   }
   function panelQuitarNormativa(e, panel) {
