@@ -155,7 +155,7 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     await pg.waitForSelector('#cab h1');
     assert.strictEqual(await pg.textContent('#cab h1'), 'CAMPEONATO DE PAREJAS DE EJEMPLO');
     assert((await pg.textContent('.banda-prueba')).includes('Borrador privado'));
-    await pg.waitForSelector('table.clasi');
+    await pg.waitForSelector('.podio');
     await pg.click('a:text("Partidas")'); await pg.waitForSelector('.mesa');
     assert(pg.url().includes('borrador=1'));
     assert.deepStrictEqual(externos, []);
@@ -164,7 +164,7 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     assert.deepStrictEqual(errores, []);
     // la web pública sigue leyendo de datos/ sin tocar la API
     const antes = api.reqs.length;
-    await pg.goto(base + '/torneo.html?t=sp-ejemplo&d=datos/_prueba'); await pg.waitForSelector('table.clasi');
+    await pg.goto(base + '/torneo.html?t=sp-ejemplo&d=datos/_prueba'); await pg.waitForSelector('.podio');
     assert.strictEqual(api.reqs.length, antes);
     bien('sin borrador=1 la página no llama a GitHub');
   }

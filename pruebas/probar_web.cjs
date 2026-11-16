@@ -47,7 +47,7 @@ const D = 'd=datos/_prueba';
     bien('buscador: Gemma Orts en parejas y en SP');
 
     // torneo SP en curso (Plan 2.10.2): la clasificación de la J3 en vivo, con ⏳ en quien aún no ha jugado
-    await pg.goto(`${base}/torneo.html?t=sp-ejemplo&${D}`);
+    await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi');
     assert((await pg.locator('table.clasi caption').innerText()).includes('jornada 3'));
     const nota = await pg.locator('.nota.caja').innerText();
@@ -55,8 +55,8 @@ const D = 'd=datos/_prueba';
     assert(!/en este grupo/.test(nota), nota);
     assert.strictEqual(await pg.locator('.plazo').innerText(), 'Jornada 3 · se juega del 10/11 al 23/11');
     assert(!/Cómo se ordena|criterio|desempate/i.test(await pg.locator('main').innerText()));
-    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Normativa']);
-    bien('clasificación: nota sin recuento, fechas de juego, sin criterios y cinco pestañas en orden');
+    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Resumen', 'Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Normativa']);
+    bien('clasificación: nota sin recuento, fechas de juego, sin criterios y seis pestañas en orden');
     // columnas como en el Excel, y la leyenda en el mismo orden
     const COLS = ['CLAS.', 'PAREJA', 'NOMBRE', 'ENC.J', 'ENC.G', 'DIF. P.', 'DIF. PUNT.', 'P. G.', 'P. P.', 'PUNT. F.', 'PUNT. C.'];
     assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), COLS);
@@ -205,7 +205,7 @@ const D = 'd=datos/_prueba';
     assert(!(await pg.request.head(`${base}/datos/sp-2026-27/folleto.pdf`)).ok(), 'el folleto del 24º ya no se publica');
 
     // torneo terminado con grupo B, ND, incomparecencia
-    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&${D}`);
+    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi');
     assert.strictEqual(await pg.locator('.grupos button').count(), 2);
     await pg.click('.grupos button:has-text("Grupo B")');
@@ -230,12 +230,12 @@ const D = 'd=datos/_prueba';
     // individual: dos y dos
     await pg.goto(`${base}/torneo.html?t=individual-ejemplo-2026-11-14&ver=mesas&${D}`);
     await pg.waitForSelector('li.mesa'); assert.strictEqual(await pg.locator('li.mesa').first().locator('.lado .n').count(), 4);
-    assert.strictEqual(await pg.locator('nav.pestanas a').nth(2).innerText(), 'Jugadores');
+    assert.strictEqual(await pg.locator('nav.pestanas a').nth(3).innerText(), 'Jugadores');
     await sinDesborde('individual'); bien('individual: 2 jugadores contra 2');
     // la copia del 24º: un botón por jornada publicada (según actual.json), y se abre la jornada en curso
     const act24 = JSON.parse(require('fs').readFileSync('pruebas/datos/sp-grande/actual.json', 'utf8'));
     const nPub = (act24.jornadas || [act24.jornada]).length;
-    await pg.goto(`${base}/torneo.html?t=sp-grande&${D}`);
+    await pg.goto(`${base}/torneo.html?t=sp-grande&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi');
     assert.strictEqual(await pg.locator('.jornadas button').count(), nPub);
     await pg.click('nav.pestanas a:has-text("Partidas")');

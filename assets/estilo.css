@@ -132,6 +132,36 @@ tr.resalte td { background-image: linear-gradient(var(--marca-suave), var(--marc
 .etq.pend { border: none; padding: 0 2px; font-size: .9rem; letter-spacing: 0; }
 .leyenda { font-size: .82rem; color: var(--tinta2); margin: 10px 2px 0; }
 
+/* resumen: podio y «¿Quién eres?» */
+.podio { list-style: none; margin: 0 0 22px; padding: 0; display: grid; gap: 10px; align-items: stretch;
+  grid-template-columns: 1fr 1fr; grid-template-areas: "uno uno" "dos tres"; }
+.podio-tarjeta { position: relative; display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 14px 12px 12px; border-radius: var(--radio); background: var(--barra); color: var(--barra-texto); border: 1px solid var(--barra-suave); border-top: 6px solid var(--plata); overflow-wrap: anywhere; }
+.podio-tarjeta[data-puesto="1"] { grid-area: uno; border-top-color: var(--oro); padding-top: 18px; box-shadow: 0 0 0 2px var(--oro); }
+.podio-tarjeta[data-puesto="2"] { grid-area: dos; }
+.podio-tarjeta[data-puesto="3"] { grid-area: tres; border-top-color: var(--bronce); }
+.podio-n { font-size: 3rem; line-height: .9; font-weight: 800; letter-spacing: -.04em; color: var(--plata); font-variant-numeric: tabular-nums; }
+.podio-tarjeta[data-puesto="1"] .podio-n { font-size: 4.2rem; color: var(--oro); }
+.podio-tarjeta[data-puesto="3"] .podio-n { color: var(--bronce); }
+.podio-par { font-size: .78rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--barra-suave); }
+.podio-nombres { display: flex; flex-direction: column; font-weight: 700; font-size: 1.02rem; line-height: 1.25; }
+.podio-tarjeta[data-puesto="1"] .podio-nombres { font-size: 1.2rem; }
+.podio-cifra { margin-top: auto; padding-top: 6px; font-size: .82rem; color: var(--barra-suave); font-variant-numeric: tabular-nums; }
+.podio-tarjeta .etq { color: var(--oro); }
+.quien { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 14px; }
+.quien label { display: block; font-size: 1.35rem; font-weight: 800; letter-spacing: -.01em; margin: 0 0 2px; }
+.quien input { width: 100%; margin: 10px 0 8px; padding: 12px 14px; border-radius: var(--radio); border: 2px solid var(--tinta); background: var(--fondo); }
+.quien .nota:empty { display: none; }
+.fichas { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.fichas:empty { display: none; }
+.ficha { border: 1px solid var(--linea); border-left: 6px solid var(--barra); border-radius: var(--radio); padding: 10px 12px; background: var(--fondo); }
+.ficha p { margin: 6px 0 0; overflow-wrap: anywhere; }
+.ficha-cab { display: flex; align-items: center; gap: 12px; }
+.ficha-num { flex: none; display: inline-flex; flex-direction: column; align-items: center; min-width: 64px; border: 2px solid var(--tinta); border-radius: 6px; overflow: hidden; line-height: 1; }
+.ficha-num i { font-style: normal; font-size: .6rem; text-transform: uppercase; letter-spacing: .08em; font-weight: 700; padding: 3px 6px; width: 100%; text-align: center; background: var(--tinta); color: var(--papel); }
+.ficha-num b { font-size: 1.6rem; padding: 6px 8px; font-variant-numeric: tabular-nums; }
+.ficha-quien { min-width: 0; display: flex; flex-direction: column; overflow-wrap: anywhere; font-weight: 700; }
+.ficha-enlaces { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .92rem; font-weight: 700; }
+
 /* mesas */
 .filtro { display: block; margin: 0 0 12px; }
 .filtro input { width: 100%; padding: 12px 14px; border-radius: var(--radio); border: 2px solid var(--tinta); background: var(--papel); }
@@ -188,6 +218,12 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
   .tarjetas { grid-template-columns: 1fr 1fr; }
   .libro { grid-template-columns: 230px 1fr; align-items: start; padding: 24px; gap: 28px; }
   ul.mesas { grid-template-columns: 1fr 1fr; }
+}
+@media (min-width: 560px) {
+  .podio { grid-template-columns: 1fr 1.2fr 1fr; grid-template-areas: "dos uno tres"; align-items: end; }
+  .podio-tarjeta[data-puesto="2"] { padding-top: 22px; }
+  .podio-tarjeta[data-puesto="3"] { padding-top: 14px; }
+  .podio-tarjeta[data-puesto="1"] { padding-bottom: 20px; }
 }
 
 /* publicar.html */

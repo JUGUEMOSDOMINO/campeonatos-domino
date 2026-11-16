@@ -289,22 +289,22 @@
   /* =====================================================================
      PÁGINA DE TORNEO
      ===================================================================== */
-  const PESTANAS = [['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario'], ['normativa', 'Normativa']];
+  const PESTANAS = [['resumen', 'Resumen'], ['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario'], ['normativa', 'Normativa']];
   const ANTIGUAS = { emparejamientos: 'mesas', resultados: 'mesas', linea: 'folleto' }; // enlaces de antes del cambio de pestañas
-  const E = { id: null, actual: null, cache: new Map(), ver: 'clasificacion', j: null, g: 'A', p: null, q: '' };
+  const E = { id: null, actual: null, cache: new Map(), ver: 'resumen', j: null, g: 'A', p: null, q: '', quien: '' };
 
   function leerUrl() {
     const x = new URLSearchParams(location.search);
     E.id = x.get('t');
     const v = ANTIGUAS[x.get('ver')] || x.get('ver');
-    E.ver = PESTANAS.some((t) => t[0] === v) ? v : 'clasificacion';
+    E.ver = PESTANAS.some((t) => t[0] === v) ? v : 'resumen';
     E.j = +x.get('j') || null;
     E.g = x.get('g') === 'B' ? 'B' : 'A';
     E.p = +x.get('p') || null;
   }
   function irA(cambios, empujar) {
     Object.assign(E, cambios);
-    const nueva = url('torneo.html', { t: E.id, ver: E.ver === 'clasificacion' ? '' : E.ver, j: E.j, g: E.g === 'B' ? 'B' : '', p: E.p });
+    const nueva = url('torneo.html', { t: E.id, ver: E.ver === 'resumen' ? '' : E.ver, j: E.j, g: E.g === 'B' ? 'B' : '', p: E.p });
     if (empujar) history.pushState(null, '', nueva); else history.replaceState(null, '', nueva);
     pintar();
   }
@@ -339,7 +339,7 @@
   function pestanas() {
     const ind = E.actual.torneo.tipo === 'individual';
     $('#pestanas').replaceChildren(...PESTANAS.map(([k, txt]) => el('a', {
-      href: url('torneo.html', { t: E.id, ver: k === 'clasificacion' ? '' : k, p: E.p }), 'aria-current': E.ver === k ? 'page' : null,
+      href: url('torneo.html', { t: E.id, ver: k === 'resumen' ? '' : k, p: E.p }), 'aria-current': E.ver === k ? 'page' : null,
       onclick: (ev) => { if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return; ev.preventDefault(); irA({ ver: k, j: null }, true); },
     }, k === 'parejas' && ind ? 'Jugadores' : txt)));
   }
@@ -356,6 +356,111 @@
         type: 'button', 'aria-pressed': String(j.numero === actualN), class: j.completa ? '' : 'curso',
         title: j.completa ? null : 'En juego', onclick: () => alElegir(j.numero),
       }, j.numero)));
+  }
+
+  /* ----- resumen: podio y «¿Quién eres?» ----- */
+  const ORD = (n) => n + '.º';
+  const nombresDe = (p) => [[p.j1_nombre, p.j1_apellido1], [p.j2_nombre, p.j2_apellido1]].filter((x) => x[0]).map((x) => x.join(' '));
+  // La misma jornada que enseña Clasificación: la que está en juego con algún resultado, o la última cerrada.
+  const jornadaClasif = (a) => (conResultado(a) ? a.jornada.numero : ultimaCompleta(a));
+  const cifraCorta = (r, sp, tp) => `${r.gan} de ${r.jug} ${sp ? 'encuentros' : 'partidas'} · ${signo(r.dt)} puntos`;
+
+  function tarjetaPodio(r, byId, tp, sp) {
+    const p = byId.get(r.id) || { corto: '#' + r.id };
+    return el('li', { class: 'podio-tarjeta', 'data-puesto': r.puesto, 'data-id': r.id },
+      el('span', { class: 'podio-n', 'aria-label': `Puesto ${r.puesto}` }, r.puesto),
+      el('span', { class: 'podio-par' }, `${cap(tp.unidad)} ${r.id}`, p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null),
+      el('span', { class: 'podio-nombres' }, p.j1_nombre ? nombresDe(p).map((x) => el('span', null, x)) : el('span', null, p.corto)),
+      el('span', { class: 'podio-cifra' }, cifraCorta(r, sp, tp)));
+  }
+  const cap = (t) => t[0].toUpperCase() + t.slice(1);
+
+  // Qué le toca a este participante en la jornada publicada, dicho en una frase.
+  function lineaMesa(a, id, byId) {
+    const sp = a.torneo.tipo === 'sp', tp = tipoDe(a.torneo.tipo);
+    const m = a.emparejamientos.find((x) => x.izq.includes(id) || x.dcha.includes(id));
+    if (!m) return null;
+    const j = `${tp.jornada} ${a.jornada.numero}`;
+    if (m.estado === 'descanso') return `${j}: descansa.`;
+    if (m.estado === 'ausencia') return `${j}, mesa ${m.mesa}: falta alguien en la mesa.`;
+    const izq = m.izq.includes(id), rivales = (izq ? m.dcha : m.izq).map((i) => (byId.get(i) || {}).corto || i).join(' y ');
+    const base = `${j}, mesa ${m.mesa}${rivales ? ' contra ' + rivales : ''}`;
+    if (m.estado === 'pendiente') return `${base}. Por jugar.`;
+    if (m.estado === 'jugada' && m.p_izq != null) {
+      const [pf, pc, tf, tc] = izq ? [m.p_izq, m.p_dcha, m.t_izq, m.t_dcha] : [m.p_dcha, m.p_izq, m.t_dcha, m.t_izq];
+      const gana = sp ? pf > pc : tf > tc;
+      return `${base}: ${gana ? 'ganada' : 'perdida'} ${sp ? `${pf}-${pc} (${tf}-${tc} en tantos)` : `${tf}-${tc}`}.`;
+    }
+    return `${base}: ${(ETIQUETAS[m.estado] || m.estado).toLowerCase()}.`;
+  }
+
+  function fichaPersona(a, p, fila, jn, byIdActual) {
+    const tp = tipoDe(a.torneo.tipo), sp = a.torneo.tipo === 'sp';
+    const subs = (a.sustituciones || []).filter((s) => s.id === p.id);
+    const puesto = fila
+      ? `${ORD(fila.puesto)}${a.clasificacion.some((r) => r.grupo === 'B') ? ' del grupo ' + fila.grupo : ''} tras la ${tp.jornada.toLowerCase()} ${jn}. ${cifraCorta(fila, sp, tp)}.`
+      : 'Todavía no tiene clasificación.';
+    const mesa = lineaMesa(a, p.id, byIdActual);
+    const enlace = (ver, txt) => el('a', { href: url('torneo.html', { t: E.id, ver, p: p.id }) }, txt);
+    return el('li', { class: 'ficha', 'data-id': p.id },
+      el('div', { class: 'ficha-cab' },
+        el('span', { class: 'ficha-num' }, el('i', null, cap(tp.unidad)), el('b', null, p.id)),
+        el('span', { class: 'ficha-quien' }, nombresDe(p).map((x) => el('span', { class: 'nom' }, x)),
+          p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null)),
+      el('p', null, puesto),
+      mesa ? el('p', null, mesa) : null,
+      subs.map((s) => el('p', { class: 'nota sin-margen' }, `Cambio en la ${tp.jornada.toLowerCase()} ${s.desde}: entra ${s.entra_nombre} ${s.entra_apellido1} por ${s.sale_nombre} ${s.sale_apellido1}.`)),
+      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), enlace('mesas', 'Ver su mesa')));
+  }
+
+  const MAX_FICHAS = 6;
+  function buscadorQuien(a, jd, n) {
+    const tp = tipoDe(a.torneo.tipo);
+    const byId = new Map(a.participantes.map((p) => [p.id, p]));
+    const filas = new Map((jd ? jd.clasificacion : []).map((r) => [r.id, r]));
+    const campo = el('input', { type: 'search', id: 'quien', autocomplete: 'off', autocapitalize: 'none', spellcheck: 'false', placeholder: 'Tu nombre, tu apellido o tu número', value: E.quien });
+    const salida = el('ul', { id: 'quien-res', class: 'fichas', 'aria-live': 'polite' });
+    const aviso = el('p', { class: 'nota', 'aria-live': 'polite' });
+    // Un número es el de la pareja o jugador, exacto. Lo demás se busca como trozo del nombre, sin tildes ni mayúsculas.
+    const claves = a.participantes.map((p) => ({ p, t: norm(nombresDe(p).join(' ')) }));
+    function buscar() {
+      E.quien = campo.value;
+      const q = norm(campo.value).split(/\s+/).filter(Boolean);
+      aviso.textContent = '';
+      if (!q.length) { salida.replaceChildren(); return; }
+      const num = q.length === 1 && /^\d+$/.test(q[0]);
+      if (!num && q.join('').length < 2) { salida.replaceChildren(); aviso.textContent = 'Escribe al menos dos letras.'; return; }
+      const hay = claves.filter(({ p, t }) => (num ? p.id === +q[0] : q.every((w) => t.includes(w)))).map((x) => x.p).sort((x, y) => x.id - y.id);
+      if (!hay.length) { salida.replaceChildren(); aviso.textContent = num ? `No encuentro ${tp.unidad === 'jugador' ? 'al jugador' : 'a la pareja'} ${q[0]}.` : 'No encuentro a nadie con ese nombre. Prueba con menos letras o con tu número.'; return; }
+      salida.replaceChildren(...hay.slice(0, MAX_FICHAS).map((p) => fichaPersona(a, p, filas.get(p.id), n, byId)));
+      if (hay.length > MAX_FICHAS) aviso.textContent = `Hay ${hay.length} coincidencias y se enseñan ${MAX_FICHAS}. Escribe más letras para afinar.`;
+    }
+    campo.addEventListener('input', buscar);
+    const bloque = el('section', { class: 'quien', 'aria-labelledby': 't-quien' },
+      el('label', { for: 'quien', id: 't-quien' }, '¿Quién eres?'),
+      el('p', { class: 'nota sin-margen' }, 'Escribe tu nombre o tu número y mira cómo vas.'),
+      campo, aviso, salida);
+    return { bloque, buscar };
+  }
+
+  async function pintarResumen(cont) {
+    const a = E.actual, tp = tipoDe(a.torneo.tipo), sp = a.torneo.tipo === 'sp';
+    const n = jornadaClasif(a);
+    let jd = null;
+    if (n) {
+      try { jd = await datosJornada(n); } catch (e) { cont.replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha podido cargar el resumen. Prueba otra vez dentro de un minuto.')); return; }
+      if (E.ver !== 'resumen') return;
+    }
+    const top = jd ? jd.clasificacion.filter((r) => r.grupo === 'A').slice(0, 3) : [];
+    const byId = new Map((jd ? jd.participantes : []).map((p) => [p.id, p]));
+    const podio = top.length
+      ? el('section', { class: 'podio-seccion', 'aria-labelledby': 't-podio' },
+        el('h2', { class: 'sub', id: 't-podio' }, a.torneo.estado === 'terminado' ? 'Podio final' : `Podio tras la ${tp.jornada.toLowerCase()} ${n}${jd.jornada.completa ? '' : ' (en juego)'}`),
+        el('ol', { class: 'podio' }, top.map((r) => tarjetaPodio(r, byId, tp, sp))))
+      : el('p', { class: 'vacio' }, `El podio aparecerá cuando haya resultados de la ${tp.jornada.toLowerCase()} 1.`);
+    const { bloque, buscar } = buscadorQuien(a, jd, n);
+    poner(cont, podio, bloque);
+    if (E.quien) buscar();
   }
 
   /* ----- clasificación ----- */
@@ -604,7 +709,8 @@
     cabecera(); pestanas();
     const cont = $('#contenido');
     if (marca !== pintando) return;
-    if (E.ver === 'clasificacion') await pintarClasificacion(cont);
+    if (E.ver === 'resumen') await pintarResumen(cont);
+    else if (E.ver === 'clasificacion') await pintarClasificacion(cont);
     else if (E.ver === 'mesas') await pintarMesas(cont);
     else if (E.ver === 'parejas') pintarParejas(cont);
     else if (E.ver === 'normativa') await pintarNormativa(cont);

@@ -10,7 +10,7 @@ const capt = process.argv[3];
 const raiz = path.join(__dirname, '..');
 const TAMANOS = [[320, 640], [360, 780], [390, 844], [412, 915], [667, 375], [768, 1024], [1280, 800]];
 const D = 'd=datos/_prueba';
-const PESTANAS = ['', 'mesas', 'parejas', 'folleto', 'normativa'];
+const PESTANAS = ['', 'clasificacion', 'mesas', 'parejas', 'folleto', 'normativa'];
 
 // Se ejecuta en la página. Devuelve la lista de fallos (texto).
 function revisar() {
@@ -103,9 +103,10 @@ function llegaAPuntC() {
     for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&']]) {
       for (const ver of PESTANAS) {
         await pg.goto(`${base}/torneo.html?${q}t=${t}${ver ? '&ver=' + ver : ''}`);
-        await pg.waitForSelector(ver === 'normativa' ? '.libro' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
-        await mira(`${t} · ${ver || 'clasificación'}`, !ver ? llegaAPuntC : null);
-        if (capt && t === 'sp-grande' && !ver && (w === 360 || w === 390)) {
+        await pg.waitForSelector(!ver ? '.podio' : ver === 'normativa' ? '.libro' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
+        await mira(`${t} · ${ver || 'resumen'}`, ver === 'clasificacion' ? llegaAPuntC : null);
+        if (!ver) { await pg.fill('#quien', 'a'); await mira(`${t} · resumen · una letra`); await pg.fill('#quien', '1'); await pg.waitForSelector('.ficha'); await mira(`${t} · resumen · ficha`); }
+        if (capt && t === 'sp-grande' && ver === 'clasificacion' && (w === 360 || w === 390)) {
           fs.mkdirSync(capt, { recursive: true });
           await pg.evaluate(() => document.querySelector('.tabla-marco').scrollIntoView());
           await pg.screenshot({ path: `${capt}/clasificacion_24_${w}_inicio.png` });
@@ -153,7 +154,7 @@ function llegaAPuntC() {
     await pg.click('input[name=destino][value=web]'); await pg.waitForFunction(() => document.querySelector('#publicar').textContent === 'Publicar en la web');
     await mira('publicar · destino web');
     // borrador visto por torneo.html: con token, sin token y con token de otro
-    await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&borrador=1`); await pg.waitForSelector('table.clasi');
+    await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&borrador=1&ver=clasificacion`); await pg.waitForSelector('table.clasi');
     await mira('borrador · clasificación');
     await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&borrador=1&ver=mesas`); await pg.waitForSelector('.mesa');
     await mira('borrador · mesas');
