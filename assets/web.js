@@ -191,9 +191,19 @@
       }));
     }
     iniciarBuscador(ts);
-    lista.after(anuncioLibro());
-  }
+    const libro = anuncioLibro();
+    libro.hidden = true;
 
+    const btnLibro = el('button', {
+      type: 'button',
+      class: 'boton',
+      onclick: () => {
+        libro.hidden = !libro.hidden;
+        btnLibro.textContent = libro.hidden ? '+ Ver libro JUGUEMOS DOMINÖ' : '- Ocultar libro';
+  }
+}, '+ Ver libro JUGUEMOS DOMINÓ');
+    lista.after(btnLibro, libro);
+ }
   /* ---------- buscador de jugador ---------- */
   function iniciarBuscador(torneos) {
     const entrada = $('#buscar');
@@ -748,7 +758,7 @@
     if (E.ver !== 'normativa') return;
     const aviso = el('p', { class: 'nota sin-margen', 'aria-live': 'polite' });
     const boton = hay ? el('button', { type: 'button', class: 'boton', onclick: () => descargarNormativa(boton, aviso) }, 'Descargar normativa (PDF)') : null;
-    poner(cont, hay ? el('div', { class: 'acciones normativa' }, boton, aviso) : el('p', { class: 'vacio' }, 'Este campeonato no tiene normativa publicada.'), anuncioLibro());
+    poner(cont, hay ? el('div', { class: 'acciones normativa' }, boton, aviso) : el('p', { class: 'vacio' }, 'Este campeonato no tiene normativa publicada.'));
   }
 
   /* ----- orquestación ----- */
