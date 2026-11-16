@@ -191,6 +191,7 @@
       }));
     }
     iniciarBuscador(ts);
+    lista.after(anuncioLibro());
   }
 
   /* ---------- buscador de jugador ---------- */
