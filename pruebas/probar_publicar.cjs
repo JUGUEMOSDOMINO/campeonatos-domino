@@ -718,7 +718,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
 
     await servirComoPages(ctx, api);
     const web = await ctx.newPage();
-    await web.goto(`${base}/torneo.html?t=${PAR}&ver=folleto`); await web.waitForSelector('button:has-text("Descargar normativa (PDF)")');
+    await web.goto(`${base}/torneo.html?t=${PAR}&ver=normativa`); await web.waitForSelector('button:has-text("Descargar normativa (PDF)")');
     bien('la web, en el mismo navegador que la mesa, se abre con la contraseña nueva y enseña la normativa');
   }
 

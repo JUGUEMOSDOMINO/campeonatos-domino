@@ -106,7 +106,7 @@ const NOMBRES_PRUEBA = nombresDe(path.join(__dirname, 'datos')).filter((x) => !h
   {
     const { ctx, pg, errs } = await nuevo({ width: 1280, height: 800 });
     await K.recordarPrueba(ctx);
-    await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=folleto&${D}`);
+    await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=normativa&${D}`);
     const boton = pg.locator('button:has-text("Descargar normativa (PDF)")');
     await boton.waitFor();
     const [descarga] = await Promise.all([pg.waitForEvent('download'), boton.click()]);
@@ -114,8 +114,8 @@ const NOMBRES_PRUEBA = nombresDe(path.join(__dirname, 'datos')).filter((x) => !h
     assert(bytes.equals(fs.readFileSync(path.join(__dirname, 'datos/sp-ejemplo/normativa.pdf'))), 'el PDF descargado es el original');
     assert(/\.pdf$/.test(descarga.suggestedFilename()), descarga.suggestedFilename());
     assert.strictEqual(await pg.locator('iframe, embed, object').count(), 0);
-    bien('Calendario: «Descargar normativa (PDF)» descifra en el navegador y descarga el PDF original, sin iframe');
-    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&ver=folleto&${D}`); await pg.waitForSelector('#contenido .vacio, .calendario');
+    bien('Normativa: «Descargar normativa (PDF)» descifra en el navegador y descarga el PDF original, sin iframe');
+    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&ver=normativa&${D}`); await pg.waitForSelector('.libro');
     await pg.waitForTimeout(300);
     assert.strictEqual(await boton.count(), 0);
     bien('sin normativa publicada, no sale el botón');
@@ -127,7 +127,7 @@ const NOMBRES_PRUEBA = nombresDe(path.join(__dirname, 'datos')).filter((x) => !h
   {
     const { ctx, pg } = await nuevo({ width: 1280, height: 800 });
     const ind = JSON.parse(fs.readFileSync(path.join(__dirname, 'datos/indice.json'), 'utf8')).torneos.map((t) => t.id);
-    for (const u of ['index.html?' + D, ...ind.flatMap((id) => ['', '&ver=mesas', '&ver=parejas', '&ver=folleto'].map((v) => `torneo.html?t=${id}${v}&${D}`))]) {
+    for (const u of ['index.html?' + D, ...ind.flatMap((id) => ['', '&ver=mesas', '&ver=parejas', '&ver=folleto', '&ver=normativa'].map((v) => `torneo.html?t=${id}${v}&${D}`))]) {
       await pg.goto(`${base}/${u}`); await pg.waitForSelector('#form-clave');
       await sinNombres(pg, u);
     }

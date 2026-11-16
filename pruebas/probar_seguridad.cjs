@@ -62,7 +62,7 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
   assert(/Disallow: \//.test(await robots.text()));
   bien('robots.txt se sirve');
   const casos = [['index.html', '#candado'], ['torneo.html?t=sp-2026-27', '#candado'], ['index.html?d=datos/_prueba', '#lista li'], ['torneo.html?t=sp-ejemplo&d=datos/_prueba', '#cab h1, #cab h2'],
-    ['torneo.html?t=sp-ejemplo&ver=folleto&d=datos/_prueba', '.normativa button'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso']];
+    ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.normativa button'], ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.libro img'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso']];
   for (const [url, esperado] of casos) {
     const pg = await ctx.newPage();
     const malos = []; const externas = [];

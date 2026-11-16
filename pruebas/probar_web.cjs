@@ -55,8 +55,14 @@ const D = 'd=datos/_prueba';
     assert(!/en este grupo/.test(nota), nota);
     assert.strictEqual(await pg.locator('.plazo').innerText(), 'Jornada 3 · se juega del 10/11 al 23/11');
     assert(!/Cómo se ordena|criterio|desempate/i.test(await pg.locator('main').innerText()));
-    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Clasificación', 'Partidas', 'Parejas', 'Calendario']);
-    bien('clasificación: nota sin recuento, fechas de juego, sin criterios y cuatro pestañas en orden');
+    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Normativa']);
+    bien('clasificación: nota sin recuento, fechas de juego, sin criterios y cinco pestañas en orden');
+    // columnas como en el Excel, y la leyenda en el mismo orden
+    const COLS = ['CLAS.', 'PAREJA', 'NOMBRE', 'ENC.J', 'ENC.G', 'DIF. P.', 'DIF. PUNT.', 'P. G.', 'P. P.', 'PUNT. F.', 'PUNT. C.'];
+    assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), COLS);
+    const ley = await pg.locator('.leyenda').innerText();
+    assert.deepStrictEqual(COLS.slice(3).map((c) => ley.indexOf(c + ':')).every((x, i, v) => x >= 0 && (i === 0 || x > v[i - 1])), true, 'leyenda en el orden de las columnas: ' + ley);
+    bien('clasificación: columnas CLAS., PAREJA, NOMBRE, ENC.J … PUNT. C. y leyenda en el mismo orden');
     const pendJ3 = JSON.parse(fs.readFileSync('pruebas/datos/sp-ejemplo/actual.json', 'utf8')).clasificacion.filter((r) => r.grupo === 'A' && r.pendiente).length;
     assert.strictEqual(await pg.locator('table.clasi .etq.pend').count(), pendJ3); // ⏳ = pendiente del JSON
     assert.strictEqual(await pg.locator('.jornadas button').count(), 3); // las completas y la que está en juego
@@ -156,7 +162,7 @@ const D = 'd=datos/_prueba';
     assert.deepStrictEqual(await pg.locator('.calendario .b').allInnerTexts(), ['B1', 'B2', 'B3']);
     assert((await pg.locator('.calendario li').nth(0).innerText()).includes('13/10 – 26/10/2026'));
     assert((await pg.locator('.calendario li').nth(2).innerText()).includes('10/11 – 23/11/2026'));
-    assert.strictEqual(await pg.locator('a[download], iframe').count(), 0, 'sin PDF de normativa');
+    assert.strictEqual(await pg.locator('a[download], iframe, .libro, button:has-text("normativa")').count(), 0, 'Calendario es solo el calendario');
     await sinDesborde('calendario lista'); bien('lista: 14 jornadas con el año, B1-B3, J3 resaltada');
     if (capt) await pg.screenshot({ path: `${capt}/cal_lista_${w}.png`, fullPage: true });
     // la lista no se toca: la copia del 24º con nombres inventados, con el año en la jornada que cruza
@@ -175,8 +181,27 @@ const D = 'd=datos/_prueba';
       assert.strictEqual(await pg.locator('.calendario, .linea-tiempo').count(), 0);
     }
     bien('sin la clave calendario se avisa; ver=linea lleva a Calendario');
-    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&ver=normativa&${D}`);
-    await pg.waitForSelector('text=no tiene calendario publicado'); bien('sin clave calendario se explica; ver=normativa abre Calendario');
+    // Normativa: el enlace antiguo ver=normativa abre Normativa; el anuncio del libro sale con y sin normativa
+    for (const t of ['sp-ejemplo-anterior', 'sp-ejemplo']) {
+      await pg.goto(`${base}/torneo.html?t=${t}&ver=normativa&${D}`);
+      await pg.waitForSelector('.libro');
+      assert.strictEqual(await pg.locator('nav.pestanas a[aria-current=page]').innerText(), 'Normativa');
+      const img = pg.locator('.libro img.libro-portada');
+      assert.strictEqual(await img.getAttribute('src'), 'assets/libro-portada.jpg');
+      assert((await img.getAttribute('alt')).length > 30 && await img.getAttribute('width') && await img.getAttribute('height') && await img.getAttribute('loading') === 'lazy');
+      await img.scrollIntoViewIfNeeded(); await pg.waitForFunction(() => document.querySelector('.libro img').complete && document.querySelector('.libro img').naturalWidth > 0);
+      const enl = pg.locator('.libro a.libro-enlace');
+      assert.strictEqual(await enl.getAttribute('href'), 'https://www.amazon.es/JUGUEMOS-DOMIN%C3%93-FORMACI%C3%93N-PRINCIPIANTES-PAREJAS/dp/B0DLCSRN4S');
+      assert.strictEqual(await enl.getAttribute('target'), '_blank');
+      assert.deepStrictEqual((await enl.getAttribute('rel')).split(/\s+/).sort(), ['noopener', 'noreferrer']);
+      assert((await enl.textContent()).startsWith('Ver en Amazon'));
+      const txt = await pg.locator('.libro').textContent();
+      for (const f of ['Jesús Eduardo Elián Campos', 'Federación Valenciana de Dominó Jaume I', '¡Que comience la partida!']) assert(txt.includes(f), f);
+      assert.strictEqual(await pg.locator('.libro-texto').evaluate((e) => e.scrollWidth <= e.clientWidth), true);
+      await sinDesborde('normativa ' + t);
+      if (capt && t === 'sp-ejemplo-anterior') await pg.screenshot({ path: `${capt}/normativa_${w}.png`, fullPage: true });
+    }
+    bien('Normativa (también sin normativa): ver=normativa la abre; portada con alt, tamaño y lazy; enlace a Amazon con target y rel correctos');
     assert(!(await pg.request.head(`${base}/datos/sp-2026-27/folleto.pdf`)).ok(), 'el folleto del 24º ya no se publica');
 
     // torneo terminado con grupo B, ND, incomparecencia

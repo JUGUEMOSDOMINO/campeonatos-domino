@@ -108,9 +108,14 @@ table.clasi { width: 100%; border-collapse: separate; border-spacing: 0; font-si
 .clasi tr:last-child td { border-bottom: 0; }
 .clasi td:first-child { padding-left: 10px; }
 .clasi td:last-child, .clasi th:last-child { padding-right: 10px; }
-.clasi td.pareja { text-align: left; white-space: normal; overflow-wrap: break-word; width: 99%; min-width: 8.5rem; }
-.clasi th:first-child, .clasi td:first-child { position: sticky; left: 0; z-index: 1; min-width: 46px; background-color: var(--papel); }
-.clasi th:nth-child(2), .clasi td:nth-child(2) { position: sticky; left: 46px; z-index: 1; background-color: var(--papel); border-right: 1px solid var(--linea); }
+.clasi td.pareja { text-align: left; white-space: normal; overflow-wrap: break-word; width: 99%; min-width: 6.5rem; }
+/* CLAS., PAREJA y NOMBRE fijos al desplazar: anchos exactos para que los desplazamientos (left) encajen */
+.clasi th:nth-child(-n+3), .clasi td:nth-child(-n+3) { position: sticky; z-index: 1; background-color: var(--papel); }
+.clasi th:nth-child(1), .clasi td:nth-child(1) { left: 0; width: 48px; min-width: 48px; max-width: 48px; padding-left: 6px; padding-right: 4px; text-align: left; }
+.clasi th:nth-child(2), .clasi td:nth-child(2) { left: 48px; width: 56px; min-width: 56px; max-width: 56px; padding-left: 4px; padding-right: 4px; text-align: center; }
+.clasi th:nth-child(3), .clasi td:nth-child(3) { left: 104px; border-right: 1px solid var(--linea); text-align: left; }
+.clasi td.num-par { font-weight: 700; }
+.clasi th:nth-child(-n+2) { font-size: .66rem; letter-spacing: .02em; }
 .clasi .puesto { display: inline-grid; place-items: center; min-width: 26px; height: 26px; border-radius: 50%; font-weight: 800; font-size: .85rem; }
 .clasi .p1 { background: var(--oro); color: var(--medalla-texto); }
 .clasi .p2 { background: var(--plata); color: var(--medalla-texto); }
@@ -178,7 +183,10 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
   .pestanas a[aria-current="page"] { color: var(--fondo); }
   .clasi { font-size: 1rem; }
   .clasi td, .clasi th { padding-left: 10px; padding-right: 10px; }
+  .clasi th:nth-child(-n+2), .clasi td:nth-child(-n+2) { padding-left: 4px; padding-right: 4px; }
+  .clasi th:nth-child(1), .clasi td:nth-child(1) { padding-left: 10px; }
   .tarjetas { grid-template-columns: 1fr 1fr; }
+  .libro { grid-template-columns: 230px 1fr; align-items: start; padding: 24px; gap: 28px; }
   ul.mesas { grid-template-columns: 1fr 1fr; }
 }
 
@@ -263,3 +271,23 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .candado .opcion { margin-top: 8px; }
 .pie .boton.sec { color: var(--barra-texto); border-color: var(--barra-texto); margin-top: 8px; padding: 8px 14px; }
 .normativa { margin: 0 0 16px; }
+
+/* anuncio del libro (Normativa): blanco, negro y bloques gruesos, como la portada; no cambia con el modo oscuro */
+.vacio + .libro, .normativa + .libro { margin-top: 20px; }
+.libro { display: grid; gap: 20px; margin: 16px 0 0; padding: 16px; background: #fff; color: #000; border: 4px solid #000; border-radius: 0; box-shadow: 8px 8px 0 #000; overflow-wrap: anywhere; }
+.libro-portada { display: block; width: min(100%, 240px); height: auto; margin: 0 auto; border: 3px solid #000; box-shadow: 6px 6px 0 #000; background: #fff; }
+.libro-texto > * { margin-top: 0; }
+.libro-sello { display: inline-block; margin-bottom: 10px; padding: 3px 8px; background: #000; color: #fff; font-size: .72rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.libro h2 { display: block; margin: 0 0 12px; padding: 10px 14px; background: #000; color: #fff; font-size: 1.9rem; line-height: 1.05; text-transform: uppercase; letter-spacing: .01em; }
+.libro-sub { margin-bottom: 6px; font-weight: 800; text-transform: uppercase; font-size: .9rem; letter-spacing: .03em; }
+.libro-autor { margin-bottom: 14px; font-size: .85rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-top: 3px solid #000; padding-top: 6px; }
+.libro ul { margin: 0 0 14px; padding: 0; list-style: none; }
+.libro li { position: relative; padding: 5px 0 5px 22px; border-bottom: 1px solid #000; }
+.libro li::before { content: ""; position: absolute; left: 0; top: .85em; width: 11px; height: 11px; background: #000; }
+.libro-quien { font-size: .93rem; }
+.libro blockquote { margin: 16px 0; padding: 12px 14px; background: #000; color: #fff; font-weight: 800; font-size: 1.1rem; line-height: 1.25; }
+.libro-enlace { display: inline-block; padding: 12px 20px; background: #fff; color: #000; border: 3px solid #000; box-shadow: 5px 5px 0 #000; font-weight: 800; text-decoration: none; text-transform: uppercase; letter-spacing: .04em; }
+.libro-enlace:hover { background: #000; color: #fff; }
+.libro-enlace:active { box-shadow: 1px 1px 0 #000; transform: translate(4px, 4px); }
+.libro :focus-visible { outline: 3px solid var(--marca); outline-offset: 3px; }
+@media (max-width: 380px) { .libro { padding: 12px; box-shadow: 5px 5px 0 #000; } .libro h2 { font-size: 1.5rem; padding: 8px 10px; } }

@@ -289,8 +289,8 @@
   /* =====================================================================
      PÁGINA DE TORNEO
      ===================================================================== */
-  const PESTANAS = [['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario']];
-  const ANTIGUAS = { emparejamientos: 'mesas', resultados: 'mesas', normativa: 'folleto', linea: 'folleto' }; // enlaces de antes del cambio de pestañas
+  const PESTANAS = [['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario'], ['normativa', 'Normativa']];
+  const ANTIGUAS = { emparejamientos: 'mesas', resultados: 'mesas', linea: 'folleto' }; // enlaces de antes del cambio de pestañas
   const E = { id: null, actual: null, cache: new Map(), ver: 'clasificacion', j: null, g: 'A', p: null, q: '' };
 
   function leerUrl() {
@@ -387,26 +387,28 @@
     const filas = jd.clasificacion.filter((r) => r.grupo === g);
     const subs = (jd.sustituciones || []);
 
+    // Como en el Excel: CLAS., PAREJA (nº), NOMBRE y después las cifras en este orden. Las tres primeras quedan fijas al desplazar.
     const cols = sp
-      ? [['gan', 'Gan', tp.gan], ['dp', 'Dif.P', 'Diferencia de partidas'], ['dt', 'Dif.T', 'Diferencia de tantos'], ['tf', 'TF', 'Tantos a favor'], ['jug', 'Jug', 'Encuentros jugados'], ['pg', 'PG', 'Partidas ganadas'], ['pp', 'PP', 'Partidas perdidas'], ['tc', 'TC', 'Tantos en contra']]
-      : [['gan', 'Gan', tp.gan], ['dt', 'Dif.T', 'Diferencia de tantos'], ['tf', 'TF', 'Tantos a favor'], ['jug', 'Jug', 'Partidas jugadas'], ['tc', 'TC', 'Tantos en contra']];
+      ? [['jug', 'ENC.J', 'Encuentros jugados'], ['gan', 'ENC.G', tp.gan], ['dp', 'DIF. P.', 'Diferencia de partidas'], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['pg', 'P. G.', 'Partidas ganadas'], ['pp', 'P. P.', 'Partidas perdidas'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['tc', 'PUNT. C.', 'Puntos en contra']]
+      : [['gan', 'P. G.', tp.gan], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['jug', 'P. J.', 'Partidas jugadas'], ['tc', 'PUNT. C.', 'Puntos en contra']];
 
     const cuerpo = filas.map((r) => {
       const p = byId.get(r.id) || { corto: '#' + r.id };
       const sub = subs.find((s) => s.id === r.id);
-      const sub2 = [`Nº ${r.id}`, p.zona, p.j1_nombre && nombreLargo(p)].filter(Boolean).join(' · ');
+      const sub2 = [p.zona, p.j1_nombre && nombreLargo(p)].filter(Boolean).join(' · ');
       return el('tr', { class: (p.ret ? 'ret ' : '') + (E.p === r.id ? 'resalte' : ''), id: 'fila-' + r.id },
         el('td', null, el('span', { class: 'puesto' + (r.puesto <= 3 ? ' p' + r.puesto : '') }, r.puesto)),
+        el('td', { class: 'num-par' }, r.id),
         el('td', { class: 'pareja' },
           el('span', { class: 'nom' }, p.corto, p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null,
             r.pendiente && !jd.jornada.completa ? el('span', { class: 'etq pend', title: `Todavía no ha jugado la ${tp.jornada.toLowerCase()} ${n}` }, '⏳') : null),
-          el('span', { class: 'sub' }, sub2),
+          sub2 ? el('span', { class: 'sub' }, sub2) : null,
           sub ? el('span', { class: 'sub' }, `Cambio en la ${tp.jornada.toLowerCase()} ${sub.desde}: entra ${sub.entra_nombre} ${sub.entra_apellido1} por ${sub.sale_nombre} ${sub.sale_apellido1}`) : null),
         cols.map(([k]) => el('td', { class: k === 'gan' ? 'gan' : null }, k === 'dp' || k === 'dt' ? signo(r[k]) : r[k])));
     });
     const tabla = el('table', { class: 'clasi' },
       el('caption', { class: 'solo-lector' }, `Clasificación del grupo ${g} tras la ${tp.jornada.toLowerCase()} ${n}`),
-      el('thead', null, el('tr', null, el('th', { scope: 'col' }, '#'), el('th', { scope: 'col', class: 'izq' }, tp.unidad[0].toUpperCase() + tp.unidad.slice(1)),
+      el('thead', null, el('tr', null, el('th', { scope: 'col' }, el('abbr', { title: 'Clasificación' }, 'CLAS.')), el('th', { scope: 'col' }, el('abbr', { title: 'Número de ' + tp.unidad }, tp.unidad.toUpperCase())), el('th', { scope: 'col', class: 'izq' }, 'NOMBRE'),
         cols.map(([, t, ab]) => el('th', { scope: 'col' }, el('abbr', { title: ab }, t))))),
       el('tbody', null, cuerpo));
     const leyenda = cols.map(([, t, ab]) => `${t}: ${ab.toLowerCase()}`).join(' · ');
@@ -557,16 +559,42 @@
     } catch (e) { aviso.textContent = 'No se ha podido descargar la normativa. Prueba otra vez dentro de un minuto.'; }
     boton.disabled = false;
   }
-  async function pintarFolleto(cont) {
-    // ¿hay normativa? Se pregunta una vez y solo al abrir Calendario (un 404 aquí es lo normal: el campeonato no tiene)
+  function pintarFolleto(cont) {
+    const filas = filasCalendario(E.actual);
+    poner(cont, !filas.length ? el('p', { class: 'vacio' }, 'Este campeonato no tiene calendario publicado.') : calLista(E.actual, filas));
+  }
+
+  /* ----- normativa y anuncio del libro ----- */
+  const LIBRO = 'https://www.amazon.es/JUGUEMOS-DOMIN%C3%93-FORMACI%C3%93N-PRINCIPIANTES-PAREJAS/dp/B0DLCSRN4S';
+  function anuncioLibro() {
+    return el('section', { class: 'libro', 'aria-labelledby': 't-libro' },
+      el('img', { class: 'libro-portada', src: 'assets/libro-portada.jpg', width: 520, height: 803, loading: 'lazy', alt: 'Portada del libro Juguemos dominó, de Jesús Eduardo Elián Campos: título en letras blancas sobre un bloque negro, grandes franjas negras a los lados y dos fichas de dominó abajo a la izquierda.' }),
+      el('div', { class: 'libro-texto' },
+        el('p', { class: 'libro-sello' }, 'Libro del equipo de esta web'),
+        el('h2', { id: 't-libro' }, 'Juguemos dominó'),
+        el('p', { class: 'libro-sub' }, 'Formación para principiantes del dominó por parejas en España'),
+        el('p', { class: 'libro-autor' }, 'Jesús Eduardo Elián Campos'),
+        el('p', null, 'Muchos jugadores habituales no conocen las normas oficiales. El libro quiere que quien empieza se forme desde el principio con una base sólida.'),
+        el('ul', null, [
+          'Las normas del dominó por parejas del Reglamento del Juego y Competiciones de la Federación Española de Dominó',
+          'Historia, actualidad y curiosidades',
+          'Sistemas, principios y estrategias esenciales para jugar con fundamentos y lógica',
+          'Aspectos psicológicos y sugerencias para mejorar',
+          'Una evaluación final con situaciones frecuentes de partida',
+        ].map((t) => el('li', null, t))),
+        el('p', { class: 'libro-quien' }, 'El autor está federado desde 2005 y vive en Valencia desde 2018. Lleva la mesa de control informático en las competiciones de la Federación Valenciana de Dominó Jaume I, el mismo equipo que publica esta web.'),
+        el('blockquote', null, '«Juguemos dominó. ¡Que comience la partida!»'),
+        el('a', { class: 'libro-enlace', href: LIBRO, target: '_blank', rel: 'noopener noreferrer' }, 'Ver en Amazon', el('span', { class: 'solo-lector' }, ' (se abre en una pestaña nueva)'))));
+  }
+
+  async function pintarNormativa(cont) {
+    // ¿hay normativa? Se pregunta una vez y solo al abrir Normativa (un 404 aquí es lo normal: el campeonato no tiene)
     E.normativa = E.normativa || (BORRADOR ? Promise.resolve(false) : fetch(`${BASE}/${E.id}/normativa.pdf.cifrado`, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false));
     const hay = await E.normativa;
-    if (E.ver !== 'folleto') return;
-    const filas = filasCalendario(E.actual);
+    if (E.ver !== 'normativa') return;
     const aviso = el('p', { class: 'nota sin-margen', 'aria-live': 'polite' });
     const boton = hay ? el('button', { type: 'button', class: 'boton', onclick: () => descargarNormativa(boton, aviso) }, 'Descargar normativa (PDF)') : null;
-    poner(cont, hay ? el('div', { class: 'acciones normativa' }, boton, aviso) : null,
-      !filas.length ? el('p', { class: 'vacio' }, 'Este campeonato no tiene calendario publicado.') : calLista(E.actual, filas));
+    poner(cont, hay ? el('div', { class: 'acciones normativa' }, boton, aviso) : el('p', { class: 'vacio' }, 'Este campeonato no tiene normativa publicada.'), anuncioLibro());
   }
 
   /* ----- orquestación ----- */
@@ -579,7 +607,8 @@
     if (E.ver === 'clasificacion') await pintarClasificacion(cont);
     else if (E.ver === 'mesas') await pintarMesas(cont);
     else if (E.ver === 'parejas') pintarParejas(cont);
-    else await pintarFolleto(cont);
+    else if (E.ver === 'normativa') await pintarNormativa(cont);
+    else pintarFolleto(cont);
   }
 
   async function sondear() {

@@ -10,7 +10,7 @@ const capt = process.argv[3];
 const raiz = path.join(__dirname, '..');
 const TAMANOS = [[320, 640], [360, 780], [390, 844], [412, 915], [667, 375], [768, 1024], [1280, 800]];
 const D = 'd=datos/_prueba';
-const PESTANAS = ['', 'mesas', 'parejas', 'folleto'];
+const PESTANAS = ['', 'mesas', 'parejas', 'folleto', 'normativa'];
 
 // Se ejecuta en la página. Devuelve la lista de fallos (texto).
 function revisar() {
@@ -50,19 +50,19 @@ function revisar() {
   return fallos;
 }
 
-// (d) en la clasificación se llega hasta TC
-function llegaATC() {
+// (d) en la clasificación se llega hasta PUNT. C.
+function llegaAPuntC() {
   const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.clasi');
   if (!tabla) return ['(d) no hay tabla de clasificación'];
   const f = [];
   const cab = [...tabla.querySelectorAll('thead th')].map((t) => t.textContent.trim());
-  for (const c of ['Jug', 'PG', 'PP', 'TC']) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
+  for (const c of ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.']) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
   caja.scrollLeft = 1e6;
-  const tc = [...tabla.querySelectorAll('thead th')].find((t) => t.textContent.trim() === 'TC');
+  const tc = [...tabla.querySelectorAll('thead th')].find((t) => t.textContent.trim() === 'PUNT. C.');
   if (!tc) return f;
   const a = tc.getBoundingClientRect(), b = caja.getBoundingClientRect();
   if (getComputedStyle(tc).display === 'none' || a.width === 0) f.push('(d) TC oculta');
-  else if (a.right > b.right + 1 || a.left < b.left - 1) f.push(`(d) no se llega a TC: ${Math.round(a.left)}–${Math.round(a.right)} fuera de ${Math.round(b.left)}–${Math.round(b.right)}`);
+  else if (a.right > b.right + 1 || a.left < b.left - 1) f.push(`(d) no se llega a PUNT. C.: ${Math.round(a.left)}–${Math.round(a.right)} fuera de ${Math.round(b.left)}–${Math.round(b.right)}`);
   caja.scrollLeft = 0;
   return f;
 }
@@ -103,8 +103,8 @@ function llegaATC() {
     for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&']]) {
       for (const ver of PESTANAS) {
         await pg.goto(`${base}/torneo.html?${q}t=${t}${ver ? '&ver=' + ver : ''}`);
-        await pg.waitForSelector(ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
-        await mira(`${t} · ${ver || 'clasificación'}`, !ver ? llegaATC : null);
+        await pg.waitForSelector(ver === 'normativa' ? '.libro' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
+        await mira(`${t} · ${ver || 'clasificación'}`, !ver ? llegaAPuntC : null);
         if (capt && t === 'sp-grande' && !ver && (w === 360 || w === 390)) {
           fs.mkdirSync(capt, { recursive: true });
           await pg.evaluate(() => document.querySelector('.tabla-marco').scrollIntoView());
