@@ -307,6 +307,125 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     bien('sin errores de JavaScript en la página');
   }
 
+  /* ============ 4b. Varias partidas de un mismo Excel ============ */
+  {
+    const PE = path.join(__dirname, 'datos', 'parejas-ejemplo-2026-11-14'), ID = 'parejas-ejemplo-2026-11-14';
+    const partidas = (k0, ...extra) => { const f = path.join(tmp, `partidas-${k0}-${extra.join('')}.xlsx`); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_partidas.py'), PE, String(k0), f, ...extra.map(String)]); return f; };
+    // lo que tiene que quedar publicado: los JSON de prueba (el descanso, con el lado derecho vacío como en la hoja WEB real)
+    const ref = (k) => { const j = leerJson(`${ID}/jornada_0${k}.json`); delete j.publicado; for (const m of j.emparejamientos) if (m.estado === 'descanso') { m.p_dcha = null; m.t_dcha = null; } return j; };
+    const C = require('../assets/contrato.js');
+    const casillas = (pg) => pg.$$eval('#partidas input[type=checkbox][data-k]', (l) => l.map((x) => [Number(x.dataset.k), x.checked]));
+    const textos = (pg) => pg.$$eval('#partidas li.partida', (l) => l.map((x) => x.querySelector('label').textContent));
+    // la web ya tiene publicadas las partidas de `ks` (de las del Excel: 1 y 2)
+    const conPublicadas = (ks) => (a) => {
+      sembrarWeb(a);
+      const j = ks.map((k) => { const x = leerJson(`${ID}/jornada_0${k}.json`); return x; });
+      const ultimo = j[j.length - 1];
+      for (const x of j) a.ponerCifrado(`datos/${ID}/jornada_0${x.jornada.numero}.json`, JSON.stringify(x, null, 1) + '\n');
+      a.ponerCifrado(`datos/${ID}/actual.json`, JSON.stringify(C.conJornadas(ultimo, j.map((x) => ({ numero: x.jornada.numero, completa: x.jornada.completa, publicado: x.publicado }))), null, 1) + '\n');
+      const ind = a.json('web', 'datos/indice.json');
+      ind.torneos.push({ id: ID, nombre: ultimo.torneo.nombre, tipo: 'parejas', temporada: null, fecha: ultimo.torneo.fecha, estado: 'en_juego', jornada_actual: ultimo.jornada.numero, n_jornadas: 7, n_participantes: 5, ganador: null });
+      a.ponerCifrado('datos/indice.json', JSON.stringify(ind, null, 1) + '\n');
+    };
+    const rutas = (api) => api.puts.map((p) => p.clave + ' ' + p.ruta);
+
+    // A. Un campeonato nuevo: una casilla por partida con datos, las dos marcadas, y se guardan las dos como borrador
+    {
+      const { pg, api, errores } = await escenario({ semilla: sembrarWeb });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', partidas(2));
+      await pg.waitForSelector('#partidas');
+      assert.deepStrictEqual(await casillas(pg), [[1, true], [2, true]]);
+      const t = await textos(pg);
+      assert(t[0].startsWith('Partida 1') && t[1].startsWith('Partida 2') && t.every((x) => !x.includes('ya publicada')), t.join(' | '));
+      assert((await pg.textContent('#lectura')).includes('Trae 2 partidas con datos'));
+      bien('un Excel con las partidas 1 y 2 con datos: dos casillas, las dos marcadas (ninguna está publicada), y lo dice al leerlo');
+      assert.strictEqual(await pg.textContent('#publicar'), 'Guardar como borrador (2 partidas)');
+      await pg.click('#publicar'); await pg.waitForSelector('text=Guardadas las partidas 1 y 2 como borrador');
+      assert.deepStrictEqual(rutas(api), [`borr datos/${ID}/jornada_01.json`, `borr datos/${ID}/jornada_02.json`, `borr datos/${ID}/actual.json`, 'borr datos/indice.json']);
+      for (const k of [1, 2]) assert.deepStrictEqual(sinPub(api.json('borr', `datos/${ID}/jornada_0${k}.json`)), ref(k));
+      const act = api.json('borr', `datos/${ID}/actual.json`);
+      assert.deepStrictEqual([act.jornada.numero, act.jornadas.map((x) => x.numero)], [2, [1, 2]]);
+      assert.strictEqual(api.json('borr', 'datos/indice.json').torneos.find((x) => x.id === ID).jornada_actual, 2);
+      assert.deepStrictEqual(api.violaciones, []);
+      bien('varias partidas marcadas: cada una escribe su jornada_NN.json, y actual.json (con la lista de partidas) e indice.json una sola vez, al final');
+      assert.deepStrictEqual(errores, []);
+    }
+    // B. La partida 1 ya está en la web: sin marcar y con el aviso; la 2 (sin publicar y la más reciente) va marcada
+    {
+      const { pg, api, errores } = await escenario({ semilla: conPublicadas([1]) });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', partidas(2));
+      await pg.waitForSelector('#partidas');
+      assert.deepStrictEqual(await casillas(pg), [[1, false], [2, true]]);
+      const t = await textos(pg);
+      assert(t[0].includes('ya publicada: se sobrescribirá') && !t[1].includes('ya publicada'), t.join(' | '));
+      assert.strictEqual(await pg.textContent('#publicar'), 'Publicar en la web');
+      bien('por defecto: marcada la que no está publicada, y la ya publicada sale sin marcar con «ya publicada: se sobrescribirá»');
+      await pg.check('#partidas input[data-k="1"]');
+      assert.strictEqual(await pg.textContent('#publicar'), 'Publicar en la web (2 partidas)');
+      assert.strictEqual(await pg.isDisabled('#publicar'), false);
+      api.puts.length = 0;
+      await pg.click('#publicar'); await pg.waitForSelector('text=Publicadas las partidas 1 y 2');
+      assert.deepStrictEqual(rutas(api), [`web datos/${ID}/jornada_01.json`, `web datos/${ID}/jornada_02.json`, `web datos/${ID}/actual.json`, 'web datos/indice.json']);
+      for (const k of [1, 2]) assert.deepStrictEqual(sinPub(api.json('web', `datos/${ID}/jornada_0${k}.json`)), ref(k));
+      const act = api.json('web', `datos/${ID}/actual.json`);
+      assert.deepStrictEqual([act.jornada.numero, act.jornadas.map((x) => x.numero)], [2, [1, 2]]);
+      assert.deepStrictEqual(api.enClaro, []); assert.deepStrictEqual(api.violaciones, []);
+      assert(api.puts.every((p) => api.cifradoCon(p.ruta) === 0));
+      bien('marcar también la ya publicada la sobrescribe: web con las dos partidas, todo cifrado y la web nunca apunta a un archivo que falte');
+      assert((await textos(pg))[0].includes('ya publicada: se sobrescribirá') && (await textos(pg))[1].includes('ya publicada: se sobrescribirá'));
+      assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      bien('tras publicar, la lista pasa a decir «ya publicada» en las dos y el botón espera a que cambies algo');
+      assert.deepStrictEqual(errores, []);
+    }
+    // C. Las dos ya están en la web: se marca la más reciente (se sobrescribe); sin ninguna marcada no se puede subir; la anterior pide confirmación
+    {
+      const { pg, api } = await escenario({ semilla: conPublicadas([1, 2]) });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', partidas(2));
+      await pg.waitForSelector('#partidas');
+      assert.deepStrictEqual(await casillas(pg), [[1, false], [2, true]]);
+      assert((await textos(pg)).every((x) => x.includes('ya publicada: se sobrescribirá')));
+      bien('con las dos ya publicadas: las dos avisan de que se sobrescriben y solo va marcada la más reciente');
+      await pg.uncheck('#partidas input[data-k="2"]');
+      assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      assert((await pg.textContent('#pub-nota')).includes('Marca al menos una partida'));
+      bien('sin ninguna casilla marcada no se puede subir nada, y lo dice');
+      await pg.check('#partidas input[data-k="1"]');
+      await pg.waitForSelector('.vals li.confirma');
+      assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      await pg.check('.vals li.confirma input');
+      assert.strictEqual(await pg.isDisabled('#publicar'), false);
+      api.puts.length = 0;
+      await pg.click('#publicar'); await pg.waitForSelector('text=solo se ha corregido');
+      assert.deepStrictEqual(rutas(api), [`web datos/${ID}/jornada_01.json`, `web datos/${ID}/actual.json`]);
+      assert.strictEqual(api.json('web', `datos/${ID}/actual.json`).jornada.numero, 2);
+      bien('subir solo la partida anterior: pide su confirmación y deja actual.json en la última publicada');
+    }
+    // D0. Una partida con resultados que no se puede sacar: no se ofrece y la página explica qué hacer
+    {
+      const { pg } = await escenario({ semilla: sembrarWeb });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', partidas(2, '--sin-fijar-1'));
+      await pg.waitForSelector('#partidas');
+      assert.deepStrictEqual(await casillas(pg), [[2, true]]);
+      const nota = await pg.textContent('#partidas');
+      assert(nota.includes('No se ofrece la partida 1') && nota.includes('WEB_J_MANUAL'), nota);
+      bien('una partida con resultados que no se puede sacar no se ofrece, y la página dice cuál es y que hay que ponerla en WEB_J_MANUAL');
+    }
+    // D. Un Excel sin las hojas de datos (solo WEB): una casilla, marcada
+    {
+      const { pg } = await escenario({ semilla: sembrarWeb });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', xlsx('sp-ejemplo'));
+      await pg.waitForSelector('#partidas');
+      assert.deepStrictEqual(await casillas(pg), [[3, true]]);
+      assert((await textos(pg))[0].startsWith('Jornada 3'));
+      bien('Excel solo con la hoja WEB: una casilla («Jornada 3» en SP), marcada');
+    }
+  }
+
   /* ============ 5. Publicar, ocultar, editar y eliminar ============ */
   const PAR = 'parejas-ejemplo-2026-11-14', SPE = 'sp-ejemplo';
   const semillaDos = (a) => { sembrarWeb(a); sembrar(a, 'borr', PAR); };

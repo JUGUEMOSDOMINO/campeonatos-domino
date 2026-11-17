@@ -115,7 +115,7 @@ const NOMBRES_PRUEBA = nombresDe(path.join(__dirname, 'datos')).filter((x) => !h
     assert(/\.pdf$/.test(descarga.suggestedFilename()), descarga.suggestedFilename());
     assert.strictEqual(await pg.locator('iframe, embed, object').count(), 0);
     bien('Normativa: «Descargar normativa (PDF)» descifra en el navegador y descarga el PDF original, sin iframe');
-    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&ver=normativa&${D}`); await pg.waitForSelector('.libro');
+    await pg.goto(`${base}/torneo.html?t=sp-ejemplo-anterior&ver=normativa&${D}`); await pg.waitForSelector('nav.pestanas a[aria-current=page]');
     await pg.waitForTimeout(300);
     assert.strictEqual(await boton.count(), 0);
     bien('sin normativa publicada, no sale el botón');

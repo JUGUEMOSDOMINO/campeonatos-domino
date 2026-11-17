@@ -73,6 +73,8 @@ function llegaAPuntC() {
   const xl = fs.mkdtempSync(path.join(os.tmpdir(), 'tumesa-disp-'));
   const excel = path.join(xl, 'largos.xlsx');
   execFileSync('python3', [path.join(__dirname, 'hacer_xlsx.py'), path.join(__dirname, 'datos/nombres-largos/actual.json'), excel]);
+  const variasPartidas = path.join(xl, 'partidas.xlsx'); // parejas con las partidas 1 y 2 en las hojas de datos
+  execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_partidas.py'), path.join(__dirname, 'datos/parejas-ejemplo-2026-11-14'), '2', variasPartidas]);
 
   for (const [w, h] of TAMANOS) {
     const ctx = await b.newContext({ viewport: { width: w, height: h } });
@@ -103,7 +105,7 @@ function llegaAPuntC() {
     for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&']]) {
       for (const ver of PESTANAS) {
         await pg.goto(`${base}/torneo.html?${q}t=${t}${ver ? '&ver=' + ver : ''}`);
-        await pg.waitForSelector(!ver ? '.podio' : ver === 'normativa' ? '.libro' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
+        await pg.waitForSelector(!ver ? '.podio' : ver === 'normativa' ? '.normativa button, .vacio' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
         await mira(`${t} · ${ver || 'resumen'}`, ver === 'clasificacion' ? llegaAPuntC : null);
         if (!ver) { await pg.fill('#quien', 'a'); await mira(`${t} · resumen · una letra`); await pg.fill('#quien', '1'); await pg.waitForSelector('.ficha'); await mira(`${t} · resumen · ficha`); }
         if (capt && t === 'sp-grande' && ver === 'clasificacion' && (w === 360 || w === 390)) {
@@ -153,6 +155,9 @@ function llegaAPuntC() {
     await mira('publicar · revisión con destino');
     await pg.click('input[name=destino][value=web]'); await pg.waitForFunction(() => document.querySelector('#publicar').textContent === 'Publicar en la web');
     await mira('publicar · destino web');
+    await pg.setInputFiles('#archivo', variasPartidas); await pg.waitForSelector('#partidas input[data-k="2"]');
+    await pg.check('#partidas input[data-k="1"]'); await pg.waitForSelector('.vals li.confirma, .vals li.avisa');
+    await mira('publicar · varias partidas: casillas, avisos y botón');
     // borrador visto por torneo.html: con token, sin token y con token de otro
     await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&borrador=1&ver=clasificacion`); await pg.waitForSelector('table.clasi');
     await mira('borrador · clasificación');

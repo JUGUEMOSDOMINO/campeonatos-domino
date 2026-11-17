@@ -238,17 +238,21 @@
     });
     if (raros.length) add('V08b', 'avisa', `La mesa ${raros[0].mesa} tiene un resultado poco habitual${raros.length > 1 ? ' (y otras ' + (raros.length - 1) + ')' : ''}.`);
 
-    // V09 a V12 contra lo ya publicado
-    const act = pub.actual;
+    // V09 a V12 contra lo ya publicado. pub.tambien: números de las otras partidas que se suben a la vez (no cuentan como «sin publicar»)
+    const act = pub.actual, tambien = new Set(pub.tambien || []);
     const nombreJ = tipoSP ? 'jornada' : 'partida';
     if (act && act.torneo && act.torneo.id === t.id) {
       const ya = act.jornada.numero;
       if (jo.numero < ya) add('V09', 'confirma', `La web ya está en la ${nombreJ} ${ya} y vas a publicar la ${jo.numero}. Solo se corregirá esa ${nombreJ}.`);
-      if (jo.numero > ya + 1) add('V10', 'avisa', `No se publicaron las ${nombreJ}s ${ya + 1} a ${jo.numero - 1}.`);
-      const incompleta = (act.jornadas || []).filter((x) => !x.completa && x.numero < jo.numero)[0];
+      const hechas = new Set((act.jornadas || []).map((x) => x.numero));
+      const faltan = [];
+      for (let n = ya + 1; n < jo.numero; n++) if (!hechas.has(n) && !tambien.has(n)) faltan.push(n);
+      if (faltan.length === jo.numero - ya - 1 && faltan.length) add('V10', 'avisa', `No se publicaron las ${nombreJ}s ${ya + 1} a ${jo.numero - 1}.`);
+      else if (faltan.length) add('V10', 'avisa', `No se ${faltan.length === 1 ? 'publicó' : 'publicaron'} la${faltan.length === 1 ? '' : 's'} ${nombreJ}${faltan.length === 1 ? '' : 's'} ${faltan.join(', ')}.`);
+      const incompleta = (act.jornadas || []).filter((x) => !x.completa && x.numero < jo.numero && !tambien.has(x.numero))[0];
       if (incompleta) add('V11', 'avisa', `La ${nombreJ} ${incompleta.numero} se quedó publicada sin completar. Pon el ${incompleta.numero} en INICIO (WEB_J_MANUAL), guarda, vuelve a publicar y deja la celda vacía.`);
-    } else if (jo.numero > 1) add('V10', 'avisa', `Todavía no hay ninguna ${nombreJ} publicada de este campeonato; no se publicaron las anteriores a la ${jo.numero}.`);
-    const ex = pub.existente;
+    } else if (jo.numero > 1 && Array.from({ length: jo.numero - 1 }, (_, i) => i + 1).some((n) => !tambien.has(n))) add('V10', 'avisa', `Todavía no hay ninguna ${nombreJ} publicada de este campeonato; no se publicaron las anteriores a la ${jo.numero}.`);
+    const ex = pub.existente || (pub.existentes && pub.existentes[jo.numero]);
     if (ex && ex.jornada && ex.jornada.mesas_pendientes != null && jo.mesas_pendientes > ex.jornada.mesas_pendientes) add('V12', 'confirma', 'La versión publicada tiene más resultados que este Excel. ¿Seguro?');
     // V13 a V18
     if (m.errores > 0) add('V13', 'confirma', `Hay ${m.errores} línea${m.errores === 1 ? '' : 's'} con ✖ en la hoja de la jornada. No cuentan en la clasificación.`);
@@ -267,9 +271,12 @@
     for (const [k, x] of Object.entries(j)) { o[k] = x; if (k === 'jornada') o.jornadas = lista_; }
     return o;
   }
-  function jornadasNuevas(j, actPrev) {
-    const l = (actPrev && actPrev.torneo && actPrev.torneo.id === j.torneo.id ? actPrev.jornadas || [] : []).filter((x) => x.numero !== j.jornada.numero);
-    l.push({ numero: j.jornada.numero, completa: j.jornada.completa, publicado: j.publicado });
+  // Acepta una jornada o una lista de ellas (las que se suben juntas).
+  function jornadasNuevas(js, actPrev) {
+    js = [].concat(js);
+    const nums = new Set(js.map((x) => x.jornada.numero));
+    const l = (actPrev && actPrev.torneo && actPrev.torneo.id === js[0].torneo.id ? actPrev.jornadas || [] : []).filter((x) => !nums.has(x.numero));
+    for (const j of js) l.push({ numero: j.jornada.numero, completa: j.jornada.completa, publicado: j.publicado });
     return l.sort((x, y) => x.numero - y.numero);
   }
   /* Entradas de indice.json. Todas devuelven un índice nuevo y no tocan el recibido. */

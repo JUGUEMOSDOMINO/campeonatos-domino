@@ -6,6 +6,7 @@ const fs = require('fs'), os = require('os'), path = require('path');
 const { execFileSync } = require('child_process');
 const XLSX = require('../assets/xlsx.mini.min.js');
 const C = require('../assets/contrato.js');
+const P = require('../assets/partidas.js');
 
 const raiz = path.join(__dirname, '..');
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'tumesa-'));
@@ -172,6 +173,92 @@ ok('indice.json: ganador cuando el torneo está terminado', () => {
   assert.strictEqual(e.estado, 'terminado');
   assert.deepStrictEqual(e.ganador, { id: 3, corto: 'Pons-Giner' });
 });
+
+console.log('\nVarias partidas de un mismo Excel (hojas _WEBC, _R1…_Rn y P.1…P.n)');
+{
+  const PE = path.join(__dirname, 'datos', 'parejas-ejemplo-2026-11-14');
+  // La referencia son los JSON de prueba, hechos a mano. El descanso lleva el lado derecho vacío, como lo da la hoja WEB real.
+  const ref = (k) => {
+    const j = JSON.parse(fs.readFileSync(path.join(PE, `jornada_0${k}.json`), 'utf8')); delete j.publicado;
+    for (const m of j.emparejamientos) if (m.estado === 'descanso') { m.p_dcha = null; m.t_dcha = null; }
+    return j;
+  };
+  const libro = (k0, ...sinDatos) => {
+    const xl = path.join(tmp, `partidas-${k0}-${sinDatos.join('')}.xlsx`);
+    execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_partidas.py'), PE, String(k0), xl, ...sinDatos.map(String)]);
+    const bytes = fs.readFileSync(xl), wb = XLSX.read(bytes, { type: 'array', sheets: 'WEB' });
+    const raw = C.leer(wb.Sheets.WEB);
+    return { raw, hojas: () => P.leerHojas(XLSX, bytes, wb, C.construir(raw, null).torneo.n_jornadas) };
+  };
+  const sin = (j) => { const c = JSON.parse(JSON.stringify(j)); delete c.publicado; return c; };
+  ok('con la partida 2 en WEB salen la 1 y la 2, y cada JSON es el de referencia', () => {
+    const l = libro(2), r = P.listar(l.raw, l.hojas());
+    assert.strictEqual(r.aviso, null);
+    assert.deepStrictEqual(r.partidas.map((p) => p.k), [1, 2]);
+    for (const p of r.partidas) assert.deepStrictEqual(sin(p.json), ref(p.k));
+  });
+  ok('con la partida 1 en WEB salen las mismas dos', () => {
+    const l = libro(1), r = P.listar(l.raw, l.hojas());
+    assert.deepStrictEqual(r.partidas.map((p) => p.k), [1, 2]);
+    for (const p of r.partidas) assert.deepStrictEqual(sin(p.json), ref(p.k));
+  });
+  ok('la partida seleccionada sale igual que la de la hoja WEB (mismo objeto, no uno parecido)', () => {
+    const l = libro(2), r = P.listar(l.raw, l.hojas());
+    assert.deepStrictEqual(sin(r.partidas.find((p) => p.k === 2).json), sin(C.construir(l.raw, null)));
+  });
+  ok('una partida sin ningún resultado no se ofrece', () => {
+    const l = libro(1, 2), r = P.listar(l.raw, l.hojas()); // la 2 está en los JSON, pero sin datos en el Excel
+    assert.deepStrictEqual(r.partidas.map((p) => p.k), [1]);
+    assert.strictEqual(r.aviso, null);
+  });
+  ok('un Excel que solo trae la hoja WEB ofrece una partida, sin aviso', () => {
+    const { wb, ws } = hoja('parejas-ejemplo-2026-11-14'), raw = C.leer(ws);
+    const r = P.listar(raw, null);
+    assert.deepStrictEqual(r.partidas.map((p) => p.k), [2]); assert.strictEqual(r.aviso, null);
+  });
+  ok('si lo que sale de las hojas de datos no es igual a la hoja WEB, solo se ofrece la de WEB y se avisa', () => {
+    const l = libro(2), h = l.hojas();
+    h._R2.AT2.v += 1; // un tanto de más en una pareja de la partida 2
+    const r = P.listar(l.raw, h);
+    assert.deepStrictEqual(r.partidas.map((p) => p.k), [2]);
+    assert(/no coincide con la hoja WEB/.test(r.aviso), r.aviso);
+  });
+  ok('una partida con resultados que no se puede sacar (sorteo sin saber si está hecho) no se ofrece y queda en «omitidas»', () => {
+    const l = libro(2), h = l.hojas();
+    h.semillas = { A: null, B: null }; h._R1.CD28.v = 0; // la partida 1 sin fijar y sin saber la semilla
+    const r = P.listar(l.raw, h);
+    assert.deepStrictEqual([r.partidas.map((p) => p.k), r.omitidas], [[2], [1]]);
+  });
+  ok('solo se leen WEB, _WEBC, _R y P: nunca LICENCIAS', () => {
+    const l = libro(2), h = l.hojas();
+    assert.deepStrictEqual(Object.keys(h).filter((x) => !/^(_WEBC|_R\d+|P\.\d+|semillas)$/.test(x)), []);
+  });
+  ok('las columnas de _R salen de las fórmulas de _WEBC: si cambian de sitio, sigue dando lo mismo', () => {
+    const l = libro(2), h = l.hojas();
+    // mueve la columna de «ganadas» de AS a CA en todas las _R y en la fórmula de _WEBC
+    for (let k = 1; k <= 7; k++) for (let f = 2; f <= 201; f++) { const c = h['_R' + k]['AS' + f]; if (c) { h['_R' + k]['CA' + f] = c; delete h['_R' + k]['AS' + f]; } }
+    h._WEBC.M2.f = h._WEBC.M2.f.replace(/!AS2/g, '!CA2');
+    const r = P.listar(l.raw, h);
+    assert.deepStrictEqual(r.partidas.map((p) => p.k), [1, 2]);
+    for (const p of r.partidas) assert.deepStrictEqual(sin(p.json), ref(p.k));
+  });
+  ok('jornadasNuevas acepta varias a la vez y conserva las demás', () => {
+    const mk = (n, pub) => ({ torneo: { id: 'x' }, jornada: { numero: n, completa: true }, publicado: pub });
+    const prev = { torneo: { id: 'x' }, jornadas: [{ numero: 1, completa: true, publicado: 'a' }, { numero: 5, completa: false, publicado: 'a' }] };
+    assert.deepStrictEqual(C.jornadasNuevas([mk(3, 'b'), mk(5, 'b')], prev).map((x) => [x.numero, x.publicado]), [[1, 'a'], [3, 'b'], [5, 'b']]);
+    assert.deepStrictEqual(C.jornadasNuevas(mk(2, 'b'), null).map((x) => x.numero), [2]);
+  });
+  ok('V10 no avisa de las partidas que se suben a la vez, y V11 tampoco de la incompleta que se vuelve a subir', () => {
+    const { ws } = hoja('parejas-ejemplo-2026-11-14'); const r = C.leer(ws), j = C.construir(r, 'x');
+    const act = { torneo: { id: j.torneo.id }, jornada: { numero: 0 }, jornadas: [{ numero: 1, completa: false }] };
+    j.jornada.numero = 4;
+    const cod = (pub) => C.validar(r, j, pub).map((x) => x.cod).filter((c) => /^V1[01]/.test(c));
+    assert.deepStrictEqual(cod({ actual: act }), ['V10', 'V11']);
+    assert.deepStrictEqual(cod({ actual: act, tambien: [1, 2, 3] }), []);
+    assert.deepStrictEqual(cod({ actual: act, tambien: [2] }), ['V10', 'V11']); // la 1 sigue incompleta y no se vuelve a subir
+    assert.deepStrictEqual(cod({ actual: act, tambien: [1, 2] }), ['V10']);
+  });
+}
 
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${hechos} pruebas bien, ${fallos} con fallo`);

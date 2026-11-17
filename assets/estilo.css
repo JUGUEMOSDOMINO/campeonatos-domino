@@ -337,3 +337,7 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .libro-enlace:hover { background: var(--barra-texto); text-decoration: underline; }
 .libro :focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 @media (max-width: 380px) { .libro { padding: 12px; } .libro h2 { font-size: 1.5rem; } }
+.partidas { list-style: none; margin: 0; padding: 0; }
+.partidas > li { padding: 2px 0; }
+.partidas .vals { margin: 0 0 6px 26px; }
+.ya-publicada { color: var(--marca); font-weight: 700; }

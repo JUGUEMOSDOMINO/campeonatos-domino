@@ -4,12 +4,13 @@
   'use strict';
   const { el, poner, instante, TIPOS, ESTADOS } = window.TuMesa;
   const C = window.Contrato;
+  const P = window.Partidas;
   const M = window.Mesa;
   // Límites al leer el Excel (el real pesa unos 7 MB; la hoja WEB cabe en 210 filas y 53 columnas).
   const MAX_BYTES = 25 * 1024 * 1024, MAX_FILAS = 300, MAX_COLUMNAS = 80;
   const $ = (s) => document.querySelector(s);
   const NOMBRE_REPO = { web: 'la web', borr: 'borradores' };
-  const E = { json: null, raw: null, pub: null, vals: [], confirmadas: new Set(), dest: null, indices: { web: null, borr: null }, acceso: { web: null, borr: null }, archivo: '' };
+  const E = { json: null, raw: null, partidas: [], sel: new Set(), aviso: null, omitidas: [], pub: null, vals: [], confirmadas: new Set(), dest: null, indices: { web: null, borr: null }, acceso: { web: null, borr: null }, archivo: '' };
   const tp = (t) => TIPOS[t] || TIPOS.parejas;
 
   /* ---------- paso 1: token ---------- */
@@ -333,7 +334,7 @@
   async function alElegirArchivo(ev) {
     const f = ev.target.files[0];
     ev.target.value = ''; // así se puede volver a elegir el mismo archivo tras guardarlo de nuevo
-    E.json = null;
+    E.json = null; E.partidas = [];
     $('#paso-revision').hidden = true; $('#paso-publicar').hidden = true;
     if (!f) { poner($('#lectura')); return; }
     const aviso = (t) => poner($('#lectura'), el('p', { class: 'nota caja' }, t));
@@ -341,60 +342,89 @@
     if (!/\.(xlsx|xlsm)$/i.test(f.name)) { aviso('Elige el archivo Excel del campeonato (termina en .xlsx).'); return; }
     if (!M.token.obtener()) { aviso('Primero pega el token de GitHub en el paso 1.'); return; }
     poner($('#lectura'), el('p', { class: 'nota' }, 'Leyendo la hoja WEB…'));
-    let wb;
+    let wb, bytes;
     try {
-      wb = XLSX.read(await f.arrayBuffer(), { type: 'array', sheets: 'WEB', cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false });
+      bytes = await f.arrayBuffer();
+      wb = XLSX.read(bytes, { type: 'array', sheets: 'WEB', cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false });
     } catch (e) { aviso('No se ha podido leer ese archivo. ¿Está dañado o es de otro programa?'); return; }
     const ws = wb.Sheets && wb.Sheets.WEB;
     if (!ws) { aviso('Este archivo no tiene la hoja WEB. ¿Es el Excel del campeonato?'); return; }
     const rg = XLSX.utils.decode_range(ws['!ref'] || 'A1');
     if (rg.e.r + 1 > MAX_FILAS || rg.e.c + 1 > MAX_COLUMNAS) { aviso('La hoja WEB es mucho más grande de lo normal. ¿Es el Excel del campeonato?'); return; }
     E.archivo = f.name;
-    await revisar(ws);
+    await revisar(ws, wb, bytes);
   }
 
-  /* Lo que ya hay publicado de este torneo en un repositorio (índice, actual.json y la jornada). */
-  async function estadoPublicado(j, clave) {
-    const id = j.torneo.id;
-    const pub = { indice: null, actual: null, existente: null };
+  /* Lo que ya hay publicado de este torneo en un repositorio: índice, actual.json y el archivo de cada una de las partidas dadas que ya estén publicadas. */
+  async function estadoPublicado(id, clave, ks) {
+    const pub = { indice: null, actual: null, existentes: {} };
     const i = await M.leer(clave, 'datos/indice.json'); if (i) pub.indice = i.json;
     if (M.ID_OK.test(id || '')) {
       const a = await M.leer(clave, `datos/${id}/actual.json`); if (a) pub.actual = a.json;
-      if (Number.isInteger(j.jornada.numero) && j.jornada.numero > 0) {
-        const x = await M.leer(clave, `datos/${id}/jornada_${String(j.jornada.numero).padStart(2, '0')}.json`); if (x) pub.existente = x.json;
-      }
+      await Promise.all([...publicadas(pub, id).keys()].filter((k) => ks.includes(k)).map(async (k) => {
+        const x = await M.leer(clave, `datos/${id}/jornada_${String(k).padStart(2, '0')}.json`); if (x) pub.existentes[k] = x.json;
+      }));
     }
     return pub;
   }
+  // Las partidas que la web ya enseña de este torneo: número -> su entrada en la lista de jornadas de actual.json.
+  function publicadas(pub, id) {
+    const a = pub.actual, m = new Map();
+    if (!a || !a.torneo || a.torneo.id !== id) return m;
+    for (const x of a.jornadas || []) m.set(x.numero, x);
+    if (!m.has(a.jornada.numero)) m.set(a.jornada.numero, { numero: a.jornada.numero, publicado: a.publicado });
+    return m;
+  }
+  const yaPublicada = (k) => publicadas(E.pub, E.json.torneo.id).has(k) || !!E.pub.existentes[k];
   const enWeb = (id) => (((E.indices.web || {}).torneos) || []).some((x) => x.id === id);
+  const sinPub0 = { indice: null, actual: null, existentes: {} };
+  const unidad = () => (E.json.torneo.tipo === 'sp' ? 'jornada' : 'partida');
 
-  async function revisar(ws) {
+  async function revisar(ws, wb, bytes) {
     try {
       E.raw = C.leer(ws);
       E.json = C.construir(E.raw, null);
+      E.partidas = [{ k: E.json.jornada.numero, raw: E.raw, json: E.json }]; E.aviso = null; E.omitidas = [];
+      if (wb && (wb.SheetNames || []).includes('_WEBC') && Number.isInteger(E.json.torneo.n_jornadas)) {
+        poner($('#lectura'), el('p', { class: 'nota' }, `Leyendo las demás ${unidad()}s del Excel…`));
+        await new Promise((r) => setTimeout(r, 30)); // deja pintar el aviso antes de la lectura, que tarda unos segundos
+        try { const r = P.listar(E.raw, P.leerHojas(XLSX, bytes, wb, E.json.torneo.n_jornadas)); E.partidas = r.partidas; E.aviso = r.aviso; E.omitidas = r.omitidas || []; }
+        catch (e) { E.aviso = `No se han podido sacar las demás ${unidad()}s del Excel. Solo se ofrece la que tiene la hoja WEB.`; }
+      }
       poner($('#lectura'), el('p', { class: 'nota' }, 'Comprobando lo que ya está publicado…'));
       // el destino por defecto sale de lo que hay: Web si el torneo ya está en la web, Borrador si es nuevo
       const web = await M.leer('web', 'datos/indice.json'); E.indices.web = web ? web.json : null;
       E.acceso.borr = await M.acceso('borr');
       if (E.acceso.borr.ok) { const b = await M.leer('borr', 'datos/indice.json'); E.indices.borr = b ? b.json : null; }
       E.dest = enWeb(E.json.torneo.id) ? 'web' : E.acceso.borr.ok ? 'borr' : null;
-      E.pub = E.dest ? await estadoPublicado(E.json, E.dest) : { indice: null, actual: null, existente: null };
+      E.pub = E.dest ? await estadoPublicado(E.json.torneo.id, E.dest, E.partidas.map((p) => p.k)) : sinPub0;
     } catch (e) {
       if (e.estado === 401) { pintarToken(e.message, true); $('#paso-revision').hidden = true; $('#paso-publicar').hidden = true; }
       poner($('#lectura'), el('p', { class: 'nota caja' }, e instanceof M.ErrorGH ? e.message : 'Esa hoja WEB no se puede leer. Comprueba que es la del campeonato y que el Excel está guardado.'));
       return;
     }
-    poner($('#lectura'), el('p', { class: 'nota' }, `Leído «${E.archivo}»: ${E.json.torneo.nombre || 'sin nombre'}.`));
-    validar();
-  }
-  function validar() {
-    E.vals = C.validar(E.raw, E.json, E.pub);
-    const id = E.json.torneo.id;
-    if (E.dest === 'borr' && enWeb(id)) E.vals.push({ cod: 'M01', gravedad: 'avisa', msg: 'Este campeonato ya está en la web. El borrador es una copia aparte: la web no cambia hasta que lo publiques.' });
-    if (E.dest === 'web' && !enWeb(id)) E.vals.push({ cod: 'M02', gravedad: 'avisa', msg: 'Este campeonato todavía no está en la web: se publica ahora y lo ve todo el mundo.' });
-    E.confirmadas = new Set();
-    pintarDestino();
+    leido();
+    nuevaSeleccion();
     pintarRevision();
+  }
+  const leido = () => {
+    const n = E.partidas.length;
+    poner($('#lectura'), el('p', { class: 'nota' }, `Leído «${E.archivo}»: ${E.json.torneo.nombre || 'sin nombre'}.` + (n > 1 ? ` Trae ${n} ${unidad()}s con datos.` : '')));
+  };
+  // Marcadas de entrada: las que aún no están publicadas y la más reciente.
+  function nuevaSeleccion() {
+    E.sel = new Set(E.partidas.filter((p) => !yaPublicada(p.k)).map((p) => p.k));
+    E.sel.add(Math.max(...E.partidas.map((p) => p.k)));
+    E.confirmadas = new Set();
+  }
+  // Las comprobaciones de cada partida contra lo publicado, contando con las otras que se suben a la vez.
+  function validar() {
+    const id = E.json.torneo.id;
+    for (const p of E.partidas) p.vals = C.validar(p.raw, p.json, { ...E.pub, tambien: [...E.sel].filter((k) => k !== p.k) });
+    // avisos del campeonato entero (no de una partida)
+    E.avisosTorneo = [];
+    if (E.dest === 'borr' && enWeb(id)) E.avisosTorneo.push({ cod: 'M01', gravedad: 'avisa', msg: 'Este campeonato ya está en la web. El borrador es una copia aparte: la web no cambia hasta que lo publiques.' });
+    if (E.dest === 'web' && !enWeb(id)) E.avisosTorneo.push({ cod: 'M02', gravedad: 'avisa', msg: 'Este campeonato todavía no está en la web: se publica ahora y lo ve todo el mundo.' });
   }
 
   /* ---------- paso 4: destino y revisión ---------- */
@@ -413,29 +443,63 @@
   async function cambiarDestino(d) {
     E.dest = d;
     poner($('#lectura'), el('p', { class: 'nota' }, 'Comprobando lo que ya está publicado…'));
-    try { E.pub = await estadoPublicado(E.json, d); } catch (e) { if (!siCaduco(e)) poner($('#lectura'), el('p', { class: 'nota caja' }, e.message)); return; }
-    poner($('#lectura'), el('p', { class: 'nota' }, `Leído «${E.archivo}»: ${E.json.torneo.nombre || 'sin nombre'}.`));
-    validar();
+    try { E.pub = await estadoPublicado(E.json.torneo.id, d, E.partidas.map((p) => p.k)); } catch (e) { if (!siCaduco(e)) poner($('#lectura'), el('p', { class: 'nota caja' }, e.message)); return; }
+    leido();
+    nuevaSeleccion();
+    pintarRevision();
   }
 
   const ETIQ = { bloquea: 'No se puede publicar', confirma: 'Confirma', avisa: 'Aviso' };
-  function pintarRevision() {
-    const j = E.json, t = j.torneo, jo = j.jornada;
-    const nombreJ = t.tipo === 'sp' ? 'Jornada' : 'Partida';
-    const conRes = j.emparejamientos.filter((m) => m.estado !== 'pendiente' && m.estado !== 'descanso').length;
-    const resumen = el('div', { class: 'resumen' },
-      cuadro(t.nombre || '—', 'Campeonato'), cuadro(`${jo.numero} de ${t.n_jornadas}`, nombreJ + (jo.completa ? ' (completa)' : ' (en juego)')),
-      cuadro(`${conRes} / ${j.emparejamientos.filter((m) => m.estado !== 'descanso').length}`, 'mesas con resultado'), cuadro(t.n_participantes, t.tipo === 'individual' ? 'jugadores' : 'parejas'));
-    const bloquea = E.vals.filter((x) => x.gravedad === 'bloquea').length;
-    const lista = E.vals.map((x) => {
+  const hayResultado = (m) => m.estado !== 'pendiente' && m.estado !== 'descanso';
+  const marcadas = () => E.partidas.filter((p) => E.sel.has(p.k));
+  // Lo que hay que avisar de una partida. Las que piden confirmación llevan su casilla (la clave incluye la partida, porque cada una se confirma por separado).
+  function listaVals(p) {
+    const lista = p.vals.map((x) => {
       if (x.gravedad === 'confirma') {
-        const c = el('input', { type: 'checkbox' });
-        c.addEventListener('change', () => { c.checked ? E.confirmadas.add(x.cod) : E.confirmadas.delete(x.cod); actualizarBoton(); });
+        const clave = p.k + ':' + x.cod;
+        const c = el('input', { type: 'checkbox', checked: E.confirmadas.has(clave) });
+        c.addEventListener('change', () => { c.checked ? E.confirmadas.add(clave) : E.confirmadas.delete(clave); actualizarBoton(); });
         return el('li', { class: 'confirma' }, el('label', null, c, el('span', null, el('span', { class: 'cod' }, x.cod), x.msg + ' ', el('b', null, 'Marca la casilla si quieres seguir.'))));
       }
       return el('li', { class: x.gravedad }, el('span', { class: 'cod' }, x.cod), el('b', null, ETIQ[x.gravedad] + ': '), x.msg);
     });
-    if (!E.vals.length) lista.push(el('li', { class: 'ok' }, 'Todo en orden: no hay nada que avisar.'));
+    if (!p.vals.length) lista.push(el('li', { class: 'ok' }, 'Todo en orden: no hay nada que avisar.'));
+    return lista;
+  }
+  // Una casilla por partida con datos: marcarla la sube (o la actualiza si ya está publicada).
+  function pintarPartidas() {
+    const u = unidad(), U = u[0].toUpperCase() + u.slice(1);
+    const filas = E.partidas.map((p) => {
+      const marcada = E.sel.has(p.k);
+      const c = el('input', { type: 'checkbox', 'data-k': p.k, checked: marcada });
+      c.addEventListener('change', () => { c.checked ? E.sel.add(p.k) : E.sel.delete(p.k); repintar(`input[data-k="${p.k}"]`); });
+      const conRes = p.json.emparejamientos.filter(hayResultado).length, total = p.json.emparejamientos.filter((m) => m.estado !== 'descanso').length;
+      const info = [p.json.jornada.completa ? 'completa' : 'en juego', `${conRes} de ${total} mesas con resultado`].join(' · ');
+      return el('li', { class: 'partida' },
+        el('label', { class: 'opcion' }, c, el('span', null, el('b', null, `${U} ${p.k}`), ' · ' + info, yaPublicada(p.k) ? el('span', { class: 'ya-publicada' }, ' · ya publicada: se sobrescribirá') : null)),
+        marcada ? el('ul', { class: 'vals' }, listaVals(p)) : null);
+    });
+    return el('fieldset', { class: 'destino', id: 'partidas' }, el('legend', null, `Qué ${u}s subir`), el('ul', { class: 'partidas' }, filas),
+      E.aviso ? el('p', { class: 'nota caja sin-margen' }, E.aviso) : null,
+      E.omitidas.length ? el('p', { class: 'nota caja sin-margen' }, textoOmitidas(u)) : null);
+  }
+  const enumerar = (a) => (a.length > 1 ? a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1] : String(a[0]));
+  function textoOmitidas(u) {
+    const varias = E.omitidas.length > 1, lista = enumerar(E.omitidas);
+    return (varias ? `No se ofrecen las ${u}s ${lista}: tienen` : `No se ofrece la ${u} ${lista}: tiene`) + ' datos que la hoja WEB no trae (una sustitución posterior o un sorteo sin comprobar). '
+      + (varias ? 'Para subirlas, pon el número de cada una' : 'Para subirla, pon su número') + ' en WEB_J_MANUAL (hoja INICIO), guarda el Excel y vuelve a elegirlo.';
+  }
+  // Pinta la lista y la vista previa de la partida más reciente de las marcadas. No toca el registro de la última subida.
+  function repintar(enfocar) {
+    validar();
+    const sel = marcadas(), foco = sel.length ? sel[sel.length - 1] : E.partidas[E.partidas.length - 1];
+    const j = foco.json, t = j.torneo, jo = j.jornada;
+    const nombreJ = t.tipo === 'sp' ? 'Jornada' : 'Partida';
+    const conRes = j.emparejamientos.filter(hayResultado).length;
+    const resumen = el('div', { class: 'resumen' },
+      cuadro(t.nombre || '—', 'Campeonato'), cuadro(`${jo.numero} de ${t.n_jornadas}`, nombreJ + (jo.completa ? ' (completa)' : ' (en juego)')),
+      cuadro(`${conRes} / ${j.emparejamientos.filter((m) => m.estado !== 'descanso').length}`, 'mesas con resultado'), cuadro(t.n_participantes, t.tipo === 'individual' ? 'jugadores' : 'parejas'));
+    const torneoVals = E.avisosTorneo;
     const gA = j.clasificacion.filter((r) => r.grupo === 'A').slice(0, 8);
     const byId = new Map(j.participantes.map((p) => [p.id, p]));
     const sp = t.tipo === 'sp';
@@ -447,52 +511,70 @@
       el('ul', { class: 'vals' }, j.emparejamientos.map((m) => el('li', null,
         `${m.mesa == null ? 'Descansa' : 'Mesa ' + m.mesa}: ${m.izq.map((i) => (byId.get(i) || {}).corto || i).join(' y ')}${m.dcha.length ? ' contra ' + m.dcha.map((i) => (byId.get(i) || {}).corto || i).join(' y ') : ''}` +
         ` · ${m.estado}${m.p_izq != null ? ' · ' + (sp ? m.p_izq + '-' + m.p_dcha + ' (' + m.t_izq + '-' + m.t_dcha + ')' : m.t_izq + '-' + m.t_dcha) : ''}`))));
-    poner($('#revision'), resumen, el('ul', { class: 'vals' }, lista),
-      bloquea ? null : [el('p', { class: 'nota sep-12' }, jo.completa ? 'Así leerá la web esta jornada:' : 'Clasificación provisional leída del Excel. En cuanto haya un resultado, la web la enseña en vivo, con ⏳ en quien aún no ha jugado:'), tabla, mesas]);
+    const bloquea = foco.vals.some((x) => x.gravedad === 'bloquea');
+    const hayVista = sel.length > 0;
+    poner($('#revision'), resumen, torneoVals.length ? el('ul', { class: 'vals' }, torneoVals.map((x) => el('li', { class: x.gravedad }, el('span', { class: 'cod' }, x.cod), el('b', null, ETIQ[x.gravedad] + ': '), x.msg))) : null,
+      pintarPartidas(),
+      hayVista && !bloquea ? [el('p', { class: 'nota sep-12' }, (E.partidas.length > 1 ? `${nombreJ} ${jo.numero}: ` : '') + (jo.completa ? 'Así leerá la web esta ' + (sp ? 'jornada' : 'partida') + ':' : 'Clasificación provisional leída del Excel. En cuanto haya un resultado, la web la enseña en vivo, con ⏳ en quien aún no ha jugado:')), tabla, mesas] : null);
     $('#paso-revision').hidden = false;
     $('#paso-publicar').hidden = false;
-    $('#registro').hidden = true; $('#reintento').hidden = true; $('#resultado').hidden = true;
     actualizarBoton();
+    if (enfocar) { const x = document.querySelector(enfocar); if (x) x.focus(); }
+  }
+  function pintarRevision() {
+    pintarDestino();
+    repintar();
+    $('#registro').hidden = true; $('#reintento').hidden = true; $('#resultado').hidden = true;
   }
   const cuadro = (b, s) => el('div', null, el('b', null, b), el('span', null, s));
 
   function actualizarBoton() {
-    const bloquea = E.vals.some((x) => x.gravedad === 'bloquea');
-    const falta = E.vals.filter((x) => x.gravedad === 'confirma').some((x) => !E.confirmadas.has(x.cod));
-    $('#publicar').textContent = E.dest === 'borr' ? 'Guardar como borrador' : 'Publicar en la web';
-    $('#publicar').disabled = !E.dest || bloquea || falta;
-    $('#pub-nota').textContent = !E.dest ? 'Elige dónde guardarlo.' : bloquea ? 'Corrige lo que se marca en rojo, guarda el Excel y elígelo otra vez.' : falta ? 'Marca las casillas para poder publicar.' : '';
+    const sel = marcadas();
+    const bloquea = sel.some((p) => p.vals.some((x) => x.gravedad === 'bloquea'));
+    const falta = sel.some((p) => p.vals.filter((x) => x.gravedad === 'confirma').some((x) => !E.confirmadas.has(p.k + ':' + x.cod)));
+    const n = sel.length, u = unidad();
+    $('#publicar').textContent = (E.dest === 'borr' ? 'Guardar como borrador' : 'Publicar en la web') + (n > 1 ? ` (${n} ${u}s)` : '');
+    $('#publicar').disabled = !E.dest || !n || bloquea || falta;
+    $('#pub-nota').textContent = !E.dest ? 'Elige dónde guardarlo.' : !n ? `Marca al menos una ${u}.` : bloquea ? 'Corrige lo que se marca en rojo, guarda el Excel y elígelo otra vez, o desmarca esa ' + u + '.' : falta ? 'Marca las casillas para poder publicar.' : '';
   }
 
   /* ---------- paso 5: guardar ---------- */
-  function planExcel(clave, j, esReciente) {
-    const id = j.torneo.id, n = String(j.jornada.numero).padStart(2, '0');
-    const msg = `${clave === 'web' ? 'Publicar' : 'Borrador'} ${id}: jornada ${j.jornada.numero}`;
-    const rActual = `datos/${id}/actual.json`;
-    const pasos = [{ txt: `Escribir jornada_${n}.json`, fn: () => M.poner(clave, `datos/${id}/jornada_${n}.json`, C.aTexto(j), msg) }];
+  // js: las partidas marcadas, de menor a mayor. Cada una escribe su archivo; actual.json e indice.json se escriben una vez, al final.
+  function planExcel(clave, js, esReciente) {
+    const id = js[0].torneo.id, nn = (j) => String(j.jornada.numero).padStart(2, '0');
+    const u = js[0].torneo.tipo === 'sp' ? 'jornada' : 'partida';
+    const msg = `${clave === 'web' ? 'Publicar' : 'Borrador'} ${id}: ${js.length > 1 ? u + 's ' : u + ' '}${js.map((j) => j.jornada.numero).join(', ')}`;
+    const rActual = `datos/${id}/actual.json`, ultimo = js[js.length - 1];
+    const pasos = js.map((j) => ({ txt: `Escribir jornada_${nn(j)}.json`, fn: () => M.poner(clave, `datos/${id}/jornada_${nn(j)}.json`, C.aTexto(j), msg) }));
     if (esReciente) {
-      pasos.push({ txt: 'Escribir actual.json', fn: async () => { const a = await M.leer(clave, rActual); await M.poner(clave, rActual, C.aTexto(C.conJornadas(j, C.jornadasNuevas(j, a && a.json))), msg); } });
-      pasos.push({ txt: 'Escribir indice.json', fn: async () => { const i = await M.leer(clave, 'datos/indice.json'); await M.poner(clave, 'datos/indice.json', C.aTexto(C.indiceNuevo(i && i.json, j)), msg); } });
+      pasos.push({ txt: 'Escribir actual.json', fn: async () => { const a = await M.leer(clave, rActual); await M.poner(clave, rActual, C.aTexto(C.conJornadas(ultimo, C.jornadasNuevas(js, a && a.json))), msg); } });
+      pasos.push({ txt: 'Escribir indice.json', fn: async () => { const i = await M.leer(clave, 'datos/indice.json'); await M.poner(clave, 'datos/indice.json', C.aTexto(C.indiceNuevo(i && i.json, ultimo)), msg); } });
     } else {
-      // jornada anterior: actual.json sigue igual, pero su lista de jornadas tiene que incluirla (si no, la web no la enseña)
-      pasos.push({ txt: 'Apuntar la jornada en actual.json', fn: async () => { const a = await M.leer(clave, rActual); const { jornadas, ...resto } = a.json; await M.poner(clave, rActual, C.aTexto(C.conJornadas(resto, C.jornadasNuevas(j, a.json))), msg); } });
+      // jornadas anteriores: actual.json sigue igual, pero su lista de jornadas tiene que incluirlas (si no, la web no las enseña)
+      pasos.push({ txt: js.length > 1 ? 'Apuntar las jornadas en actual.json' : 'Apuntar la jornada en actual.json', fn: async () => { const a = await M.leer(clave, rActual); const { jornadas, ...resto } = a.json; await M.poner(clave, rActual, C.aTexto(C.conJornadas(resto, C.jornadasNuevas(js, a.json))), msg); } });
     }
     return pasos;
   }
   async function publicar() {
     const boton = $('#publicar');
-    const j = E.json, id = j.torneo.id, clave = E.dest;
+    const js = marcadas().map((p) => p.json).sort((x, y) => x.jornada.numero - y.jornada.numero);
+    if (!js.length) return;
+    const id = js[0].torneo.id, clave = E.dest, ultimo = js[js.length - 1];
     boton.disabled = true;
-    j.publicado = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
-    const esReciente = !E.pub.actual || E.pub.actual.torneo.id !== id || j.jornada.numero >= E.pub.actual.jornada.numero;
+    const ahora = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    for (const j of js) j.publicado = ahora;
+    const esReciente = !E.pub.actual || E.pub.actual.torneo.id !== id || ultimo.jornada.numero >= E.pub.actual.jornada.numero;
     const salida = { pre: $('#registro'), acc: $('#reintento') };
+    const u = unidad(), varias = js.length > 1, lista = enumerar(js.map((j) => j.jornada.numero));
     const final = clave === 'web'
-      ? (esReciente ? 'Publicado. La web lo mostrará en uno o dos minutos.' : 'Publicado. Era una jornada anterior: solo se ha corregido su archivo.')
-      : 'Guardado como borrador. Solo lo ves tú, con el token de este navegador.';
-    const ok = await correr(planExcel(clave, j, esReciente), salida, final, async () => {
+      ? (esReciente ? (varias ? `Publicadas las ${u}s ${lista}. La web las mostrará en uno o dos minutos.` : 'Publicado. La web lo mostrará en uno o dos minutos.')
+        : (varias ? `Publicadas las ${u}s ${lista}. Eran anteriores a la última publicada: solo se han corregido sus archivos.` : 'Publicado. Era una jornada anterior: solo se ha corregido su archivo.'))
+      : (varias ? `Guardadas las ${u}s ${lista} como borrador. Solo las ves tú, con el token de este navegador.` : 'Guardado como borrador. Solo lo ves tú, con el token de este navegador.');
+    const ok = await correr(planExcel(clave, js, esReciente), salida, final, async () => {
       poner($('#resultado'), el('a', { href: clave === 'web' ? `torneo.html?t=${encodeURIComponent(id)}` : `torneo.html?t=${encodeURIComponent(id)}&borrador=1`, target: '_blank', rel: 'noopener' }, clave === 'web' ? 'Abrir el campeonato en la web' : 'Ver el borrador'));
       $('#resultado').hidden = false;
-      E.pub = await estadoPublicado(j, clave).catch(() => E.pub);
+      E.pub = await estadoPublicado(id, clave, E.partidas.map((p) => p.k)).catch(() => E.pub);
+      repintar(); boton.disabled = true; // la lista pasa a decir «ya publicada»; para subir otra vez, se cambia algo
       await cargarTorneos();
     });
     if (!ok) boton.disabled = !M.token.obtener();

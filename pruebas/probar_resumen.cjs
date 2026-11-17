@@ -24,7 +24,7 @@ const top3A = (t) => dato(t).clasificacion.filter((r) => r.grupo === 'A').slice(
 
     // pestañas y pestaña por defecto
     await abrir('sp-ejemplo');
-    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Resumen', 'Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Normativa']);
+    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Resumen', 'Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Bases del campeonato']);
     assert.strictEqual(await pg.locator('nav.pestanas a[aria-current=page]').innerText(), 'Resumen');
     bien('seis pestañas, Resumen primera y abierta por defecto');
 

@@ -14,7 +14,7 @@ Nunca entran en el repositorio:
 - ningún Excel (el `.gitignore` deja fuera `*.xlsx`, `*.xlsm` y `*.xls`);
 - el token de GitHub.
 
-Dos barreras lo impiden. `publicar.html` lee solo la hoja WEB del Excel, en el ordenador de la mesa, y su validación V06 bloquea cualquier nombre con cifras o con arroba y cualquier texto libre que parezca un teléfono. Además, `pruebas/probar_contrato.cjs` comprueba esa validación. Si un dato personal llegara a publicarse por error, hay que borrarlo del repositorio y avisar a la persona afectada; el historial de Git conserva las versiones anteriores, así que quitar el archivo no basta.
+Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas de datos de las partidas (`_WEBC`, `_R1`… y `P.1`…, más la celda de cada semilla de sorteo), nunca `Licencias`, `PAREJAS`, `JUGADORES` ni `SUSTITUCIONES`, en el ordenador de la mesa, y su validación V06 bloquea cualquier nombre con cifras o con arroba y cualquier texto libre que parezca un teléfono. Además, `pruebas/probar_contrato.cjs` comprueba esa validación. Si un dato personal llegara a publicarse por error, hay que borrarlo del repositorio y avisar a la persona afectada; el historial de Git conserva las versiones anteriores, así que quitar el archivo no basta.
 
 ## Cómo se publica
 
