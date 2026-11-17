@@ -55,7 +55,7 @@ const D = 'd=datos/_prueba';
     assert(!/en este grupo/.test(nota), nota);
     assert.strictEqual(await pg.locator('.plazo').innerText(), 'Jornada 3 · se juega del 10/11 al 23/11');
     assert(!/Cómo se ordena|criterio|desempate/i.test(await pg.locator('main').innerText()));
-    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Resumen', 'Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Normativa']);
+    assert.deepStrictEqual(await pg.locator('nav.pestanas a').allInnerTexts(), ['Resumen', 'Clasificación', 'Partidas', 'Parejas', 'Calendario', 'Bases del campeonato']);
     bien('clasificación: nota sin recuento, fechas de juego, sin criterios y seis pestañas en orden');
     // columnas como en el Excel, y la leyenda en el mismo orden
     const COLS = ['CLAS.', 'PAREJA', 'NOMBRE', 'ENC.J', 'ENC.G', 'DIF. P.', 'DIF. PUNT.', 'P. G.', 'P. P.', 'PUNT. F.', 'PUNT. C.'];
@@ -181,11 +181,22 @@ const D = 'd=datos/_prueba';
       assert.strictEqual(await pg.locator('.calendario, .linea-tiempo').count(), 0);
     }
     bien('sin la clave calendario se avisa; ver=linea lleva a Calendario');
-    // Normativa: el enlace antiguo ver=normativa abre Normativa; el anuncio del libro sale con y sin normativa
+    // Bases del campeonato (ver=normativa): con PDF, el botón; sin él, lo dice. El anuncio del libro está en la portada, tras un botón.
     for (const t of ['sp-ejemplo-anterior', 'sp-ejemplo']) {
       await pg.goto(`${base}/torneo.html?t=${t}&ver=normativa&${D}`);
-      await pg.waitForSelector('.libro');
-      assert.strictEqual(await pg.locator('nav.pestanas a[aria-current=page]').innerText(), 'Normativa');
+      await pg.waitForSelector(t === 'sp-ejemplo' ? '.normativa button' : 'text=no tiene normativa publicada');
+      assert.strictEqual(await pg.locator('nav.pestanas a[aria-current=page]').innerText(), 'Bases del campeonato');
+      assert.strictEqual(await pg.locator('.libro').count(), 0);
+      await sinDesborde('normativa ' + t);
+      if (capt && t === 'sp-ejemplo-anterior') await pg.screenshot({ path: `${capt}/normativa_${w}.png`, fullPage: true });
+    }
+    bien('Bases del campeonato: ver=normativa la abre, con el botón del PDF o diciendo que no hay');
+    await pg.goto(`${base}/index.html?${D}`);
+    await pg.waitForSelector('#lista li');
+    assert.strictEqual(await pg.locator('.libro').isHidden(), true);
+    await pg.click('button:has-text("Ver libro")');
+    assert.strictEqual(await pg.locator('.libro').isVisible(), true);
+    {
       const img = pg.locator('.libro img.libro-portada');
       assert.strictEqual(await img.getAttribute('src'), 'assets/libro-portada.jpg');
       assert((await img.getAttribute('alt')).length > 30 && await img.getAttribute('width') && await img.getAttribute('height') && await img.getAttribute('loading') === 'lazy');
@@ -196,12 +207,11 @@ const D = 'd=datos/_prueba';
       assert.deepStrictEqual((await enl.getAttribute('rel')).split(/\s+/).sort(), ['noopener', 'noreferrer']);
       assert((await enl.textContent()).startsWith('Ver en Amazon'));
       const txt = await pg.locator('.libro').textContent();
-      for (const f of ['Jesús Eduardo Elián Campos', 'Federación Valenciana de Dominó Jaume I', '¡Que comience la partida!']) assert(txt.includes(f), f);
+      for (const f of ['Jesús Eduardo Elián Campos', 'Reglamento del Juego y Competiciones', '¡Que comience la partida!']) assert(txt.includes(f), f);
       assert.strictEqual(await pg.locator('.libro-texto').evaluate((e) => e.scrollWidth <= e.clientWidth), true);
-      await sinDesborde('normativa ' + t);
-      if (capt && t === 'sp-ejemplo-anterior') await pg.screenshot({ path: `${capt}/normativa_${w}.png`, fullPage: true });
+      await sinDesborde('portada con el libro');
     }
-    bien('Normativa (también sin normativa): ver=normativa la abre; portada con alt, tamaño y lazy; enlace a Amazon con target y rel correctos');
+    bien('portada: el anuncio del libro sale al pulsar «Ver libro» con alt, tamaño y lazy; enlace a Amazon con target y rel correctos');
     assert(!(await pg.request.head(`${base}/datos/sp-2026-27/folleto.pdf`)).ok(), 'el folleto del 24º ya no se publica');
 
     // torneo terminado con grupo B, ND, incomparecencia

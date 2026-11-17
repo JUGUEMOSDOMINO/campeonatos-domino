@@ -62,7 +62,7 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
   assert(/Disallow: \//.test(await robots.text()));
   bien('robots.txt se sirve');
   const casos = [['index.html', '#candado'], ['torneo.html?t=sp-2026-27', '#candado'], ['index.html?d=datos/_prueba', '#lista li'], ['torneo.html?t=sp-ejemplo&d=datos/_prueba', '#cab h1, #cab h2'],
-    ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.normativa button'], ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.libro img'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso']];
+    ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.normativa button'], ['index.html?d=datos/_prueba', '.libro img'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso']];
   for (const [url, esperado] of casos) {
     const pg = await ctx.newPage();
     const malos = []; const externas = [];
@@ -71,7 +71,7 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
     pg.on('request', (r) => { const u = new URL(r.url()); if (!['data:', 'blob:'].includes(u.protocol) && u.origin !== new URL(base).origin) externas.push(r.url()); });
     await pg.addInitScript(() => { window.__csp = []; document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI)); });
     await pg.goto(`${base}/${url}`);
-    await pg.waitForSelector(esperado, { timeout: 10000 });
+    await pg.waitForSelector(esperado, { timeout: 10000, state: esperado === '.libro img' ? 'attached' : 'visible' }); // el anuncio del libro va en la portada, tras un botón
     await pg.waitForTimeout(500);
     const csp = await pg.evaluate(() => window.__csp);
     assert.deepStrictEqual([csp, malos, externas], [[], [], []], url);

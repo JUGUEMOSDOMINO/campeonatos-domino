@@ -55,7 +55,7 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     await pg.waitForSelector('text=Hay un token guardado');
     assert.strictEqual(await pg.evaluate(() => localStorage.getItem('tumesa.token')), TOKEN);
     bien('token guardado en localStorage');
-    assert(api.reqs.some((r) => r.ruta === '/repos/ELIAN1603/campeonatos-domino') && api.reqs.some((r) => r.ruta === '/repos/ELIAN1603/campeonatos-borradores'));
+    assert(api.reqs.some((r) => r.ruta === '/repos/JUGUEMOSDOMINO/campeonatos-domino') && api.reqs.some((r) => r.ruta === '/repos/JUGUEMOSDOMINO/campeonatos-borradores'));
     bien('al guardar, el token se comprueba contra los dos repositorios');
     await pg.waitForSelector('#lista-web[data-listo]'); await pg.waitForSelector('#lista-borr[data-listo]');
     assert.deepStrictEqual(await nombres(pg, 'web'), ['sp-ejemplo']);
@@ -159,7 +159,7 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     await pg.click('a:text("Partidas")'); await pg.waitForSelector('.mesa');
     assert(pg.url().includes('borrador=1'));
     assert.deepStrictEqual(externos, []);
-    assert(api.reqs.filter((r) => r.ruta.includes('/contents/datos/')).every((r) => r.ruta.startsWith('/repos/ELIAN1603/campeonatos-borradores/') && r.auth === 'Bearer ' + TOKEN));
+    assert(api.reqs.filter((r) => r.ruta.includes('/contents/datos/')).every((r) => r.ruta.startsWith('/repos/JUGUEMOSDOMINO/campeonatos-borradores/') && r.auth === 'Bearer ' + TOKEN));
     bien('borrador con token: se ve (clasificación y mesas), lee de campeonatos-borradores por la API y no pide nada de datos/ a la web pública');
     assert.deepStrictEqual(errores, []);
     // la web pública sigue leyendo de datos/ sin tocar la API
@@ -553,7 +553,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     }
     bien('las rutas permitidas pasan el filtro en los dos repositorios');
     api.puts.length = 0; api.log.length = 0;
-    for (const x of api.reqs) assert(/^\/repos\/ELIAN1603\/(campeonatos-domino|campeonatos-borradores)(\/|$)/.test(x.ruta) && !x.ruta.includes(TOKEN), x.ruta);
+    for (const x of api.reqs) assert(/^\/repos\/JUGUEMOSDOMINO\/(campeonatos-domino|campeonatos-borradores)(\/|$)/.test(x.ruta) && !x.ruta.includes(TOKEN), x.ruta);
     bien('todas las llamadas con token van a api.github.com y a uno de los dos repositorios, sin el token en la dirección');
   }
   // 401 en mitad de una acción: se borra el token y se avisa
@@ -661,7 +661,8 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     }
     for (const r of api.rutas('web')) {
       const t = api.repos.web.get(r).texto;
-      for (const x of [...nombres, /Calap/i, /ES76/i, /(?<!\d)[6-9]\d{8}(?!\d)/]) assert(!(x instanceof RegExp ? x.test(t) : t.includes(x)), `${r}: ${x}`);
+      // un sobre cifrado es base64 al azar: «ES76» puede salir por casualidad (pasaba una de cada cinco veces); basta con que sea un sobre. Lo que no es sobre se busca entero.
+      for (const x of [...nombres, ...(K.esSobre(t) ? [] : [/Calap/i, /ES76/i, /(?<!\d)[6-9]\d{8}(?!\d)/])]) assert(!(x instanceof RegExp ? x.test(t) : t.includes(x)), `${r}: ${x}`);
       assert(r === 'datos/clave.json' || K.esSobre(t), r);
       assert(![...nombres].some((x) => r.toLowerCase().includes(x.toLowerCase())), r);
     }

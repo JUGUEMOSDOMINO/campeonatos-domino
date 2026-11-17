@@ -1,6 +1,6 @@
 # campeonatos-domino
 
-Web de resultados de los campeonatos de dominó que lleva la mesa de control (Jesús Eduardo Elián C.). Sitio estático para GitHub Pages, sin servidor. Los borradores, antes de publicarse, viven en el repositorio privado `ELIAN1603/campeonatos-borradores`, que tiene la misma estructura `datos/`.
+Web de resultados de los campeonatos de dominó que lleva la mesa de control (Jesús Eduardo Elián C.). Sitio estático para GitHub Pages, sin servidor. Los borradores, antes de publicarse, viven en el repositorio privado `JUGUEMOSDOMINO/campeonatos-borradores`, que tiene la misma estructura `datos/`.
 
 Este repositorio es público. **Nunca entra un Excel, un teléfono ni una licencia.** El `.gitignore` deja fuera `*.xlsx`, `*.xlsm` y `*.xls`.
 

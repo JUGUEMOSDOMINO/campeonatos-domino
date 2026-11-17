@@ -111,7 +111,7 @@ Límites que conviene conocer:
 
 Es un token fine-grained de GitHub con este alcance:
 
-- los dos repositorios, `ELIAN1603/campeonatos-domino` y `ELIAN1603/campeonatos-borradores`, y ningún otro, en «Repository access» (Only select repositories);
+- los dos repositorios, `JUGUEMOSDOMINO/campeonatos-domino` y `JUGUEMOSDOMINO/campeonatos-borradores`, y ningún otro, en «Repository access» (Only select repositories);
 - permiso «Contents: Read and write» y ningún otro;
 - caduca en noviembre de 2027.
 

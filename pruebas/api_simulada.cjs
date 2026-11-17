@@ -84,7 +84,7 @@ async function instalar(ctx, opciones = {}) {
     const metodo = req.method();
     api.reqs.push({ metodo, ruta: u.pathname, auth: req.headers().authorization });
     if (req.headers().authorization !== 'Bearer ' + api.token) return route.fulfill({ status: 401, body: '{"message":"Bad credentials"}' });
-    const m = /^\/repos\/ELIAN1603\/([^/]+)(?:\/contents\/(.*)|\/git\/blobs\/([0-9a-f]{40}))?$/.exec(u.pathname);
+    const m = /^\/repos\/JUGUEMOSDOMINO\/([^/]+)(?:\/contents\/(.*)|\/git\/blobs\/([0-9a-f]{40}))?$/.exec(u.pathname);
     const clave = m && NOMBRES[m[1]];
     if (!clave || !api.acceso[clave]) return route.fulfill({ status: 404, body: '{"message":"Not Found"}' });
     if (m[3]) {
