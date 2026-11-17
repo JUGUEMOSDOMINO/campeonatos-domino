@@ -734,7 +734,7 @@
     return el('section', { class: 'libro', 'aria-labelledby': 't-libro' },
       el('img', { class: 'libro-portada', src: 'assets/libro-portada.jpg', width: 520, height: 756, loading: 'lazy', alt: 'Portada del libro Juguemos dominó, de Jesús Eduardo Elián Campos: título en letras blancas sobre un bloque negro, grandes franjas negras a los lados y dos fichas de dominó abajo a la izquierda.' }),
       el('div', { class: 'libro-texto' },
-        el('p', { class: 'libro-sello' }, 'Libro del equipo de esta web'),
+        el('p', { class: 'libro-sello' }, 'Libro del creador de esta web'),
         el('h2', { id: 't-libro' }, 'Juguemos dominó'),
         el('p', { class: 'libro-sub' }, 'Formación para principiantes del dominó por parejas en España'),
         el('p', { class: 'libro-autor' }, 'Jesús Eduardo Elián Campos'),
