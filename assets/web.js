@@ -742,7 +742,7 @@
         el('ul', null, [
           'Las normas del dominó por parejas del Reglamento del Juego y Competiciones de la Federación Española de Dominó',
           'Historia, actualidad y curiosidades',
-          'Sistemas, principios y estrategias esenciales para jugar con fundamentos y lógica',
+          'Sistemas, principios y estrategias para jugar con fundamentos y lógica',
           'Aspectos psicológicos y sugerencias para mejorar',
           'Una evaluación final con situaciones frecuentes de partida',
         ].map((t) => el('li', null, t))),
