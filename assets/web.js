@@ -738,7 +738,7 @@
         el('h2', { id: 't-libro' }, 'Juguemos dominó'),
         el('p', { class: 'libro-sub' }, 'Formación para principiantes del dominó por parejas en España'),
         el('p', { class: 'libro-autor' }, 'Jesús Eduardo Elián Campos'),
-        el('p', null, 'Muchos jugadores habituales no conocen las normas oficiales. El libro quiere que quien empieza se forme desde el principio con una base sólida.'),
+        el('p', null, 'Muchos jugadores habituales no conocen las normas oficiales de este deporte. Publicada originalmente en septiembre de 2024, esta obra permite que los principiantes se formen desde el primer día con una base de conocimientos sólidos.'),
         el('ul', null, [
           'Las normas del dominó por parejas del Reglamento del Juego y Competiciones de la Federación Española de Dominó',
           'Historia, actualidad y curiosidades',
