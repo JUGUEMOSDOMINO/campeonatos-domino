@@ -725,7 +725,7 @@
   }
   function pintarFolleto(cont) {
     const filas = filasCalendario(E.actual);
-    poner(cont, !filas.length ? el('p', { class: 'vacio' }, E.actual && E.actual.fecha ? 'Fecha del campeonato: ' + fechaLarga(E.actual.fecha) + '.' :'Este campeonato no tiene calendario publicado.') : calLista(E.actual, filas));
+    poner(cont, !filas.length ? el('p', { class: 'vacio' }, 'Fecha del campeonato: ' + ((document.querySelector('header p').textContent.split('.')`[0].trim() + '.' : calLista(E.actual, filas));
   }
 
   /* ----- normativa y anuncio del libro ----- */
