@@ -5,7 +5,7 @@
 (function (raiz) {
   'use strict';
   const API = 'https://api.github.com';
-  const DUENO = 'ELIAN1603';
+  const DUENO = 'JUGUEMOSDOMINO';
   const REPOS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores' };
   const RAMA = 'main';
   const CLAVE = 'tumesa.token';
