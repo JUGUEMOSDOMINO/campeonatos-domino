@@ -54,7 +54,7 @@
     let r;
     try {
       r = await fetch(destino, {
-        ...opciones, redirect: 'error', credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
+        ...opciones, redirect: 'follow', credentials: 'omit', referrerPolicy: 'no-referrer', cache: 'no-store',
         headers: { Authorization: 'Bearer ' + t, Accept: 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28', ...(opciones && opciones.headers) },
       });
     } catch (e) { throw new ErrorGH(0, 'No hay conexión con GitHub. Comprueba que el ordenador tiene internet y prueba otra vez.', clave); }
