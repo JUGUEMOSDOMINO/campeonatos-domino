@@ -6,7 +6,7 @@
 
   var yaInstalada = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
   if (yaInstalada) {
-    caja.hidden = true;
+    caja.style.display = 'none';
     return;
   }
 
@@ -16,13 +16,13 @@
     eventoAndroid = e;
   });
 
-  btn.addEventListener('click', function () {
+  btn.onclick = function () {
     if (eventoAndroid) {
       eventoAndroid.prompt();
       eventoAndroid = null;
       return;
     }
-    guia.hidden = !guia.hidden;
-    btn.textContent = guia.hidden ? '📲 Instalar "App" en mi móvil' : '✖ Cerrar instrucciones';
-  });
+    var visible = guia.classList.toggle('abierta');
+    btn.textContent = visible ? '✖ Cerrar instrucciones' : '📲 Instalar "App" en mi móvil';
+  };
 })();
