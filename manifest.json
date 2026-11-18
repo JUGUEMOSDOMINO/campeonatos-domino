@@ -1,16 +1,17 @@
 {
   "name": "Juguemos Dominó",
-  "short_name": "JUGUEMOS DOMINÓ",
+  "short_name": "Juguemos Dominó",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#0d633b",
   "theme_color": "#0d633b",
   "icons": [
-  {
-    "src": "./icon-512.png?v=5",
-    "sizes": "512x512",
-    "type": "image/png"
-  }
-]
+    {
+      "src": "./icon-512.png?v=5",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
 }
