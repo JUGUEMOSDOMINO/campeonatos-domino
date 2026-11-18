@@ -339,10 +339,9 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .ya-publicada { color: var(--marca); font-weight: 700; }
 .boton-lecciones { display: inline-block; background-color: #ffffff; color: #0c3a38; font-weight: 700; font-size: 1.05rem; padding: 12px 22px; border-radius: 10px; text-decoration: none; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2); margin: 6px 0 12px; }
 
-/* separación garantizada entre la última tarjeta (Torrefiel) y el botón rojo */
-#lista .tarjetas + * {
-  margin-top: 22px !important;
-  display: inline-block;
+/* separación garantizada entre la lista de campeonatos y el botón rojo */
+#lista + .boton {
+  margin-top: 28px;
 }
 
 /* tarjeta compacta de acceso a ejemplos y jugadas (idéntica a las de campeonatos) */
