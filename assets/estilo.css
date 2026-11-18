@@ -371,6 +371,7 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
   margin-bottom: 14px;
 }
 .guia-instalar {
+  display: none;
   margin-top: 10px;
   padding: 12px;
   background: rgba(255, 255, 255, 0.1);
@@ -379,6 +380,9 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
   color: var(--barra-texto);
   font-size: 0.9rem;
   line-height: 1.4;
+}
+.guia-instalar.abierta {
+  display: block;
 }
 .guia-instalar p {
   margin: 0 0 6px;
