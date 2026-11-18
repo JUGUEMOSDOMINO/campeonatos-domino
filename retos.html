@@ -4,8 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>JUGUEMOS DOMINÓ · Lecciones del libro</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2018%2032%27%3E%3Crect%20x=%271%27%20y=%271%27%20width=%2716%27%20height=%2730%27%20rx=%274%27%20fill=%27%230c3a38%27/%3E%3Cpath%20d=%27M1%2016h16%27%20stroke=%27%23fff%27%20stroke-width=%271.6%27/%3E%3Ccircle%20cx=%279%27%20cy=%278.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%279%27%20cy=%2723.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3C/svg%3E">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://w3.org">
     <style>
+        * { box-sizing: border-box; }
         body {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             background-color: #f4f6f6;
@@ -28,50 +29,169 @@
             font-size: 0.95rem;
         }
         .contenedor {
-            max-width: 600px;
-            margin: 16px auto;
-            padding: 0 14px;
+            max-width: 640px;
+            margin: 14px auto;
+            padding: 0 12px;
+        }
+        .selector-anexos {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        .btn-anexo {
+            flex: 1;
+            padding: 10px 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            border: 2px solid #0c3a38;
+            border-radius: 10px;
+            background: #ffffff;
+            color: #0c3a38;
+            cursor: pointer;
+            line-height: 1.25;
+        }
+        .btn-anexo.activo {
+            background: #0c3a38;
+            color: #ffffff;
         }
         .tarjeta {
             background: #ffffff;
             border-radius: 12px;
-            padding: 16px;
+            padding: 14px;
             box-shadow: 0 2px 10px rgba(12, 58, 56, 0.08);
         }
         h1 {
-            font-size: 1.25rem;
+            font-size: 1.18rem;
             color: #0c3a38;
-            margin-top: 0;
+            margin: 0 0 10px 0;
             text-align: center;
+        }
+        .barra-herramientas {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .btn-dist {
+            background: #eef4f4;
+            color: #0c3a38;
+            border: 1.5px solid #0c3a38;
+            padding: 8px 14px;
+            border-radius: 8px;
+            font-size: 0.88rem;
+            font-weight: 700;
+            cursor: pointer;
+            width: 100%;
+        }
+        .btn-dist.abierto {
+            background: #0c3a38;
+            color: #ffffff;
+        }
+        .panel-manos {
+            display: none;
+            background: #f8fafa;
+            border: 1px solid #cbd5d4;
+            border-radius: 10px;
+            padding: 10px;
+            margin-bottom: 12px;
+        }
+        .panel-manos.visible {
+            display: block;
+        }
+        .fila-jugador {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 0;
+            border-bottom: 1px dashed #d5e0df;
+        }
+        .fila-jugador:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+        .fila-jugador:first-child {
+            padding-top: 0;
+        }
+        .etiq-jugador {
+            min-width: 58px;
+            font-size: 0.8rem;
+            font-weight: 800;
+            color: #0c3a38;
+            line-height: 1.2;
+        }
+        .etiq-jugador small {
+            display: block;
+            font-weight: 600;
+            font-size: 0.7rem;
+            color: #5c6b6b;
+        }
+        .etiq-jugador.pareja-gana {
+            color: #c8321b;
+        }
+        .mano-fichas {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .ficha-mini {
+            width: 24px;
+            height: 46px;
+            background: #ffffff;
+            border: 1px solid #8ea3a1;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.12);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .ficha-mini.jugada {
+            opacity: 0.25;
+            background: #e2e8e8;
+            border-style: dashed;
+        }
+        .ficha-mini .mitad {
+            padding: 2px;
+        }
+        .ficha-mini .mitad:first-child {
+            border-bottom: 1px solid #0c3a38;
+        }
+        .ficha-mini .punto {
+            width: 3.5px;
+            height: 3.5px;
         }
         .mesa {
             background-color: #14534f;
             border: 5px solid #0c3a38;
             border-radius: 14px;
-            min-height: 190px;
-            padding: 18px 10px;
+            min-height: 175px;
+            padding: 16px 10px;
             display: flex;
             flex-wrap: wrap;
             justify-content: center;
             align-items: center;
             gap: 8px;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
+        }
+        .mesa-vacia {
+            color: #9cc6c1;
+            font-size: 0.9rem;
+            text-align: center;
+            font-style: italic;
         }
         .ficha {
             background-color: #ffffff;
             border-radius: 6px;
             display: flex;
             border: 1px solid #cbd5d4;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.25);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.28);
         }
         .ficha.horizontal {
-            width: 68px;
-            height: 34px;
+            width: 66px;
+            height: 33px;
             flex-direction: row;
         }
         .ficha.doble {
-            width: 34px;
-            height: 68px;
+            width: 33px;
+            height: 66px;
             flex-direction: column;
         }
         .mitad {
@@ -88,8 +208,8 @@
             border-bottom: 1.5px solid #0c3a38;
         }
         .punto {
-            width: 6px;
-            height: 6px;
+            width: 5.5px;
+            height: 5.5px;
             background-color: #0c3a38;
             border-radius: 50%;
             align-self: center;
@@ -98,10 +218,10 @@
         .panel-info {
             background: #eef4f4;
             border-left: 4px solid #0c3a38;
-            padding: 12px 14px;
+            padding: 11px 13px;
             border-radius: 6px;
-            min-height: 65px;
-            margin-bottom: 15px;
+            min-height: 64px;
+            margin-bottom: 12px;
         }
         .vuelta-tag {
             font-size: 0.78rem;
@@ -111,18 +231,18 @@
             letter-spacing: 0.5px;
         }
         .texto-jugada {
-            font-size: 1rem;
-            margin: 5px 0 0 0;
-            line-height: 1.45;
+            font-size: 0.96rem;
+            margin: 4px 0 0 0;
+            line-height: 1.42;
         }
         .controles {
             display: flex;
             gap: 10px;
         }
-        button {
+        .controles button {
             flex: 1;
-            padding: 13px;
-            font-size: 1rem;
+            padding: 12px;
+            font-size: 0.98rem;
             font-weight: bold;
             border: none;
             border-radius: 8px;
@@ -130,25 +250,28 @@
             background: #0c3a38;
             color: white;
         }
-        button:disabled {
+        .controles button:disabled {
             background: #cfd8d8;
             color: #7a8a8a;
+            cursor: not-allowed;
         }
         .resumen-final {
             display: none;
             background: #e6f4ea;
-            border: 1px solid #0c3a38;
+            border: 1.5px solid #0c3a38;
             color: #0c3a38;
-            padding: 12px;
+            padding: 11px;
             border-radius: 8px;
-            margin-top: 15px;
+            margin-top: 12px;
             text-align: center;
+            font-size: 0.95rem;
+            line-height: 1.4;
         }
         .pie {
             text-align: center;
             font-size: 0.8rem;
             color: #5c6b6b;
-            margin-top: 20px;
+            margin-top: 18px;
             padding: 0 15px 20px;
         }
     </style>
@@ -161,25 +284,33 @@
 </div>
 
 <div class="contenedor">
+    <div class="selector-anexos">
+        <button type="button" class="btn-anexo activo" id="tab-0" onclick="seleccionarAnexo(0)">Anexo I<br>Dominada 129 tantos</button>
+        <button type="button" class="btn-anexo" id="tab-1" onclick="seleccionarAnexo(1)">Anexo II<br>Cierre 126 tantos</button>
+    </div>
+
     <div class="tarjeta">
-        <h1>Dominada capturando 129 tantos</h1>
-        
+        <h1 id="titulo-ejemplo">Anexo I · Dominada capturando 129 tantos</h1>
+
+        <div class="barra-herramientas">
+            <button type="button" class="btn-dist" id="btn-distribucion" onclick="alternarManos()">👁️ Ver distribución de fichas (J1 - J4)</button>
+        </div>
+
+        <div class="panel-manos" id="panel-manos"></div>
+
         <div class="mesa" id="mesa-juego"></div>
 
         <div class="panel-info">
-            <div class="vuelta-tag" id="etiqueta-vuelta">Inicio</div>
+            <div class="vuelta-tag" id="etiqueta-vuelta">Inicio de la mano</div>
             <p class="texto-jugada" id="descripcion-paso">Pulsa Siguiente para comenzar.</p>
         </div>
 
         <div class="controles">
-            <button id="btn-anterior" onclick="cambiarPaso(-1)" disabled>⬅ Anterior</button>
-            <button id="btn-siguiente" onclick="cambiarPaso(1)">Siguiente ➡</button>
+            <button type="button" id="btn-anterior" onclick="cambiarPaso(-1)" disabled>⬅ Anterior</button>
+            <button type="button" id="btn-siguiente" onclick="cambiarPaso(1)">Siguiente ➡</button>
         </div>
 
-        <div class="resumen-final" id="caja-resumen">
-            <strong>Resultado final:</strong> Se juegan 11 fichas. Han salido 39 tantos.<br>
-            🏆 <strong>La pareja 1-3 captura 129 tantos.</strong>
-        </div>
+        <div class="resumen-final" id="caja-resumen"></div>
     </div>
 </div>
 
@@ -188,41 +319,83 @@
 </div>
 
 <script>
+    var anexoActual = 0;
     var pasoActual = 0;
+    var manosVisibles = false;
 
-    var vueltas = new Array(
-        "Inicio de la mano",
-        "Vuelta 1",
-        "Vuelta 2",
-        "Vuelta 3",
-        "Vuelta 4",
-        "Vuelta 5",
-        "Vuelta 6",
-        "Vuelta 7 - ¡Dominada!"
-    );
-
-    var textos = new Array(
-        "El Jugador 1 tiene todas las blancas (7 fichas) y lleva la salida.",
-        "<strong>J1:</strong> Sale con 0:0.<br><strong>J2, J3 y J4:</strong> Pasan (ninguno tiene blancas).",
-        "<strong>J1:</strong> Juega 0:3.<br><strong>J2:</strong> Juega 3:1 obligado.<br><strong>J3:</strong> Pasa.<br><strong>J4:</strong> Juega 1:5 obligado.",
-        "<strong>J1:</strong> Golpea a blancas con 5:0.<br><strong>J2, J3 y J4:</strong> Pasan de nuevo.",
-        "<strong>J1:</strong> Juega 0:2.<br><strong>J2:</strong> Juega obligado 2:1.<br><strong>J3 y J4:</strong> Pasan.",
-        "<strong>J1:</strong> Vuelve a golpear a blancas con 1:0.<br><strong>J2, J3 y J4:</strong> Pasan.",
-        "<strong>J1:</strong> Juega 0:4.<br><strong>J2:</strong> Juega obligado 4:1.<br><strong>J3 y J4:</strong> Pasan.",
-        "<strong>J1:</strong> Juega 0:6 y domina la partida dejando a los rivales cargados."
-    );
-
-    var jugadasMesa = new Array(
-        "",
-        "0-0",
-        "0-0,0-3,3-1,1-5",
-        "0-0,0-3,3-1,1-5,5-0",
-        "0-0,0-3,3-1,1-5,5-0,0-2,2-1",
-        "0-0,0-3,3-1,1-5,5-0,0-2,2-1,1-0",
-        "0-0,0-3,3-1,1-5,5-0,0-2,2-1,1-0,0-4,4-1",
-        "0-0,0-3,3-1,1-5,5-0,0-2,2-1,1-0,0-4,4-1,0-6"
-    );
-
+    var anexos = [
+        {
+            titulo: "Anexo I · Dominada capturando 129 tantos",
+            manos: [
+                { nombre: "J1 (Sale)", pareja: "Pareja 1-3", gana: true, fichas: ["0-0", "0-1", "0-2", "0-3", "0-4", "0-5", "0-6"] },
+                { nombre: "J2", pareja: "Pareja 2-4", gana: false, fichas: ["1-1", "1-2", "1-3", "1-4", "1-6", "5-6", "6-6"] },
+                { nombre: "J3", pareja: "Pareja 1-3", gana: true, fichas: ["2-3", "2-4", "2-5", "2-6", "3-3", "4-4", "5-5"] },
+                { nombre: "J4", pareja: "Pareja 2-4", gana: false, fichas: ["1-5", "2-2", "3-6", "4-6", "3-5", "4-5", "3-4"] }
+            ],
+            vueltas: [
+                "Inicio de la mano",
+                "Vuelta 1",
+                "Vuelta 2",
+                "Vuelta 3",
+                "Vuelta 4",
+                "Vuelta 5",
+                "Vuelta 6",
+                "Vuelta 7 - ¡Dominada!"
+            ],
+            textos: [
+                "El Jugador 1 tiene todas las blancas (7 fichas) y lleva la salida. Pulsa <strong>Siguiente</strong> para ver el desarrollo.",
+                "<strong>Jugador 1:</strong> Sale con 0:0.<br><strong>Jugador 2:</strong> Pasa. <strong>Jugador 3:</strong> Pasa. <strong>Jugador 4:</strong> Pasa.",
+                "<strong>Jugador 1:</strong> Juega 0:3.<br><strong>Jugador 2:</strong> Juega 3:1 obligado.<br><strong>Jugador 3:</strong> Pasa.<br><strong>Jugador 4:</strong> Juega 1:5 obligado.",
+                "<strong>Jugador 1:</strong> Golpea a blancas con 5:0.<br><strong>Jugador 2:</strong> Pasa. <strong>Jugador 3:</strong> Pasa. <strong>Jugador 4:</strong> Pasa.",
+                "<strong>Jugador 1:</strong> Juega 0:2.<br><strong>Jugador 2:</strong> Juega obligado 2:1.<br><strong>Jugador 3:</strong> Pasa. <strong>Jugador 4:</strong> Pasa.",
+                "<strong>Jugador 1:</strong> Golpea a blancas con 1:0.<br><strong>Jugador 2:</strong> Pasa. <strong>Jugador 3:</strong> Pasa. <strong>Jugador 4:</strong> Pasa.",
+                "<strong>Jugador 1:</strong> Juega 0:4.<br><strong>Jugador 2:</strong> Juega obligado 4:1.<br><strong>Jugador 3:</strong> Pasa. <strong>Jugador 4:</strong> Pasa.",
+                "<strong>Jugador 1:</strong> Juega 0:6 y domina la partida dejando a los rivales cargados."
+            ],
+            jugadasMesa: [
+                [],
+                ["0-0"],
+                ["0-0", "0-3", "3-1", "1-5"],
+                ["0-0", "0-3", "3-1", "1-5", "5-0"],
+                ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1"],
+                ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1", "1-0"],
+                ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1", "1-0", "0-4", "4-1"],
+                ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1", "1-0", "0-4", "4-1", "0-6"]
+            ],
+            resumen: "<strong>Resultado final:</strong> Se juegan en total 11 fichas. Han salido 39 tantos.<br>🏆 <strong>La pareja 1-3 captura 129 tantos.</strong>"
+        },
+        {
+            titulo: "Anexo II · Cierre capturando 126 tantos",
+            manos: [
+                { nombre: "J1 (Sale)", pareja: "Pareja 1-3", gana: true, fichas: ["0-0", "0-2", "0-4", "0-6", "3-3", "4-5", "3-5"] },
+                { nombre: "J2", pareja: "Pareja 2-4", gana: false, fichas: ["2-3", "2-2", "1-5", "4-6", "5-5", "6-6", "2-6"] },
+                { nombre: "J3", pareja: "Pareja 1-3", gana: true, fichas: ["0-1", "2-4", "0-3", "3-6", "0-5", "2-5", "5-6"] },
+                { nombre: "J4", pareja: "Pareja 2-4", gana: false, fichas: ["1-1", "1-2", "1-3", "1-4", "1-6", "3-4", "4-4"] }
+            ],
+            vueltas: [
+                "Inicio de la mano",
+                "Vuelta 1",
+                "Vuelta 2",
+                "Vuelta 3",
+                "Vuelta 4 - ¡Cierre!"
+            ],
+            textos: [
+                "El Jugador 1 tiene cuatro blancas (0:0, 0:2, 0:4, 0:6) y lleva la salida. Pulsa <strong>Siguiente</strong> para ver el cierre.",
+                "<strong>Jugador 1:</strong> Sale con 0:0.<br><strong>Jugador 2:</strong> Pasa.<br><strong>Jugador 3:</strong> Juega 0:1.<br><strong>Jugador 4:</strong> Juega obligado 1:2.",
+                "<strong>Jugador 1:</strong> Golpea a blancas con 0:2.<br><strong>Jugador 2:</strong> Pasa.<br><strong>Jugador 3:</strong> Juega 0:3.<br><strong>Jugador 4:</strong> Juega 3:4 obligado.",
+                "<strong>Jugador 1:</strong> Golpea a blancas con 4:0.<br><strong>Jugador 2:</strong> Pasa.<br><strong>Jugador 3:</strong> Juega 0:5 obligado.<br><strong>Jugador 4:</strong> Juega 5:6 obligado.",
+                "<strong>Jugador 1:</strong> Juega 0:6 a blancas y cierra la partida."
+            ],
+            jugadasMesa: [
+                [],
+                ["0-0", "0-1", "1-2"],
+                ["0-0", "0-1", "1-2", "0-2", "0-3", "3-4"],
+                ["0-0", "0-1", "1-2", "0-2", "0-3", "3-4", "4-0", "0-5", "5-6"],
+                ["0-0", "0-1", "1-2", "0-2", "0-3", "3-4", "4-0", "0-5", "5-6", "0-6"]
+            ],
+            resumen: "<strong>Resultado final:</strong> Se juegan en total 10 fichas. Han salido 42 tantos.<br>🏆 <strong>La pareja 1-3 captura 126 tantos.</strong>"
+        }
+    ];
     function obtenerPatron(num) {
         if (num === "1") return "000010000";
         if (num === "2") return "100000001";
@@ -247,44 +420,107 @@
         return html;
     }
 
-    function dibujarFicha(fichaStr) {
-        var izq = fichaStr.charAt(0);
-        var der = fichaStr.charAt(2);
-        var claseTipo = (izq === der) ? 'ficha doble' : 'ficha horizontal';
-        return '<div class="' + claseTipo + '">' + crearMitadHTML(izq) + crearMitadHTML(der) + '</div>';
+    function normalizarFicha(str) {
+        var a = str.charAt(0);
+        var b = str.charAt(2);
+        return (a < b) ? (a + "-" + b) : (b + "-" + a);
     }
 
-    function renderizar() {
-        document.getElementById('etiqueta-vuelta').innerText = vueltas.at(pasoActual);
-        document.getElementById('descripcion-paso').innerHTML = textos.at(pasoActual);
-        
-        var mesaDiv = document.getElementById('mesa-juego');
-        var cadenaFichas = jugadasMesa.at(pasoActual);
-        
-        if (cadenaFichas === "") {
-            mesaDiv.innerHTML = "";
-        } else {
-            var lista = cadenaFichas.split(',');
-            var htmlTotal = "";
-            for (var i = 0; i < lista.length; i++) {
-                htmlTotal += dibujarFicha(lista.at(i));
+    function renderizarManos(jugadasActuales) {
+        var datos = anexos.at(anexoActual);
+        var jugadasNorm = {};
+        for (var k = 0; k < jugadasActuales.length; k++) {
+            jugadasNorm[normalizarFicha(jugadasActuales.at(k))] = true;
+        }
+        var html = "";
+        for (var j = 0; j < datos.manos.length; j++) {
+            var jug = datos.manos.at(j);
+            var clasePar = jug.gana ? "etiq-jugador pareja-gana" : "etiq-jugador";
+            html += '<div class="fila-jugador">';
+            html += '<div class="' + clasePar + '">' + jug.nombre + '<small>' + jug.pareja + '</small></div>';
+            html += '<div class="mano-fichas">';
+            for (var f = 0; f < jug.fichas.length; f++) {
+                var fichaStr = jug.fichas.at(f);
+                var izq = fichaStr.charAt(0);
+                var der = fichaStr.charAt(2);
+                var usada = jugadasNorm[normalizarFicha(fichaStr)] ? " jugada" : "";
+                html += '<div class="ficha-mini' + usada + '">' + crearMitadHTML(izq) + crearMitadHTML(der) + '</div>';
             }
-            mesaDiv.innerHTML = htmlTotal;
+            html += '</div></div>';
+        }
+        document.getElementById("panel-manos").innerHTML = html;
+    }
+
+    function renderizarPantalla() {
+        var datos = anexos.at(anexoActual);
+        document.getElementById("titulo-ejemplo").textContent = datos.titulo;
+        document.getElementById("etiqueta-vuelta").textContent = datos.vueltas.at(pasoActual);
+        document.getElementById("descripcion-paso").innerHTML = datos.textos.at(pasoActual);
+
+        var jugadas = datos.jugadasMesa.at(pasoActual);
+        var mesa = document.getElementById("mesa-juego");
+
+        if (jugadas.length === 0) {
+            mesa.innerHTML = '<div class="mesa-vacia">Mesa vacía · Pulsa «Siguiente ➡» para iniciar la salida</div>';
+        } else {
+            var htmlMesa = "";
+            for (var i = 0; i < jugadas.length; i++) {
+                var fStr = jugadas.at(i);
+                var izq = fStr.charAt(0);
+                var der = fStr.charAt(2);
+                var esDoble = (izq === der) ? " doble" : " horizontal";
+                htmlMesa += '<div class="ficha' + esDoble + '">' + crearMitadHTML(izq) + crearMitadHTML(der) + '</div>';
+            }
+            mesa.innerHTML = htmlMesa;
         }
 
-        document.getElementById('btn-anterior').disabled = (pasoActual === 0);
-        document.getElementById('btn-siguiente').disabled = (pasoActual === vueltas.length - 1);
+        renderizarManos(jugadas);
 
-        var resumenDiv = document.getElementById('caja-resumen');
-        resumenDiv.style.display = (pasoActual === vueltas.length - 1) ? 'block' : 'none';
+        var maxPaso = datos.vueltas.length - 1;
+        document.getElementById("btn-anterior").disabled = (pasoActual === 0);
+        document.getElementById("btn-siguiente").disabled = (pasoActual === maxPaso);
+
+        var cajaResumen = document.getElementById("caja-resumen");
+        if (pasoActual === maxPaso) {
+            cajaResumen.innerHTML = datos.resumen;
+            cajaResumen.style.display = "block";
+        } else {
+            cajaResumen.style.display = "none";
+        }
     }
 
-    function cambiarPaso(direccion) {
-        pasoActual += direccion;
-        renderizar();
+    function cambiarPaso(delta) {
+        var maxPaso = anexos.at(anexoActual).vueltas.length - 1;
+        pasoActual += delta;
+        if (pasoActual < 0) pasoActual = 0;
+        if (pasoActual > maxPaso) pasoActual = maxPaso;
+        renderizarPantalla();
     }
 
-    renderizar();
+    function seleccionarAnexo(indice) {
+        anexoActual = indice;
+        pasoActual = 0;
+        document.getElementById("tab-0").className = (indice === 0) ? "btn-anexo activo" : "btn-anexo";
+        document.getElementById("tab-1").className = (indice === 1) ? "btn-anexo activo" : "btn-anexo";
+        renderizarPantalla();
+    }
+
+    function alternarManos() {
+        manosVisibles = !manosVisibles;
+        var panel = document.getElementById("panel-manos");
+        var btn = document.getElementById("btn-distribucion");
+        if (manosVisibles) {
+            panel.className = "panel-manos visible";
+            btn.className = "btn-dist abierto";
+            btn.textContent = "🙈 Ocultar distribución de fichas (J1 - J4)";
+        } else {
+            panel.className = "panel-manos";
+            btn.className = "btn-dist";
+            btn.textContent = "👁️ Ver distribución de fichas (J1 - J4)";
+        }
+    }
+
+    renderizarPantalla();
 </script>
 
 </body>
