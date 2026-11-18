@@ -366,3 +366,23 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
   text-decoration: none;
   color: var(--tinta);
 }
+/* botón y guía de instalación PWA en el pie */
+.caja-instalar {
+  margin-bottom: 14px;
+}
+.guia-instalar {
+  margin-top: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-left: 3px solid var(--oro);
+  border-radius: 6px;
+  color: var(--barra-texto);
+  font-size: 0.9rem;
+  line-height: 1.4;
+}
+.guia-instalar p {
+  margin: 0 0 6px;
+}
+.guia-instalar p:last-child {
+  margin-bottom: 0;
+}
