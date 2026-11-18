@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Juguemos Dominó - Lección Interactiva</title>
+    <style>
+        :root {
+            --mesa-verde: #1b5e20;
+            --mesa-borde: #0d3b12;
+            --ficha-blanca: #fdfdfd;
+            --punto-negro: #1a1a1a;
+            --dorado: #ffb300;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #121212;
+            color: #ffffff;
+            margin: 0;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .contenedor {
+            max-width: 600px;
+            width: 100%;
+            background: #1e1e1e;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+        }
+        h1 {
+            font-size: 1.3rem;
+            color: var(--dorado);
+            margin-top: 0;
+            text-align: center;
+        }
+        /* Mesa de dominó */
+        .mesa {
+            background: radial-gradient(circle, #2e7d32 0%, var(--mesa-verde) 100%);
+            border: 6px solid var(--mesa-borde);
+            border-radius: 16px;
+            min-height: 220px;
+            padding: 20px 10px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.6);
+        }
+        /* Diseño de las fichas en 2D */
+        .ficha {
+            background: var(--ficha-blanca);
+            border-radius: 6px;
+            box-shadow: 2px 4px 6px rgba(0,0,0,0.5);
+            display: flex;
+            border: 1px solid #ccc;
+            transition: transform 0.2s;
+        }
+        .ficha.horizontal {
+            width: 68px;
+            height: 34px;
+            flex-direction: row;
+        }
+        .ficha.doble {
+            width: 34px;
+            height: 68px;
+            flex-direction: column;
+        }
+        .mitad {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            padding: 3px;
+            position: relative;
+        }
+        .ficha.horizontal .mitad:first-child {
+            border-right: 1.5px solid #333;
+        }
+        .ficha.doble .mitad:first-child {
+            border-bottom: 1.5px solid #333;
+        }
+        .punto {
+            width: 6px;
+            height: 6px;
+            background-color: var(--punto-negro);
+            border-radius: 50%;
+            align-self: center;
+            justify-self: center;
+        }
+        /* Panel de narración y controles */
+        .panel-info {
+            background: #2a2a2a;
+            border-left: 4px solid var(--dorado);
+            padding: 12px 15px;
+            border-radius: 6px;
+            min-height: 65px;
+            margin-bottom: 15px;
+        }
+        .vuelta-tag {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            color: var(--dorado);
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        .texto-jugada {
+            font-size: 1.05rem;
+            margin: 5px 0 0 0;
+            line-height: 1.4;
+        }
+        .controles {
+            display: flex;
+            gap: 10px;
+            justify-content: space-between;
+        }
+        button {
+            flex: 1;
+            padding: 12px;
+            font-size: 1rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #388e3c;
+            color: white;
+            transition: background 0.2s;
+        }
+        button:hover:not(:disabled) {
+            background: #4caf50;
+        }
+        button:disabled {
+            background: #444;
+            color: #888;
+            cursor: not-allowed;
+        }
+        .resumen-final {
+            display: none;
+            background: #1b3b1e;
+            border: 1px solid #4caf50;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="contenedor">
+    <h1 id="titulo-ejemplo">Cargando...</h1>
+    
+    <div class="mesa" id="mesa-juego"></div>
+
+    <div class="panel-info">
+        <div class="vuelta-tag" id="etiqueta-vuelta">Inicio</div>
+        <p class="texto-jugada" id="descripcion-paso">Pulsa "Siguiente" para comenzar la mano.</p>
+    </div>
+
+    <div class="controles">
+        <button id="btn-anterior" onclick="cambiarPaso(-1)" disabled>⬅ Anterior</button>
+        <button id="btn-siguiente" onclick="cambiarPaso(1)">Siguiente ➡</button>
+    </div>
+
+    <div class="resumen-final" id="caja-resumen"></div>
+</div>
+
+<script>
+    // =========================================================================
+    // PLANTILLA DE DATOS: Solo tienes que editar esto para añadir más ejemplos
+    // =========================================================================
+    const ejemploActual = {
+        titulo: "Dominada capturando 129 tantos",
+        resumen: "<strong>Resultado final:</strong> Se juegan 11 fichas. Han salido 39 tantos. <br>🏆 <strong>La pareja 1-3 captura 129 tantos.</strong>",
+        pasos: [
+            { vuelta: "Inicio de la mano", texto: "El Jugador 1 tiene todas las blancas (7 fichas) y lleva la salida.", mesa: [] },
+            { vuelta: "Vuelta 1", texto: "<strong>J1:</strong> Sale con 0:0. <br><strong>J2, J3 y J4:</strong> Pasan (ninguno tiene blancas).", mesa: ["0-0"] },
+            { vuelta: "Vuelta 2", texto: "<strong>J1:</strong> Juega 0:3. <br><strong>J2:</strong> Juega 3:1 obligado. <br><strong>J3:</strong> Pasa. <br><strong>J4:</strong> Juega 1:5 obligado.", mesa: ["0-0", "0-3", "3-1", "1-5"] },
+            { vuelta: "Vuelta 3", texto: "<strong>J1:</strong> Golpea a blancas con 5:0. <br><strong>J2, J3 y J4:</strong> Pasan de nuevo.", mesa: ["0-0", "0-3", "3-1", "1-5", "5-0"] },
+            { vuelta: "Vuelta 4", texto: "<strong>J1:</strong> Juega 0:2. <br><strong>J2:</strong> Juega obligado 2:1. <br><strong>J3 y J4:</strong> Pasan.", mesa: ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1"] },
+            { vuelta: "Vuelta 5", texto: "<strong>J1:</strong> Vuelve a golpear a blancas con 1:0. <br><strong>J2, J3 y J4:</strong> Pasan.", mesa: ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1", "1-0"] },
+            { vuelta: "Vuelta 6", texto: "<strong>J1:</strong> Juega 0:4. <br><strong>J2:</strong> Juega obligado 4:1. <br><strong>J3 y J4:</strong> Pasan.", mesa: ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1", "1-0", "0-4", "4-1"] },
+            { vuelta: "Vuelta 7 - ¡Dominada!", texto: "<strong>J1:</strong> Juega 0:6 y domina la partida dejando a los rivales cargados.", mesa: ["0-0", "0-3", "3-1", "1-5", "5-0", "0-2", "2-1", "1-0", "0-4", "4-1", "0-6"] }
+        ]
+    };
+
+    // =========================================================================
+    // MOTOR GRÁFICO (No hace falta tocar nada de aquí hacia abajo)
+    // =========================================================================
+    let pasoActual = 0;
+
+    // Mapa de posiciones de los puntos en una cuadrícula de 3x3 (índices 0 a 8)
+    const mapaPuntos = {
+        0: [],
+        1:,
+        2:,
+        3:,
+        4:,
+        5:,
+        6: [0, 2, 3, 5, 6, 8]
+    };
+
+    function crearMitadHTML(numero) {
+        let html = '<div class="mitad">';
+        const activos = mapaPuntos[numero] || [];
+        for (let i = 0; i < 9; i++) {
+            html += activos.includes(i) ? '<div class="punto"></div>' : '<div></div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
+    function dibujarFicha(fichaStr) {
+        const [izq, der] = fichaStr.split('-').map(Number);
+        const esDoble = izq === der;
+        const claseTipo = esDoble ? 'ficha doble' : 'ficha horizontal';
+        return `<div class="${claseTipo}">${crearMitadHTML(izq)}${crearMitadHTML(der)}</div>`;
+    }
+
+    function renderizar() {
+        document.getElementById('titulo-ejemplo').innerText = ejemploActual.titulo;
+        const datos = ejemploActual.pasos[pasoActual];
+        
+        document.getElementById('etiqueta-vuelta').innerText = datos.vuelta;
+        document.getElementById('descripcion-paso').innerHTML = datos.texto;
+        
+        const mesaDiv = document.getElementById('mesa-juego');
+        mesaDiv.innerHTML = datos.mesa.map(f => dibujarFicha(f)).join('');
+
+        document.getElementById('btn-anterior').disabled = pasoActual === 0;
+        document.getElementById('btn-siguiente').disabled = pasoActual === ejemploActual.pasos.length - 1;
+
+        const resumenDiv = document.getElementById('caja-resumen');
+        if (pasoActual === ejemploActual.pasos.length - 1) {
+            resumenDiv.innerHTML = ejemploActual.resumen;
+            resumenDiv.style.display = 'block';
+        } else {
+            resumenDiv.style.display = 'none';
+        }
+    }
+
+    function cambiarPaso(direccion) {
+        pasoActual += direccion;
+        renderizar();
+    }
+
+    // Iniciar vista
+    renderizar();
+</script>
+
+</body>
+</html>
