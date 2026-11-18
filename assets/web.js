@@ -819,3 +819,6 @@
     document.querySelectorAll('a[data-conservar]').forEach((x) => { if (ES_PRUEBA) x.href = url(x.getAttribute('href')); });
   });
 })();
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('./sw.js');
+}
