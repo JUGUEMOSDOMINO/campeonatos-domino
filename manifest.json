@@ -1,16 +1,16 @@
 {
-  "name": "Juguemos Dominó - Campeonatos",
-  "short_name": "Juguemos Dominó",
-  "start_url": "/index.html",
+  "name": "Juguemos Dominó",
+  "short_name": "Dominó",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "background_color": "#0d633b",
   "theme_color": "#0d633b",
   "icons": [
     {
-      "src": "icon-512.png",
+      "src": "./icon-512.png",
       "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
+      "type": "image/png"
     }
   ]
 }
