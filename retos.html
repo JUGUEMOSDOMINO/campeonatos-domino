@@ -293,10 +293,10 @@
         <h1 id="titulo-ejemplo">Anexo I · Dominada capturando 129 tantos</h1>
 
         <div class="barra-herramientas">
-            <button type="button" class="btn-dist" id="btn-distribucion" onclick="alternarManos()">👁️ Ver distribución de fichas (J1 - J4)</button>
+            <button type="button" class="btn-dist abierto" id="btn-distribucion" onclick="alternarManos()">🙈 Ocultar distribución de fichas (J1 - J4)</button>
         </div>
 
-        <div class="panel-manos" id="panel-manos"></div>
+        <div class="panel-manos visible" id="panel-manos"></div>
 
         <div class="mesa" id="mesa-juego"></div>
 
@@ -329,8 +329,8 @@
             manos: [
                 { nombre: "J1 (Sale)", pareja: "Pareja 1-3", gana: true, fichas: ["0-0", "0-1", "0-2", "0-3", "0-4", "0-5", "0-6"] },
                 { nombre: "J2", pareja: "Pareja 2-4", gana: false, fichas: ["1-1", "1-2", "1-3", "1-4", "1-6", "5-6", "6-6"] },
-                { nombre: "J3", pareja: "Pareja 1-3", gana: true, fichas: ["2-3", "2-4", "2-5", "2-6", "3-3", "4-4", "5-5"] },
-                { nombre: "J4", pareja: "Pareja 2-4", gana: false, fichas: ["1-5", "2-2", "3-6", "4-6", "3-5", "4-5", "3-4"] }
+                { nombre: "J3", pareja: "Pareja 1-3", gana: true, fichas: ["2-3", "2-4", "2-5", "2-6", "3-5", "3-3", "4-4"] },
+                { nombre: "J4", pareja: "Pareja 2-4", gana: false, fichas: ["1-5", "2-2", "3-6", "4-6", "3-4", "4-5", "5-5"] }
             ],
             vueltas: [
                 "Inicio de la mano",
@@ -367,10 +367,10 @@
         {
             titulo: "Anexo II · Cierre capturando 126 tantos",
             manos: [
-                { nombre: "J1 (Sale)", pareja: "Pareja 1-3", gana: true, fichas: ["0-0", "0-2", "0-4", "0-6", "3-3", "4-5", "3-5"] },
-                { nombre: "J2", pareja: "Pareja 2-4", gana: false, fichas: ["2-3", "2-2", "1-5", "4-6", "5-5", "6-6", "2-6"] },
-                { nombre: "J3", pareja: "Pareja 1-3", gana: true, fichas: ["0-1", "2-4", "0-3", "3-6", "0-5", "2-5", "5-6"] },
-                { nombre: "J4", pareja: "Pareja 2-4", gana: false, fichas: ["1-1", "1-2", "1-3", "1-4", "1-6", "3-4", "4-4"] }
+                { nombre: "J1 (Sale)", pareja: "Pareja 1-3", gana: true, fichas: ["0-0", "0-2", "2-3", "2-4", "0-4", "0-6", "3-5"] },
+                { nombre: "J2", pareja: "Pareja 2-4", gana: false, fichas: ["3-1", "1-4", "1-5", "1-6", "5-4", "5-5", "2-6"] },
+                { nombre: "J3", pareja: "Pareja 1-3", gana: true, fichas: ["0-1", "1-1", "0-3", "3-6", "0-5", "2-5", "3-3"] },
+                { nombre: "J4", pareja: "Pareja 2-4", gana: false, fichas: ["1-2", "1-3", "3-4", "4-4", "2-2", "6-5", "6-6"] }
             ],
             vueltas: [
                 "Inicio de la mano",
@@ -396,6 +396,7 @@
             resumen: "<strong>Resultado final:</strong> Se juegan en total 10 fichas. Han salido 42 tantos.<br>🏆 <strong>La pareja 1-3 captura 126 tantos.</strong>"
         }
     ];
+
     function obtenerPatron(num) {
         if (num === "1") return "000010000";
         if (num === "2") return "100000001";
