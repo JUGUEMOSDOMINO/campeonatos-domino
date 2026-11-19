@@ -2,7 +2,8 @@
 document.addEventListener('DOMContentLoaded', () => {
     const TARGET_SCORE = 300;
     const TURN_TIME_LIMIT = 20;
-    const STORAGE_RANKING_KEY = 'domino_fed_ranking_v1';
+    const STORAGE_RANKING_KEY = 'domino_fed_ranking_v2';
+    const STORAGE_MUTE_KEY = 'domino_fed_muted_v1';
 
     const PIP_MAP = {
         0: new Array(),
@@ -14,11 +15,13 @@ document.addEventListener('DOMContentLoaded', () => {
         6: Array.of(0, 2, 3, 5, 6, 8)
     };
 
-    const PLAYER_NAMES = Array.of('Tú', 'Bot 2 (Rival Der)', 'Bot 3 (Compañero)', 'Bot 4 (Rival Izq)');
+    const BOT_POOL = Array.of('Jesús', 'Eduardo', 'Gaby');
+    let PLAYER_NAMES = Array.of('Tú', 'Jesús (Der)', 'Eduardo (Compañero)', 'Gaby (Izq)');
 
     let state = {
         userName: 'Tú',
         userClub: '',
+        botSeats: Array.of(null, 'Jesús', 'Eduardo', 'Gaby'),
         scores: { us: 0, them: 0 },
         hands: Array.of(new Array(), new Array(), new Array(), new Array()),
         board: new Array(),
@@ -32,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         pendingTileIndex: null,
         timerInterval: null,
         timeLeft: TURN_TIME_LIMIT,
-        botTimeout: null
+        botTimeout: null,
+        isMuted: localStorage.getItem(STORAGE_MUTE_KEY) === 'true'
     };
 
     const dom = {
@@ -45,18 +49,21 @@ document.addEventListener('DOMContentLoaded', () => {
         rankingBody: document.getElementById('ranking-body'),
         btnShowRanking: document.getElementById('btn-show-ranking'),
         btnCloseRanking: document.getElementById('btn-close-ranking'),
-     handSummaryModal: document.getElementById('hand-summary-modal'),
-     summaryTitle: document.getElementById('summary-title'),
-     summaryDetail: document.getElementById('summary-detail'),
-     summaryScores: document.getElementById('summary-scores'),
-     btnNextHand: document.getElementById('btn-next-hand'),
+        handSummaryModal: document.getElementById('hand-summary-modal'),
+        summaryTitle: document.getElementById('summary-title'),
+        summaryDetail: document.getElementById('summary-detail'),
+        summaryScores: document.getElementById('summary-scores'),
+        btnNextHand: document.getElementById('btn-next-hand'),
 
         lblUserName: document.getElementById('lbl-user-name'),
+        lblPartnerName: document.getElementById('lbl-partner-name'),
+        lblRivalsNames: document.getElementById('lbl-rivals-names'),
         badgeUserName: document.getElementById('badge-user-name'),
         scoreUs: document.getElementById('score-us'),
         scoreThem: document.getElementById('score-them'),
         timerBox: document.getElementById('timer-box'),
         timerVal: document.getElementById('timer-val'),
+        btnToggleSound: document.getElementById('btn-toggle-sound'),
         btnNewMatch: document.getElementById('btn-new-match'),
 
         gameLog: document.getElementById('game-log'),
@@ -68,6 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
         valRight: document.getElementById('val-right'),
         btnPass: document.getElementById('btn-pass'),
 
+        nameLabels: Array.of(
+            null,
+            document.getElementById('name-p1'),
+            document.getElementById('name-p2'),
+            document.getElementById('name-p3')
+        ),
         handContainers: Array.of(
             document.getElementById('hand-p0'),
             document.getElementById('hand-p1'),
@@ -87,6 +100,158 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('thought-p3')
         )
     };
+
+    // === SISTEMA DE AUDIO Y VOZ EN ESPAÑOL ===
+    let audioCtx = null;
+
+    function getAudioCtx() {
+        if (!audioCtx) {
+            const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+            if (AudioContextClass) {
+                audioCtx = new AudioContextClass();
+            }
+        }
+        if (audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume().catch(() => {});
+        }
+        return audioCtx;
+    }
+
+    function speakSpanish(text) {
+        if (state.isMuted || !('speechSynthesis' in window)) return;
+        try {
+            window.speechSynthesis.cancel();
+            const utter = new SpeechSynthesisUtterance(text);
+            utter.lang = 'es-ES';
+            utter.rate = 1.05;
+            utter.pitch = 1.0;
+            const voices = window.speechSynthesis.getVoices();
+            const esVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('es'));
+            if (esVoice) utter.voice = esVoice;
+            window.speechSynthesis.speak(utter);
+        } catch (e) {}
+    }
+
+    const sound = {
+        clack() {
+            if (state.isMuted) return;
+            const ctx = getAudioCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(520, now);
+            osc.frequency.exponentialRampToValueAtTime(110, now + 0.055);
+            gain.gain.setValueAtTime(0.45, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.065);
+        },
+        pass() {
+            if (state.isMuted) return;
+            const ctx = getAudioCtx();
+            if (ctx) {
+                const now = ctx.currentTime;
+                Array.of(0, 0.14).forEach((offset, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(idx === 0 ? 260 : 210, now + offset);
+                    gain.gain.setValueAtTime(0.28, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.11);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.12);
+                });
+            }
+            setTimeout(() => speakSpanish('Paso'), 180);
+        },
+        yourTurn() {
+            if (state.isMuted) return;
+            speakSpanish('Tu turno');
+        },
+        tick() {
+            if (state.isMuted) return;
+            const ctx = getAudioCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, now);
+            gain.gain.setValueAtTime(0.16, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.035);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.04);
+        },
+        win() {
+            if (state.isMuted) return;
+            const ctx = getAudioCtx();
+            if (!ctx) return;
+            const now = ctx.currentTime;
+            const notes = Array.of(523.25, 659.25, 783.99, 1046.5);
+            notes.forEach((freq, i) => {
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, now + i * 0.11);
+                gain.gain.setValueAtTime(0.25, now + i * 0.11);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.35);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start(now + i * 0.11);
+                osc.stop(now + i * 0.11 + 0.38);
+            });
+        }
+    };
+    function updateSoundButtonUI() {
+        if (!dom.btnToggleSound) return;
+        dom.btnToggleSound.textContent = state.isMuted ? '🔇' : '🔊';
+        dom.btnToggleSound.title = state.isMuted ? 'Sonido silenciado (clic para activar)' : 'Sonido activado (clic para silenciar)';
+    }
+
+    if (dom.btnToggleSound) {
+        updateSoundButtonUI();
+        dom.btnToggleSound.addEventListener('click', () => {
+            state.isMuted = !state.isMuted;
+            localStorage.setItem(STORAGE_MUTE_KEY, String(state.isMuted));
+            updateSoundButtonUI();
+            if (!state.isMuted) {
+                getAudioCtx();
+                sound.clack();
+            } else if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        });
+    }
+
+    // === ROTACIÓN ALEATORIA DE ASIENTOS DE BOTS ===
+    function assignRandomBots() {
+        const shuffled = shuffleDeck(BOT_POOL);
+        const p1 = shuffled.at(0);
+        const p2 = shuffled.at(1);
+        const p3 = shuffled.at(2);
+
+        state.botSeats = Array.of(null, p1, p2, p3);
+        PLAYER_NAMES = Array.of(
+            state.userName || 'Tú',
+            `${p1} (Der)`,
+            `${p2} (Compañero)`,
+            `${p3} (Izq)`
+        );
+
+        if (dom.lblPartnerName) dom.lblPartnerName.textContent = p2;
+        if (dom.lblRivalsNames) dom.lblRivalsNames.textContent = `${p1} & ${p3}`;
+        if (dom.nameLabels.at(1)) dom.nameLabels.at(1).textContent = `${p1} (Der)`;
+        if (dom.nameLabels.at(2)) dom.nameLabels.at(2).textContent = `${p2} (Compañero)`;
+        if (dom.nameLabels.at(3)) dom.nameLabels.at(3).textContent = `${p3} (Izq)`;
+    }
 
     function createDeck() {
         const deck = new Array();
@@ -109,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr;
     }
 // === FIN BLOQUE 1 DE 4 ===
+
 // === INICIO BLOQUE 2 DE 4 ===
     function isDouble(tile) {
         return tile.a === tile.b;
