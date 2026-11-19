@@ -360,3 +360,151 @@ th, td {
 }
 
 th { color: var(--accent-gold); }
+/* =========================================================
+   ADAPTACIÓN RESPONSIVE PARA MÓVILES (IPHONE / ANDROID)
+   ========================================================= */
+@media (max-width: 768px) {
+    body {
+        height: 100dvh;
+    }
+
+    .top-bar {
+        padding: 5px 8px;
+        gap: 6px;
+    }
+
+    .scoreboard {
+        gap: 6px;
+    }
+
+    .btn-back {
+        padding: 4px 7px;
+        font-size: 0.75rem;
+    }
+
+    .team {
+        padding: 2px 6px;
+    }
+
+    .team-name {
+        font-size: 0.65rem;
+    }
+
+    .score {
+        font-size: 0.95rem;
+    }
+
+    .target-score {
+        font-size: 0.72rem;
+    }
+
+    .controls {
+        gap: 5px;
+    }
+
+    .timer {
+        padding: 4px 8px;
+        font-size: 0.78rem;
+    }
+
+    button {
+        padding: 5px 8px;
+        font-size: 0.75rem;
+    }
+
+    .table-container {
+        padding: 4px;
+    }
+
+    .player-badge {
+        padding: 2px 8px;
+        font-size: 0.7rem;
+        gap: 4px;
+        margin-bottom: 2px;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Reducir fichas de los bots laterales para dar ancho al tablero */
+    .left-zone, .right-zone {
+        max-width: 58px;
+    }
+
+    .left-zone .player-badge, .right-zone .player-badge {
+        flex-direction: column;
+        text-align: center;
+        padding: 3px 4px;
+    }
+
+    .tile-back {
+        width: 14px;
+        height: 24px;
+    }
+
+    .bot-hand.vertical .tile-back {
+        width: 24px;
+        height: 12px;
+    }
+
+    /* Carro central: fichas compactas para ver toda la jugada */
+    .board-area {
+        padding: 26px 4px 6px 4px;
+    }
+
+    .game-log {
+        font-size: 0.72rem;
+        padding: 3px 8px;
+        max-width: 96%;
+        text-align: center;
+    }
+
+    .carro-container {
+        max-width: 100%;
+        padding: 6px 2px;
+        gap: 2px;
+    }
+
+    .domino-tile {
+        width: 22px;
+        height: 44px;
+        border-width: 1.5px;
+        border-radius: 3px;
+    }
+
+    .domino-tile.horizontal {
+        width: 44px;
+        height: 22px;
+    }
+
+    .domino-tile .half {
+        padding: 2px;
+    }
+
+    .pip {
+        width: 3.5px;
+        height: 3.5px;
+    }
+
+    /* Mano del usuario en el móvil: cómodas para tocar con el dedo */
+    .user-hand {
+        gap: 4px;
+        padding: 4px 2px;
+    }
+
+    .user-hand .domino-tile {
+        width: 36px;
+        height: 72px;
+    }
+
+    .user-hand .pip {
+        width: 5px;
+        height: 5px;
+    }
+
+    .side-selector {
+        bottom: 6px;
+        padding: 6px 10px;
+        font-size: 0.78rem;
+        gap: 6px;
+    }
+}
