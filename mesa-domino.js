@@ -323,8 +323,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (p === 0) {
             if (playableIndices.length === 0) {
                 dom.btnPass.classList.remove('hidden');
-                showThought(0, 'No llevas jugada (0,9s)...', 0);
-                setLog('Sin fichas que casen: pasando con prontitud (norma FED)...');
+                showThought(0, 'Paso', 0);
+                setLog('No llevas fichas que casen: pasando...');
                 state.botTimeout = setTimeout(() => {
                     if (state.gameActive && state.currentTurn === 0) {
                         passTurn(0, false);
@@ -337,8 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (validSides.length === 1) {
                     dom.btnPass.classList.add('hidden');
-                    showThought(0, 'Única jugada (0,9s)...', 0);
-                    setLog(`Norma FED (prontitud): única jugada posible (${onlyTile.a}|${onlyTile.b})...`);
+                    showThought(0, '', 0);
+                    setLog(`Única jugada posible (${onlyTile.a}|${onlyTile.b})...`);
                     state.botTimeout = setTimeout(() => {
                         if (state.gameActive && state.currentTurn === 0) {
                             playTile(0, onlyIdx, validSides.at(0));
@@ -346,13 +346,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     }, 900);
                 } else {
                     dom.btnPass.classList.add('hidden');
-                    showThought(0, 'Dos extremos disponibles', 0);
-                    setLog('Tu única ficha válida entra por ambos lados: elige extremo.');
+                    showThought(0, 'Elige extremo', 0);
+                    setLog('Tu ficha entra por ambos lados: elige extremo.');
                 }
             } else {
                 dom.btnPass.classList.add('hidden');
-                showThought(0, 'Tu turno (gestiona tu pensada)', 0);
-                setLog('Tu turno: elige ficha y comunica tu pensada al compañero.');
+                showThought(0, 'Tu turno', 0);
+                setLog('Tu turno: selecciona una ficha iluminada.');
             }
         } else {
             dom.btnPass.classList.add('hidden');
@@ -362,7 +362,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startTurnTimer() {
         clearInterval(state.timerInterval);
-        state.timeLeft = TURN_TIME_LIMIT + 5;
+        state.timeLeft = TURN_TIME_LIMIT; // Arranca en 20s
+        let inExtraTime = false;
         dom.timerVal.textContent = state.timeLeft;
         dom.timerBox.classList.remove('warning');
 
@@ -372,15 +373,27 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             state.timeLeft--;
-            dom.timerVal.textContent = Math.max(0, state.timeLeft);
 
-            if (state.timeLeft <= 5) {
+            if (!inExtraTime && state.timeLeft <= 0) {
+                // Al llegar a 0, otorga los 5 segundos adicionales en rojo
+                inExtraTime = true;
+                state.timeLeft = 5;
                 dom.timerBox.classList.add('warning');
+                dom.timerVal.textContent = '+' + state.timeLeft;
+                return;
             }
 
-            if (state.timeLeft <= 0) {
-                clearInterval(state.timerInterval);
-                handleTimeoutAutoPlay();
+            if (inExtraTime) {
+                dom.timerVal.textContent = '+' + Math.max(0, state.timeLeft);
+                if (state.timeLeft <= 0) {
+                    clearInterval(state.timerInterval);
+                    handleTimeoutAutoPlay();
+                }
+            } else {
+                dom.timerVal.textContent = Math.max(0, state.timeLeft);
+                if (state.timeLeft <= 5) {
+                    dom.timerBox.classList.add('warning');
+                }
             }
         }, 1000);
     }
@@ -448,7 +461,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 1. Sin fichas que casen: obligado por norma FED a pasar con prontitud (0,9s)
         if (validMoves.length === 0) {
-            showThought(botIdx, 'Sin jugada (0,9s)...', 0);
+            showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 passTurn(botIdx, false);
             }, 900);
@@ -497,7 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // 2. Una sola jugada posible (1 ficha y 1 solo lado): obligado por norma FED a jugar a 0,9s
         if (validMoves.length === 1) {
-            showThought(botIdx, 'Única jugada (0,9s)...', 0);
+            showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 playTile(botIdx, bestMove.idx, bestMove.side);
             }, 900);
@@ -517,21 +530,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const remainingInOpenedSuit = suitCounts.at(openedSuit) - 1;
         const isStrongSuit = remainingInOpenedSuit >= 2 || (isDouble(bestMove.tile) && remainingInOpenedSuit >= 1);
 
-        let thinkDelay = 3200;
-        let thoughtLabel = 'Pensada normal (juego fuerte)...';
+        const thinkDelay = isStrongSuit ? 4500 : 8500;
 
-        if (!isStrongSuit) {
-            thinkDelay = 6500;
-            thoughtLabel = 'Pensada muy larga (palo débil/falso)...';
-        }
-
-        showThought(botIdx, thoughtLabel, 0);
+        showThought(botIdx, 'Pensando...', 0);
         state.botTimeout = setTimeout(() => {
             playTile(botIdx, bestMove.idx, bestMove.side);
         }, thinkDelay);
     }
 // === FIN BLOQUE 3B ===
-
 // === INICIO BLOQUE 4 DE 4 ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
