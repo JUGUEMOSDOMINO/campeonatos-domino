@@ -313,32 +313,56 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHands();
 
         const p = state.currentTurn;
-        const playableTiles = state.hands.at(p).filter(canPlayTile);
+        const playableIndices = new Array();
+        state.hands.at(p).forEach((t, idx) => {
+            if (canPlayTile(t)) playableIndices.push(idx);
+        });
 
         startTurnTimer();
 
         if (p === 0) {
-            if (playableTiles.length === 0) {
+            if (playableIndices.length === 0) {
                 dom.btnPass.classList.remove('hidden');
-                showThought(0, 'No llevas jugada...', 0);
-                setLog('No tienes fichas válidas. Pulsa PASO.');
+                showThought(0, 'No llevas jugada (0,9s)...', 0);
+                setLog('Sin fichas que casen: pasando con prontitud (norma FED)...');
+                state.botTimeout = setTimeout(() => {
+                    if (state.gameActive && state.currentTurn === 0) {
+                        passTurn(0, false);
+                    }
+                }, 900);
+            } else if (playableIndices.length === 1) {
+                const onlyIdx = playableIndices.at(0);
+                const onlyTile = state.hands.at(0).at(onlyIdx);
+                const validSides = getValidSides(onlyTile);
+
+                if (validSides.length === 1) {
+                    dom.btnPass.classList.add('hidden');
+                    showThought(0, 'Única jugada (0,9s)...', 0);
+                    setLog(`Norma FED (prontitud): única jugada posible (${onlyTile.a}|${onlyTile.b})...`);
+                    state.botTimeout = setTimeout(() => {
+                        if (state.gameActive && state.currentTurn === 0) {
+                            playTile(0, onlyIdx, validSides.at(0));
+                        }
+                    }, 900);
+                } else {
+                    dom.btnPass.classList.add('hidden');
+                    showThought(0, 'Dos extremos disponibles', 0);
+                    setLog('Tu única ficha válida entra por ambos lados: elige extremo.');
+                }
             } else {
                 dom.btnPass.classList.add('hidden');
-                showThought(0, 'Tu turno', 0);
-                setLog('Tu turno: selecciona una ficha iluminada.');
+                showThought(0, 'Tu turno (gestiona tu pensada)', 0);
+                setLog('Tu turno: elige ficha y comunica tu pensada al compañero.');
             }
         } else {
             dom.btnPass.classList.add('hidden');
-            showThought(p, 'Pensando...', 0);
-            state.botTimeout = setTimeout(() => {
-                executeBotTurn(p);
-            }, 950);
+            planAndExecuteBotTurn(p);
         }
     }
 
     function startTurnTimer() {
         clearInterval(state.timerInterval);
-        state.timeLeft = TURN_TIME_LIMIT;
+        state.timeLeft = TURN_TIME_LIMIT + 5;
         dom.timerVal.textContent = state.timeLeft;
         dom.timerBox.classList.remove('warning');
 
@@ -366,7 +390,8 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(state.botTimeout);
         dom.timerBox.classList.remove('warning');
     }
-
+// === FIN BLOQUE 3A ===
+// === INICIO BLOQUE 3B ===
     function handleTimeoutAutoPlay() {
         if (!state.gameActive) return;
         const p = state.currentTurn;
@@ -406,7 +431,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.pendingTileIndex = null;
     }
 
-    function executeBotTurn(botIdx) {
+    function planAndExecuteBotTurn(botIdx) {
         if (!state.gameActive || state.currentTurn !== botIdx) return;
 
         const hand = state.hands.at(botIdx);
@@ -421,11 +446,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // 1. Sin fichas que casen: obligado por norma FED a pasar con prontitud (0,9s)
         if (validMoves.length === 0) {
-            passTurn(botIdx, false);
+            showThought(botIdx, 'Sin jugada (0,9s)...', 0);
+            state.botTimeout = setTimeout(() => {
+                passTurn(botIdx, false);
+            }, 900);
             return;
         }
 
+        // Contar frecuencia de palos en la mano del bot
         const suitCounts = new Array(7).fill(0);
         hand.forEach(t => {
             suitCounts.splice(t.a, 1, suitCounts.at(t.a) + 1);
@@ -434,6 +464,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Elegir la mejor jugada táctica
         let bestMove = validMoves.at(0);
         let bestScore = -999;
 
@@ -464,9 +495,43 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        playTile(botIdx, bestMove.idx, bestMove.side);
+        // 2. Una sola jugada posible (1 ficha y 1 solo lado): obligado por norma FED a jugar a 0,9s
+        if (validMoves.length === 1) {
+            showThought(botIdx, 'Única jugada (0,9s)...', 0);
+            state.botTimeout = setTimeout(() => {
+                playTile(botIdx, bestMove.idx, bestMove.side);
+            }, 900);
+            return;
+        }
+
+        // 3. Sistema Combinado de la Pensada (tiene 2 o más opciones)
+        let openedSuit = null;
+        if (bestMove.side === 'center') {
+            openedSuit = bestMove.tile.a;
+        } else if (bestMove.side === 'left') {
+            openedSuit = bestMove.tile.a === state.leftEnd ? bestMove.tile.b : bestMove.tile.a;
+        } else {
+            openedSuit = bestMove.tile.a === state.rightEnd ? bestMove.tile.b : bestMove.tile.a;
+        }
+
+        const remainingInOpenedSuit = suitCounts.at(openedSuit) - 1;
+        const isStrongSuit = remainingInOpenedSuit >= 2 || (isDouble(bestMove.tile) && remainingInOpenedSuit >= 1);
+
+        let thinkDelay = 3200;
+        let thoughtLabel = 'Pensada normal (juego fuerte)...';
+
+        if (!isStrongSuit) {
+            thinkDelay = 6500;
+            thoughtLabel = 'Pensada muy larga (palo débil/falso)...';
+        }
+
+        showThought(botIdx, thoughtLabel, 0);
+        state.botTimeout = setTimeout(() => {
+            playTile(botIdx, bestMove.idx, bestMove.side);
+        }, thinkDelay);
     }
-// === FIN BLOQUE 3 DE 4 ===
+// === FIN BLOQUE 3B ===
+
 // === INICIO BLOQUE 4 DE 4 ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
