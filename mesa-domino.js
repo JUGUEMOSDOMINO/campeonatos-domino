@@ -422,6 +422,9 @@ document.addEventListener('DOMContentLoaded', () => {
         clearAllThoughts();
         hideSideSelector();
         dom.btnPass.classList.add('hidden');
+        if (dom.handSummaryModal) {
+            dom.handSummaryModal.classList.add('hidden');
+        }
 
         const deck = shuffleDeck(createDeck());
         state.hands = Array.of(
@@ -696,7 +699,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, thinkDelay);
     }
 // === FIN BLOQUE 3B ===
-// === INICIO BLOQUE 4 DE 4 ===
+// === INICIO BLOQUE 4A ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
         hideSideSelector();
@@ -707,7 +710,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dbl = isDouble(tile);
 
         if (state.board.length === 0 || side === 'center') {
-            state.board.push({ left: tile.a, right: tile.b, isDouble: dbl, isCenter: true});
+            state.board.push({ left: tile.a, right: tile.b, isDouble: dbl, isCenter: true });
             state.leftEnd = tile.a;
             state.rightEnd = tile.b;
         } else if (side === 'left') {
@@ -765,6 +768,11 @@ document.addEventListener('DOMContentLoaded', () => {
         beginTurn();
     }
 
+    function formatHandList(hand) {
+        if (hand.length === 0) return 'Sin fichas (0 pts)';
+        return hand.map(t => `${t.a}|${t.b}`).join(', ') + ` (${handPoints(hand)} pts)`;
+    }
+
     function handleHandWinByDomino(winnerIdx) {
         state.gameActive = false;
         const usWon = winnerIdx === 0 || winnerIdx === 2;
@@ -772,18 +780,33 @@ document.addEventListener('DOMContentLoaded', () => {
         const pointsUsRemaining = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
         const pointsThemRemaining = handPoints(state.hands.at(1)) + handPoints(state.hands.at(3));
 
+        let title = '';
+        let summaryText = '';
+
         if (usWon) {
             const gained = pointsThemRemaining;
             state.scores.us += gained;
+            title = `🎉 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
+            summaryText = `Nosotros ganamos la mano y sumamos +${gained} tantos.\n` +
+                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
+                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
+                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Nosotros sumamos +${gained} puntos.`);
         } else {
             const gained = pointsUsRemaining;
             state.scores.them += gained;
+            title = `😔 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
+            summaryText = `Los rivales ganan la mano y suman +${gained} tantos.\n` +
+                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
+                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
+                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Rivales suman +${gained} puntos.`);
         }
 
         updateScoreboard();
-        checkMatchEnd();
+        showHandSummaryModal(title, summaryText);
     }
 
     function handleHandClosed() {
@@ -791,39 +814,64 @@ document.addEventListener('DOMContentLoaded', () => {
         const ptsUs = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
         const ptsThem = handPoints(state.hands.at(1)) + handPoints(state.hands.at(3));
 
+        let title = '🔒 ¡MANO CERRADA (TRANCA)!';
+        let summaryText = '';
+
         if (ptsUs < ptsThem) {
             state.scores.us += ptsThem;
+            summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${ptsThem} tantos.\n` +
+                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
+                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
+                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
             setLog(`¡CIERRE! Nosotros (${ptsUs} pts) ganamos a Rivales (${ptsThem} pts). +${ptsThem} puntos.`);
         } else if (ptsThem < ptsUs) {
             state.scores.them += ptsUs;
+            summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${ptsUs} tantos.\n` +
+                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
+                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
+                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
             setLog(`¡CIERRE! Rivales (${ptsThem} pts) ganan a Nosotros (${ptsUs} pts). +${ptsUs} puntos.`);
         } else {
+            summaryText = `¡Cierre empatado a ${ptsUs} puntos! Nadie suma tantos y corre el turno de salida.\n` +
+                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
+                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
+                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
             setLog(`¡CIERRE EMPATADO a ${ptsUs} puntos! Nadie suma y corre mano.`);
         }
 
         updateScoreboard();
-        checkMatchEnd();
+        showHandSummaryModal(title, summaryText);
     }
 
-    function checkMatchEnd() {
-        if (state.scores.us >= TARGET_SCORE || state.scores.them >= TARGET_SCORE) {
+    function showHandSummaryModal(title, detailText) {
+        const matchFinished = state.scores.us >= TARGET_SCORE || state.scores.them >= TARGET_SCORE;
+
+        if (matchFinished) {
             const weWonMatch = state.scores.us >= TARGET_SCORE && state.scores.us > state.scores.them;
             saveMatchResultToRanking(weWonMatch, state.scores.us);
-
-            setTimeout(() => {
-                const msg = weWonMatch
-                    ? `🏆 ¡VICTORIA! Habéis alcanzado ${state.scores.us} tantos.`
-                    : `Fin de la partida. Rivales alcanzan ${state.scores.them} tantos.`;
-                setLog(msg);
-                alert(msg);
-            }, 600);
+            dom.summaryTitle.textContent = weWonMatch
+                ? '🏆 ¡VICTORIA EN LA PARTIDA!'
+                : 'Fin de la Partida';
+            dom.btnNextHand.textContent = '🔄 Jugar Nueva Partida';
         } else {
-            setTimeout(() => {
-                startNewHand();
-            }, 5500);
+            dom.summaryTitle.textContent = title;
+            dom.btnNextHand.textContent = '▶ Jugar Siguiente Mano';
         }
-    }
 
+        dom.summaryDetail.style.whiteSpace = 'pre-line';
+        dom.summaryDetail.style.textAlign = 'left';
+        dom.summaryDetail.textContent = detailText;
+        dom.summaryScores.textContent = `Marcador: Nosotros ${state.scores.us} — Rivales ${state.scores.them} (Meta: ${TARGET_SCORE})`;
+
+        setTimeout(() => {
+            dom.handSummaryModal.classList.remove('hidden');
+        }, 1200);
+    }
+// === FIN BLOQUE 4A ===
+// === INICIO BLOQUE 4B ===
     function getRanking() {
         try {
             const raw = localStorage.getItem(STORAGE_RANKING_KEY);
@@ -930,6 +978,15 @@ document.addEventListener('DOMContentLoaded', () => {
         startNewMatch();
     });
 
+    dom.btnNextHand.addEventListener('click', () => {
+        dom.handSummaryModal.classList.add('hidden');
+        if (state.scores.us >= TARGET_SCORE || state.scores.them >= TARGET_SCORE) {
+            startNewMatch();
+        } else {
+            startNewHand();
+        }
+    });
+
     dom.btnShowRanking.addEventListener('click', () => {
         renderRankingTable();
         dom.rankingModal.classList.remove('hidden');
@@ -939,4 +996,4 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.rankingModal.classList.add('hidden');
     });
 });
-// === FIN BLOQUE 4 DE 4 ===
+// === FIN BLOQUE 4B ===
