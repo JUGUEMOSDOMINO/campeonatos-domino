@@ -274,16 +274,16 @@ button {
 .bot-hand.vertical { flex-direction: column; }
 
 .tile-back {
-    width: 22px;
-    height: 40px;
+    width: 26px;
+    height: 48px;
     background: #111;
-    border: 1px solid #555;
-    border-radius: 3px;
+    border: 1.5px solid #666;
+    border-radius: 4px;
 }
 
 .bot-hand.vertical .tile-back {
-    width: 40px;
-    height: 22px;
+    width: 48px;
+    height: 26px;
 }
 
 .user-hand {
@@ -419,8 +419,9 @@ th { color: var(--accent-gold); }
         padding: 2px;
         font-size: 0.58rem;
     }
-    .tile-back { width: 16px; height: 28px; border-width: 1.5px; }
-    .bot-hand.vertical .tile-back { width: 28px; height: 15px; }
+        .tile-back { width: 20px; height: 35px; border-width: 1.5px; }
+    .bot-hand.vertical .tile-back { width: 35px; height: 19px; }
+
     .board-area { padding: 4px 2px; overflow-y: auto; overflow-x: hidden; }
        .game-log {
         margin: 14px auto 6px auto;
