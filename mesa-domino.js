@@ -136,19 +136,23 @@ document.addEventListener('DOMContentLoaded', () => {
             tile.b === state.rightEnd
         );
     }
-
     function getValidSides(tile) {
         if (state.board.length === 0) return Array.of('center');
+
+        // Regla FED: Si ambos extremos del carro son iguales, se juega obligatoriamente por la derecha
+        if (state.leftEnd === state.rightEnd) {
+            if (tile.a === state.rightEnd || tile.b === state.rightEnd) {
+                return Array.of('right');
+            }
+            return new Array();
+        }
+
         const sides = new Array();
         if (tile.a === state.leftEnd || tile.b === state.leftEnd) {
             sides.push('left');
         }
-        if ((tile.a === state.rightEnd || tile.b === state.rightEnd) && state.leftEnd !== state.rightEnd) {
+        if (tile.a === state.rightEnd || tile.b === state.rightEnd) {
             sides.push('right');
-        } else if (state.leftEnd === state.rightEnd && (tile.a === state.rightEnd || tile.b === state.rightEnd)) {
-            if (state.board.length > 1) {
-                sides.push('right');
-            }
         }
         return sides;
     }
@@ -765,9 +769,8 @@ document.addEventListener('DOMContentLoaded', () => {
         state.consecutivePasses++;
         const reason = byTimeout ? '¡Tiempo agotado! Paso' : '¡Paso!';
         showThought(playerIdx, reason, 2000);
-        setLog(`${getPlayerLabel(playerIdx)} pasa (${state.consecutivePasses}/4).`);
-
-        if (state.consecutivePasses >= 4) {
+               setLog(`${getPlayerLabel(playerIdx)} pasa.`);
+                if (state.consecutivePasses >= 4) {
             handleHandClosed();
             return;
         }
