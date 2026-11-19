@@ -368,6 +368,50 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 // === FIN BLOQUE 2 DE 4 ===
+       function updateScoreboard() {
+        dom.scoreUs.textContent = state.scores.us;
+        dom.scoreThem.textContent = state.scores.them;
+    }
+
+    function setLog(msg, reset = false) {
+        if (!dom.gameLog) return;
+        if (reset) dom.gameLog.innerHTML = '';
+        const line = document.createElement('div');
+        line.textContent = msg;
+        dom.gameLog.appendChild(line);
+        dom.gameLog.scrollTop = dom.gameLog.scrollHeight;
+    }
+
+    function showThought(playerIdx, text, durationMs = 0) {
+        const bubble = dom.thoughtBubbles.at(playerIdx);
+        if (!bubble) return;
+        bubble.textContent = text;
+        if (durationMs > 0) {
+            setTimeout(() => {
+                if (bubble.textContent === text) bubble.textContent = '';
+            }, durationMs);
+        }
+    }
+
+    function clearAllThoughts() {
+        dom.thoughtBubbles.forEach(b => {
+            if (b) b.textContent = '';
+        });
+    }
+
+    function highlightActivePlayer(playerIdx) {
+        for (let i = 0; i < 4; i++) {
+            const badge = document.getElementById(`badge-p${i}`);
+            if (badge) {
+                if (i === playerIdx) {
+                    badge.classList.add('active-turn');
+                } else {
+                    badge.classList.remove('active-turn');
+                }
+            }
+        }
+    }
+ 
 // === INICIO BLOQUE 3A ===
     function drawStartingPlayerFED() {
         const drawDeck = shuffleDeck(createDeck());
