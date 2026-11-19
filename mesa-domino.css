@@ -167,20 +167,21 @@ button {
 
 .game-log {
     position: relative;
-    margin: 14px auto 10px auto;
-    background: rgba(0, 0, 0, 0.82);
-    border: 1px solid rgba(251, 192, 45, 0.65);
-    padding: 8px 14px;
+    margin: 14px auto 12px auto;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1.5px solid rgba(251, 192, 45, 0.75);
+    padding: 10px 16px;
     border-radius: 10px;
-    font-size: 0.9rem;
+    font-size: 0.95rem;
     color: #e0e0e0;
     text-align: left;
-    width: 90%;
-    max-width: 520px;
-    max-height: 76px;
+    width: 94%;
+    max-width: 680px;
+    height: 120px;
+    min-height: 120px;
     overflow-y: auto;
-    line-height: 1.35;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.45);
+    line-height: 1.4;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.5);
     z-index: 10;
 }
 
@@ -190,14 +191,25 @@ button {
 }
 
 .carro-container {
+    position: relative;
+    flex: 1;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 3px;
-    max-width: 90%;
-    padding: 20px;
-    margin: auto 0;
+}
+
+.carro-stage {
+    position: relative;
+    transform-origin: center center;
+    transition: transform 0.25s ease;
+}
+
+.carro-stage .domino-tile {
+    position: absolute;
+    margin: 0;
 }
 
 .domino-tile {
