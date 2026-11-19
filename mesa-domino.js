@@ -1,3 +1,4 @@
+// === INICIO BLOQUE 1 DE 4 ===
 document.addEventListener('DOMContentLoaded', () => {
     const TARGET_SCORE = 300;
     const TURN_TIME_LIMIT = 20;
@@ -102,7 +103,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         return arr;
     }
-
+// === FIN BLOQUE 1 DE 4 ===
+// === INICIO BLOQUE 2 DE 4 ===
     function isDouble(tile) {
         return tile.a === tile.b;
     }
@@ -245,6 +247,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) el.textContent = '';
         });
     }
+// === FIN BLOQUE 2 DE 4 ===
+// === INICIO BLOQUE 3 DE 4 ===
     function startNewMatch() {
         clearTimers();
         state.scores = { us: 0, them: 0 };
@@ -462,6 +466,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         playTile(botIdx, bestMove.idx, bestMove.side);
     }
+// === FIN BLOQUE 3 DE 4 ===
+// === INICIO BLOQUE 4 DE 4 ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
         hideSideSelector();
@@ -704,3 +710,4 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.rankingModal.classList.add('hidden');
     });
 });
+// === FIN BLOQUE 4 DE 4 ===
