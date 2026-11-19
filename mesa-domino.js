@@ -124,9 +124,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function canPlayTile(tile) {
         if (state.board.length === 0) {
-            if (state.isFirstHand) {
-                return tile.a === 6 && tile.b === 6;
-            }
             return true;
         }
         return (
@@ -136,6 +133,7 @@ document.addEventListener('DOMContentLoaded', () => {
             tile.b === state.rightEnd
         );
     }
+
     function getValidSides(tile) {
         if (state.board.length === 0) return Array.of('center');
 
@@ -360,7 +358,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const botContainer = dom.handContainers.at(p);
             botContainer.innerHTML = '';
             const count = state.hands.at(p).length;
-            dom.countLabels.at(p).textContent = `${count} ${count === 1 ? 'ficha' : 'fichas'}`;
+            dom.countLabels.at(p).textContent = count;
+
             for (let i = 0; i < count; i++) {
                 const back = document.createElement('div');
                 back.className = 'tile-back';
@@ -368,56 +367,42 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-    function updateScoreboard() {
-        dom.scoreUs.textContent = state.scores.us;
-        dom.scoreThem.textContent = state.scores.them;
-    }
-
-    function setLog(message, reset = false) {
-        if (reset) {
-            dom.gameLog.innerHTML = '';
-        }
-        const entry = document.createElement('div');
-        entry.textContent = '• ' + message;
-        dom.gameLog.appendChild(entry);
-        dom.gameLog.scrollTop = dom.gameLog.scrollHeight;
-    }
-
-    function showThought(playerIdx, text, duration = 2200) {
-        const el = dom.thoughtBubbles.at(playerIdx);
-        if (!el) return;
-        el.textContent = text;
-        if (duration > 0) {
-            setTimeout(() => {
-                if (el.textContent === text) {
-                    el.textContent = '';
-                }
-            }, duration);
-        }
-    }
-
-    function clearAllThoughts() {
-        dom.thoughtBubbles.forEach(el => {
-            if (el) el.textContent = '';
-        });
-    }
-     function highlightActivePlayer(playerIdx) {
-     dom.thoughtBubbles.forEach((el, idx) => {
-         if (!el) return;
-         const badge = el.closest('.player-badge');
-         if (!badge) return;
-         if (idx === playerIdx && state.gameActive) {
-             badge.classList.add('active-turn');
-         } else {
-             badge.classList.remove('active-turn');
-         }
-     });
- }
-
 // === FIN BLOQUE 2 DE 4 ===
-
 // === INICIO BLOQUE 3A ===
+    function drawStartingPlayerFED() {
+        const drawDeck = shuffleDeck(createDeck());
+        const drawn = Array.of(
+            drawDeck.at(0),
+            drawDeck.at(1),
+            drawDeck.at(2),
+            drawDeck.at(3)
+        );
+
+        let winner = 0;
+        for (let p = 1; p < 4; p++) {
+            const best = drawn.at(winner);
+            const curr = drawn.at(p);
+            const bestSum = best.a + best.b;
+            const currSum = curr.a + curr.b;
+            const bestMax = Math.max(best.a, best.b);
+            const currMax = Math.max(curr.a, curr.b);
+
+            if (currSum > bestSum || (currSum === bestSum && currMax > bestMax)) {
+                winner = p;
+            }
+        }
+
+        const winTile = drawn.at(winner);
+        const detail = drawn
+            .map((t, idx) => `${getPlayerLabel(idx)} (${t.a}|${t.b})`)
+            .join(', ');
+
+        return {
+            winner,
+            logMsg: `Sorteo FED: ${detail} → Sale ${getPlayerLabel(winner)} con ${winTile.a}|${winTile.b} (salida libre).`
+        };
+    }
+
     function startNewMatch() {
         clearTimers();
         state.scores = { us: 0, them: 0 };
@@ -454,20 +439,14 @@ document.addEventListener('DOMContentLoaded', () => {
         state.gameActive = true;
 
         if (state.isFirstHand) {
-            let starter = 0;
-            for (let p = 0; p < 4; p++) {
-                if (state.hands.at(p).some(t => t.a === 6 && t.b === 6)) {
-                    starter = p;
-                    break;
-                }
-            }
-            state.startingPlayer = starter;
-            state.currentTurn = starter;
-            setLog(`Salida obligatoria con 6|6: empieza ${getPlayerLabel(starter)}.`, true);
+            const drawResult = drawStartingPlayerFED();
+            state.startingPlayer = drawResult.winner;
+            state.currentTurn = drawResult.winner;
+            setLog(drawResult.logMsg, true);
         } else {
             state.startingPlayer = (state.startingPlayer + 1) % 4;
             state.currentTurn = state.startingPlayer;
-            setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)}.`, true);
+            setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)} (salida libre).`, true);
         }
 
         renderBoard();
@@ -576,6 +555,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.timerBox.classList.remove('warning');
     }
 // === FIN BLOQUE 3A ===
+
 // === INICIO BLOQUE 3B ===
     function handleTimeoutAutoPlay() {
         if (!state.gameActive) return;
