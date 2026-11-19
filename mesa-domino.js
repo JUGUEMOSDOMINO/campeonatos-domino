@@ -1006,8 +1006,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.rankingModal.classList.remove('hidden');
     });
 
-    dom.btnCloseRanking.addEventListener('click', () => {
+       dom.btnCloseRanking.addEventListener('click', () => {
         dom.rankingModal.classList.add('hidden');
+    });
+
+    window.addEventListener('resize', () => {
+        if (state.board.length > 0) renderBoard();
     });
 });
 // === FIN BLOQUE 4B ===
+
