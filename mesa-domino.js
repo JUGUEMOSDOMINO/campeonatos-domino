@@ -576,7 +576,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.timerBox.classList.remove('warning');
     }
 // === FIN BLOQUE 3A ===
-
 // === INICIO BLOQUE 3B ===
     function handleTimeoutAutoPlay() {
         if (!state.gameActive) return;
@@ -632,12 +631,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 1. Sin fichas que casen: obligado por norma FED a pasar con prontitud (0,9s)
+        // 1. Sin fichas que casen: obligado por norma FED a pasar con prontitud (1,7s)
         if (validMoves.length === 0) {
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 passTurn(botIdx, false);
-            }, 900);
+            }, 1700);
             return;
         }
 
@@ -681,12 +680,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 2. Una sola jugada posible (1 ficha y 1 solo lado): obligado por norma FED a jugar a 0,9s
+        // 2. Una sola jugada posible (1 ficha y 1 solo lado): obligado por norma FED a jugar a 1,7s
         if (validMoves.length === 1) {
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 playTile(botIdx, bestMove.idx, bestMove.side);
-            }, 900);
+            }, 1700);
             return;
         }
 
@@ -711,6 +710,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }, thinkDelay);
     }
 // === FIN BLOQUE 3B ===
+
+
 // === INICIO BLOQUE 4A ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
