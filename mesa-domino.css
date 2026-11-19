@@ -137,6 +137,18 @@ button {
     gap: 8px;
     margin-bottom: 5px;
 }
+.player-badge.active-turn {
+    border: 2px solid var(--accent-gold);
+    background: rgba(251, 192, 45, 0.22);
+    box-shadow: 0 0 14px rgba(251, 192, 45, 0.85);
+    transform: scale(1.05);
+    transition: all 0.25s ease;
+}
+
+.player-badge.active-turn .p-name {
+    color: var(--accent-gold);
+    font-weight: bold;
+}
 
 .thought-bubble {
     color: var(--accent-gold);
