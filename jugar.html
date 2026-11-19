@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0d633b">
+    <link rel="apple-touch-icon" href="./icon-512.png?v=5">
+    <title>JUGUEMOS DOMINÓ · Mesa contra Bots (FED)</title>
+    <!-- Usamos un CSS exclusivo para no interferir con assets/estilo.css -->
+    <link rel="stylesheet" href="mesa-domino.css?v=1">
+</head>
+<body>
+
+    <!-- Modal de Bienvenida / Registro de Alias -->
+    <div id="login-modal" class="modal">
+        <div class="modal-content">
+            <h2>🁣 Juguemos Dominó</h2>
+            <p>Dominó por Parejas (Normativa FED · 300 Tantos)</p>
+            <input type="text" id="player-alias" placeholder="Tu Apodo o Nombre" maxlength="18" required>
+            <input type="text" id="player-club" placeholder="Ciudad / Peña (Opcional)" maxlength="20">
+            <button id="btn-start-game">Entrar a la Mesa</button>
+            <a href="./" class="link-volver">⬅ Volver a Campeonatos</a>
+        </div>
+    </div>
+
+    <!-- Modal Top 10 Jugadores -->
+    <div id="ranking-modal" class="modal hidden">
+        <div class="modal-content ranking-box">
+            <h2>🏆 Top 10 Jugadores</h2>
+            <table id="ranking-table">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Jugador</th>
+                        <th>Ganadas</th>
+                        <th>Puntos</th>
+                    </tr>
+                </thead>
+                <tbody id="ranking-body"></tbody>
+            </table>
+            <button id="btn-close-ranking">Cerrar</button>
+        </div>
+    </div>
+
+    <!-- Barra Superior de Información -->
+    <header class="top-bar">
+        <div class="scoreboard">
+            <a href="./" class="btn-back" title="Volver a resultados">⬅ Inicio</a>
+            <div class="team us">
+                <span class="team-name">NOSOTROS (<span id="lbl-user-name">Tú</span> & Bot 3)</span>
+                <span class="score" id="score-us">0</span>
+            </div>
+            <div class="target-score">Meta: 300</div>
+            <div class="team them">
+                <span class="team-name">RIVALES (Bot 2 & Bot 4)</span>
+                <span class="score" id="score-them">0</span>
+            </div>
+        </div>
+        <div class="controls">
+            <div id="timer-box" class="timer">Tiempo: <span id="timer-val">20</span>s</div>
+            <button id="btn-show-ranking" class="btn-secondary">🏆 Top 10</button>
+            <button id="btn-new-match" class="btn-secondary">Reiniciar</button>
+        </div>
+    </header>
+
+    <!-- Mesa de Dominó -->
+    <main class="table-container">
+        <!-- Compañero (Jugador 3 - Arriba) -->
+        <div class="player-zone top-zone">
+            <div class="player-badge">
+                <span class="p-name">Bot 3 (Compañero)</span>
+                <span class="p-cards" id="count-p2">7 fichas</span>
+                <span class="thought-bubble" id="thought-p2"></span>
+            </div>
+            <div class="bot-hand horizontal" id="hand-p2"></div>
+        </div>
+
+        <!-- Zona Central: Rival Izquierda (J4), Tablero (Carro), Rival Derecha (J2) -->
+        <div class="middle-row">
+            <div class="player-zone left-zone">
+                <div class="player-badge">
+                    <span class="p-name">Bot 4 (Izq)</span>
+                    <span class="p-cards" id="count-p3">7 fichas</span>
+                    <span class="thought-bubble" id="thought-p3"></span>
+                </div>
+                <div class="bot-hand vertical" id="hand-p3"></div>
+            </div>
+
+            <div class="board-area" id="board-area">
+                <div id="game-log" class="game-log">¡Comienza la partida!</div>
+                <div id="carro-container" class="carro-container"></div>
+                <div id="side-selector" class="side-selector hidden">
+                    <span>¿Por qué extremo jugar?</span>
+                    <button id="btn-play-left">Izquierda (<span id="val-left"></span>)</button>
+                    <button id="btn-play-right">Derecha (<span id="val-right"></span>)</button>
+                </div>
+            </div>
+
+            <div class="player-zone right-zone">
+                <div class="player-badge">
+                    <span class="p-name">Bot 2 (Der)</span>
+                    <span class="p-cards" id="count-p1">7 fichas</span>
+                    <span class="thought-bubble" id="thought-p1"></span>
+                </div>
+                <div class="bot-hand vertical" id="hand-p1"></div>
+            </div>
+        </div>
+
+        <!-- Jugador Humano (Jugador 1 - Abajo) -->
+        <div class="player-zone bottom-zone">
+            <div class="player-badge user-badge">
+                <span class="p-name" id="badge-user-name">Tú (Jugador)</span>
+                <span class="thought-bubble" id="thought-p0"></span>
+                <button id="btn-pass" class="btn-pass hidden">PASO</button>
+            </div>
+            <div class="user-hand" id="hand-p0"></div>
+        </div>
+    </main>
+
+    <script src="mesa-domino.js?v=1"></script>
+</body>
+</html>
