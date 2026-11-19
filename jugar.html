@@ -6,8 +6,109 @@
     <meta name="theme-color" content="#0d633b">
     <link rel="apple-touch-icon" href="./icon-512.png?v=5">
     <title>JUGUEMOS DOMINÓ · Plataforma de Juego</title>
-    <!-- Usamos un CSS exclusivo para no interferir con assets/estilo.css -->
     <link rel="stylesheet" href="mesa-domino.css?v=2">
+    <style>
+        @media (max-width: 900px) {
+            body {
+                height: 100dvh !important;
+                overflow: hidden !important;
+            }
+            .top-bar {
+                padding: 4px 6px !important;
+                gap: 4px !important;
+            }
+            .scoreboard { gap: 5px !important; }
+            .btn-back { padding: 3px 6px !important; font-size: 0.7rem !important; }
+            .team { padding: 2px 5px !important; }
+            .team-name { font-size: 0.6rem !important; }
+            .score { font-size: 0.9rem !important; }
+            .target-score { font-size: 0.68rem !important; }
+            .timer { padding: 3px 6px !important; font-size: 0.72rem !important; }
+            button { padding: 4px 7px !important; font-size: 0.7rem !important; }
+            .table-container {
+                padding: 3px !important;
+                justify-content: space-between !important;
+            }
+            .player-badge {
+                padding: 2px 6px !important;
+                font-size: 0.65rem !important;
+                gap: 3px !important;
+                margin-bottom: 2px !important;
+            }
+            .left-zone, .right-zone {
+                width: 44px !important;
+                min-width: 44px !important;
+                max-width: 44px !important;
+            }
+            .left-zone .player-badge, .right-zone .player-badge {
+                flex-direction: column !important;
+                text-align: center !important;
+                padding: 2px !important;
+                font-size: 0.58rem !important;
+            }
+            .tile-back { width: 11px !important; height: 20px !important; }
+            .bot-hand.vertical .tile-back { width: 20px !important; height: 10px !important; }
+            .board-area {
+                padding: 24px 2px 4px 2px !important;
+                overflow-y: auto !important;
+                overflow-x: hidden !important;
+            }
+            .game-log {
+                font-size: 0.68rem !important;
+                padding: 2px 6px !important;
+                max-width: 98% !important;
+                text-align: center !important;
+            }
+            .carro-container {
+                width: 100% !important;
+                max-width: 100% !important;
+                padding: 4px 2px !important;
+                gap: 2px !important;
+                align-content: center !important;
+            }
+            .carro-container .domino-tile {
+                width: 5.2vw !important;
+                height: 10.4vw !important;
+                max-width: 24px !important;
+                max-height: 48px !important;
+                border-width: 1px !important;
+                border-radius: 3px !important;
+            }
+            .carro-container .domino-tile.horizontal {
+                width: 10.4vw !important;
+                height: 5.2vw !important;
+                max-width: 48px !important;
+                max-height: 24px !important;
+            }
+            .carro-container .domino-tile .half { padding: 1.5px !important; }
+            .carro-container .pip {
+                width: 3px !important;
+                height: 3px !important;
+            }
+            .user-hand {
+                gap: 1.2vw !important;
+                padding: 3px 2px !important;
+                flex-wrap: nowrap !important;
+            }
+            .user-hand .domino-tile {
+                width: 11.5vw !important;
+                height: 23vw !important;
+                max-width: 42px !important;
+                max-height: 84px !important;
+                border-width: 1.5px !important;
+            }
+            .user-hand .pip {
+                width: 4.5px !important;
+                height: 4.5px !important;
+            }
+            .side-selector {
+                bottom: 4px !important;
+                padding: 5px 8px !important;
+                font-size: 0.72rem !important;
+                gap: 5px !important;
+            }
+        }
+    </style>
 </head>
 <body>
 
