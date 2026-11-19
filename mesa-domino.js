@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
         6: Array.of(0, 2, 3, 5, 6, 8)
     };
 
-    const PLAYER_NAMES = Array.of('Tú', 'Bot 2', 'Bot 3', 'Bot 4');
+    const PLAYER_NAMES = Array.of('Tú', 'Bot 2 (Rival Der)', 'Bot 3 (Compañero)', 'Bot 4 (Rival Izq)');
 
     let state = {
         userName: 'Tú',
