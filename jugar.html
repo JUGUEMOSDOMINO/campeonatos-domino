@@ -6,61 +6,7 @@
     <meta name="theme-color" content="#0d633b">
     <link rel="apple-touch-icon" href="./icon-512.png?v=5">
     <title>JUGUEMOS DOMINÓ · Plataforma de Juego</title>
-    <link rel="stylesheet" href="mesa-domino.css?v=2">
-    <style>
-        .game-log {
-            position: relative !important;
-            top: auto !important;
-            margin: 6px auto 10px auto !important;
-            background: rgba(0, 0, 0, 0.78) !important;
-            border: 1px solid rgba(251, 192, 45, 0.6) !important;
-            padding: 6px 16px !important;
-            border-radius: 10px !important;
-            font-size: 0.95rem !important;
-            font-weight: 600 !important;
-            color: #fff !important;
-            text-align: center !important;
-            max-width: 92% !important;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.4) !important;
-        }
-        .board-area { justify-content: flex-start !important; }
-        .carro-container { margin: auto 0 !important; }
-
-        @media (max-width: 900px) {
-            body { height: 100dvh !important; overflow: hidden !important; }
-            .top-bar { padding: 4px 6px !important; gap: 4px !important; }
-            .scoreboard { gap: 5px !important; }
-            .btn-back { padding: 3px 6px !important; font-size: 0.7rem !important; }
-            .team { padding: 2px 5px !important; }
-            .team-name { font-size: 0.6rem !important; }
-            .score { font-size: 0.9rem !important; }
-            .target-score { font-size: 0.68rem !important; }
-            .timer { padding: 3px 6px !important; font-size: 0.72rem !important; }
-            button { padding: 4px 7px !important; font-size: 0.7rem !important; }
-            .table-container { padding: 4px 3px !important; justify-content: space-between !important; }
-            .top-zone { margin-bottom: 6px !important; }
-            .player-badge { padding: 2px 7px !important; font-size: 0.68rem !important; gap: 4px !important; margin-bottom: 2px !important; }
-            .left-zone, .right-zone { width: 44px !important; min-width: 44px !important; max-width: 44px !important; }
-            .left-zone .player-badge, .right-zone .player-badge { flex-direction: column !important; text-align: center !important; padding: 2px !important; font-size: 0.58rem !important; }
-            .tile-back { width: 11px !important; height: 20px !important; }
-            .bot-hand.vertical .tile-back { width: 20px !important; height: 10px !important; }
-            .board-area { padding: 4px 2px !important; overflow-y: auto !important; overflow-x: hidden !important; }
-            .game-log { margin: 8px auto !important; padding: 6px 12px !important; font-size: 0.82rem !important; line-height: 1.25 !important; width: 96% !important; max-width: 96% !important; }
-            .carro-container { width: 100% !important; max-width: 100% !important; padding: 4px 2px !important; gap: 2px !important; align-content: center !important; }
-            .carro-container .domino-tile { width: 5.2vw !important; height: 10.4vw !important; max-width: 24px !important; max-height: 48px !important; border-width: 1px !important; border-radius: 3px !important; }
-            .carro-container .domino-tile.horizontal { width: 10.4vw !important; height: 5.2vw !important; max-width: 48px !important; max-height: 24px !important; }
-            .carro-container .domino-tile .half { padding: 1.5px !important; }
-            .carro-container .pip { width: 3px !important; height: 3px !important; }
-            .user-hand { gap: 1.4vw !important; padding: 3px 2px !important; flex-wrap: nowrap !important; }
-            .user-hand .domino-tile { width: 9.5vw !important; height: 19vw !important; max-width: 36px !important; max-height: 72px !important; border-width: 1.5px !important; }
-            .user-hand .pip { width: 4px !important; height: 4px !important; }
-            .side-selector { bottom: 4px !important; padding: 6px 10px !important; font-size: 0.75rem !important; gap: 6px !important; }
-                    .modal-content button {
-                padding: 12px 18px !important;
-                font-size: 1.05rem !important;
-            }
-}
-    </style>
+    <link rel="stylesheet" href="mesa-domino.css?v=3">
 </head>
 <body>
 
@@ -140,7 +86,7 @@
             </div>
 
             <div class="board-area" id="board-area">
-                <div id="game-log" class="game-log">¡Comienza la partida!</div>
+                <div id="game-log" class="game-log"><div>¡Comienza la partida!</div></div>
                 <div id="carro-container" class="carro-container"></div>
                 <div id="side-selector" class="side-selector hidden">
                     <span>¿Por qué extremo jugar?</span>
@@ -170,6 +116,6 @@
         </div>
     </main>
 
-    <script src="mesa-domino.js?v=6"></script>
+    <script src="mesa-domino.js?v=7"></script>
 </body>
 </html>
