@@ -479,10 +479,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.gameActive) return;
         hideSideSelector();
         renderHands();
-     const p = state.currentTurn;
-     highlightActivePlayer(p);
 
         const p = state.currentTurn;
+        highlightActivePlayer(p);
         const playableIndices = new Array();
         state.hands.at(p).forEach((t, idx) => {
             if (canPlayTile(t)) playableIndices.push(idx);
@@ -573,6 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.timerBox.classList.remove('warning');
     }
 // === FIN BLOQUE 3A ===
+
 // === INICIO BLOQUE 3B ===
     function handleTimeoutAutoPlay() {
         if (!state.gameActive) return;
@@ -783,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleHandWinByDomino(winnerIdx) {
         state.gameActive = false;
-             highlightActivePlayer(-1);
+        highlightActivePlayer(-1);
         const usWon = winnerIdx === 0 || winnerIdx === 2;
 
         const pointsUsRemaining = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
@@ -820,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleHandClosed() {
         state.gameActive = false;
+        highlightActivePlayer(-1);
         const ptsUs = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
         const ptsThem = handPoints(state.hands.at(1)) + handPoints(state.hands.at(3));
 
@@ -880,6 +881,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1200);
     }
 // === FIN BLOQUE 4A ===
+
 // === INICIO BLOQUE 4B ===
     function getRanking() {
         try {
