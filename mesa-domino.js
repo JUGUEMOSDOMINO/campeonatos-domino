@@ -769,8 +769,9 @@ document.addEventListener('DOMContentLoaded', () => {
         state.consecutivePasses++;
         const reason = byTimeout ? '¡Tiempo agotado! Paso' : '¡Paso!';
         showThought(playerIdx, reason, 2000);
-               setLog(`${getPlayerLabel(playerIdx)} pasa.`);
-                if (state.consecutivePasses >= 4) {
+        setLog(`${getPlayerLabel(playerIdx)} pasa.`);
+
+        if (state.consecutivePasses >= 4) {
             handleHandClosed();
             return;
         }
@@ -791,30 +792,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const pointsUsRemaining = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
         const pointsThemRemaining = handPoints(state.hands.at(1)) + handPoints(state.hands.at(3));
+        const totalGained = pointsUsRemaining + pointsThemRemaining;
 
         let title = '';
         let summaryText = '';
 
         if (usWon) {
-            const gained = pointsThemRemaining;
-            state.scores.us += gained;
+            state.scores.us += totalGained;
             title = `🎉 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
-            summaryText = `Nosotros ganamos la mano y sumamos +${gained} tantos.\n` +
+            summaryText = `Nosotros ganamos la mano y sumamos +${totalGained} tantos (todas las fichas sobrantes).\n` +
                 `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
                 `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
                 `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
                 `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
-            setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Nosotros sumamos +${gained} puntos.`);
+            setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Nosotros sumamos +${totalGained} puntos.`);
         } else {
-            const gained = pointsUsRemaining;
-            state.scores.them += gained;
+            state.scores.them += totalGained;
             title = `😔 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
-            summaryText = `Los rivales ganan la mano y suman +${gained} tantos.\n` +
+            summaryText = `Los rivales ganan la mano y suman +${totalGained} tantos (todas las fichas sobrantes).\n` +
                 `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
                 `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
                 `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
                 `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
-            setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Rivales suman +${gained} puntos.`);
+            setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Rivales suman +${totalGained} puntos.`);
         }
 
         updateScoreboard();
@@ -826,26 +826,27 @@ document.addEventListener('DOMContentLoaded', () => {
         highlightActivePlayer(-1);
         const ptsUs = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
         const ptsThem = handPoints(state.hands.at(1)) + handPoints(state.hands.at(3));
+        const totalPoints = ptsUs + ptsThem;
 
         let title = '🔒 ¡MANO CERRADA (TRANCA)!';
         let summaryText = '';
 
         if (ptsUs < ptsThem) {
-            state.scores.us += ptsThem;
-            summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${ptsThem} tantos.\n` +
+            state.scores.us += totalPoints;
+            summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${totalPoints} tantos.\n` +
                 `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
                 `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
                 `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
                 `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
-            setLog(`¡CIERRE! Nosotros (${ptsUs} pts) ganamos a Rivales (${ptsThem} pts). +${ptsThem} puntos.`);
+            setLog(`¡CIERRE! Nosotros (${ptsUs} pts) ganamos a Rivales (${ptsThem} pts). +${totalPoints} puntos.`);
         } else if (ptsThem < ptsUs) {
-            state.scores.them += ptsUs;
-            summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${ptsUs} tantos.\n` +
+            state.scores.them += totalPoints;
+            summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${totalPoints} tantos.\n` +
                 `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
                 `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
                 `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
                 `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
-            setLog(`¡CIERRE! Rivales (${ptsThem} pts) ganan a Nosotros (${ptsUs} pts). +${ptsUs} puntos.`);
+            setLog(`¡CIERRE! Rivales (${ptsThem} pts) ganan a Nosotros (${ptsUs} pts). +${totalPoints} puntos.`);
         } else {
             summaryText = `¡Cierre empatado a ${ptsUs} puntos! Nadie suma tantos y corre el turno de salida.\n` +
                 `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
