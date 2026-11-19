@@ -183,17 +183,16 @@ document.addEventListener('DOMContentLoaded', () => {
         return tileEl;
     }
 
-        function renderBoard() {
+    function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
-        // Buscar la ficha de salida (la primera colocada en el carro)
         let centerIdx = state.board.findIndex(t => t.isCenter);
         if (centerIdx === -1) centerIdx = 0;
 
         const isMobile = window.innerWidth <= 900;
-        const S = isMobile ? 22 : 34; // Ancho corto de ficha
-        const L = S * 2;              // Largo de ficha
+        const S = isMobile ? 22 : 34;
+        const L = S * 2;
         const GAP = 2;
 
         const stage = document.createElement('div');
@@ -201,20 +200,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const placed = new Array();
 
-        function addPlacedTile(item, cx, cy, dir) {
-            // dir: 'R' (derecha), 'L' (izquierda), 'U' (arriba), 'D' (abajo)
-            const isHoriz = item.isDouble ? (dir === 'U' || dir === 'D') : (dir === 'R' || dir === 'L');
+        function addPlacedTile(inVal, outVal, isDbl, cx, cy, dir) {
+            const isHoriz = isDbl ? (dir === 'U' || dir === 'D') : (dir === 'R' || dir === 'L');
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
 
-            let v1 = item.left;
-            let v2 = item.right;
-            // Orientar los puntos según dirección de avance
-            if (!item.isDouble) {
-                if (dir === 'L' || dir === 'U') {
-                    v1 = item.right;
-                    v2 = item.left;
-                }
+            let v1 = inVal;
+            let v2 = outVal;
+
+            if (!isDbl && (dir === 'L' || dir === 'U')) {
+                v1 = outVal;
+                v2 = inVal;
             }
 
             const el = createTileElement(v1, v2, isHoriz);
@@ -227,11 +223,9 @@ document.addEventListener('DOMContentLoaded', () => {
             return { w, h };
         }
 
-        // 1. Colocar ficha de salida en (0, 0)
         const centerItem = state.board.at(centerIdx);
-        const cDims = addPlacedTile(centerItem, 0, 0, 'R');
+        const cDims = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
 
-        // 2. Rama Derecha (avanza -> R, quiebra antihorario -> U, luego paralelo -> L)
         let rX = cDims.w / 2;
         let rY = 0;
         let rDir = 'R';
@@ -241,7 +235,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = state.board.at(i);
             if (!item.isDouble) rNonDoubles++;
 
-            // Quiebre reglamentario FED tras 3 fichas (sin contar dobles)
             if (rDir === 'R' && rNonDoubles === 4) {
                 rDir = 'U';
                 rX -= S / 2;
@@ -269,10 +262,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 rX = cx - w / 2;
             }
 
-            addPlacedTile(item, cx, cy, rDir);
+            addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
         }
 
-        // 3. Rama Izquierda (avanza -> L, quiebra antihorario -> D, luego paralelo -> R)
         let lX = -cDims.w / 2;
         let lY = 0;
         let lDir = 'L';
@@ -309,10 +301,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 lX = cx + w / 2;
             }
 
-            addPlacedTile(item, cx, cy, lDir);
+            addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
         }
 
-        // 4. Calcular caja envolvente y centrar + escalar automáticamente al espacio disponible
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         placed.forEach(p => {
             minX = Math.min(minX, p.cx - p.w / 2);
@@ -340,6 +331,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
     }
+
     function renderHands() {
         const userContainer = dom.handContainers.at(0);
         userContainer.innerHTML = '';
@@ -407,6 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 // === FIN BLOQUE 2 DE 4 ===
+
 // === INICIO BLOQUE 3A ===
     function startNewMatch() {
         clearTimers();
