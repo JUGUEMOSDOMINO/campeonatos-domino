@@ -413,14 +413,15 @@ th { color: var(--accent-gold); }
     .tile-back { width: 16px; height: 28px; border-width: 1.5px; }
     .bot-hand.vertical .tile-back { width: 28px; height: 15px; }
     .board-area { padding: 4px 2px; overflow-y: auto; overflow-x: hidden; }
-    .game-log {
-        margin: 16px auto 8px auto;
-        padding: 6px 10px;
-        font-size: 0.76rem;
-        line-height: 1.3;
-        width: 96%;
-        max-width: 96%;
-        max-height: 62px;
+       .game-log {
+        margin: 14px auto 6px auto;
+        padding: 7px 11px;
+        font-size: 0.8rem;
+        line-height: 1.32;
+        width: 98%;
+        max-width: 98%;
+        height: 88px;
+        min-height: 88px;
     }
     .carro-container {
         width: 100%;
