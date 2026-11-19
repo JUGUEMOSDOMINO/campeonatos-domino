@@ -702,7 +702,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const dbl = isDouble(tile);
 
         if (state.board.length === 0 || side === 'center') {
-            state.board.push({ left: tile.a, right: tile.b, isDouble: dbl });
+            state.board.push({ left: tile.a, right: tile.b, isDouble: dbl, isCenter: true});
             state.leftEnd = tile.a;
             state.rightEnd = tile.b;
         } else if (side === 'left') {
