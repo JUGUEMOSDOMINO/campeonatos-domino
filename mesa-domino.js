@@ -225,8 +225,14 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.scoreThem.textContent = state.scores.them;
     }
 
-    function setLog(message) {
-        dom.gameLog.textContent = message;
+    function setLog(message, reset = false) {
+        if (reset) {
+            dom.gameLog.innerHTML = '';
+        }
+        const entry = document.createElement('div');
+        entry.textContent = '• ' + message;
+        dom.gameLog.appendChild(entry);
+        dom.gameLog.scrollTop = dom.gameLog.scrollHeight;
     }
 
     function showThought(playerIdx, text, duration = 2200) {
@@ -248,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 // === FIN BLOQUE 2 DE 4 ===
-// === INICIO BLOQUE 3 DE 4 ===
+// === INICIO BLOQUE 3A ===
     function startNewMatch() {
         clearTimers();
         state.scores = { us: 0, them: 0 };
@@ -291,11 +297,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             state.startingPlayer = starter;
             state.currentTurn = starter;
-            setLog(`Salida obligatoria con 6|6: empieza ${getPlayerLabel(starter)}.`);
+            setLog(`Salida obligatoria con 6|6: empieza ${getPlayerLabel(starter)}.`, true);
         } else {
             state.startingPlayer = (state.startingPlayer + 1) % 4;
             state.currentTurn = state.startingPlayer;
-            setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)}.`);
+            setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)}.`, true);
         }
 
         renderBoard();
@@ -362,7 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startTurnTimer() {
         clearInterval(state.timerInterval);
-        state.timeLeft = TURN_TIME_LIMIT; // Arranca en 20s
+        state.timeLeft = TURN_TIME_LIMIT;
         let inExtraTime = false;
         dom.timerVal.textContent = state.timeLeft;
         dom.timerBox.classList.remove('warning');
@@ -375,7 +381,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.timeLeft--;
 
             if (!inExtraTime && state.timeLeft <= 0) {
-                // Al llegar a 0, otorga los 5 segundos adicionales en rojo
                 inExtraTime = true;
                 state.timeLeft = 5;
                 dom.timerBox.classList.add('warning');
@@ -530,7 +535,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const remainingInOpenedSuit = suitCounts.at(openedSuit) - 1;
         const isStrongSuit = remainingInOpenedSuit >= 2 || (isDouble(bestMove.tile) && remainingInOpenedSuit >= 1);
 
-        const thinkDelay = isStrongSuit ? 4500 : 8500;
+        const thinkDelay = isStrongSuit ? 5500 : 9500;
 
         showThought(botIdx, 'Pensando...', 0);
         state.botTimeout = setTimeout(() => {
@@ -662,7 +667,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             setTimeout(() => {
                 startNewHand();
-            }, 3200);
+            }, 5500);
         }
     }
 
