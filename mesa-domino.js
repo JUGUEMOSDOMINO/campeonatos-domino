@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (state.gameActive && state.currentTurn === 0) {
                         passTurn(0, false);
                     }
-                }, 900);
+                }, 1700);
             } else if (playableIndices.length === 1) {
                 const onlyIdx = playableIndices.at(0);
                 const onlyTile = state.hands.at(0).at(onlyIdx);
@@ -516,7 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (state.gameActive && state.currentTurn === 0) {
                             playTile(0, onlyIdx, validSides.at(0));
                         }
-                    }, 900);
+                    }, 1700);
                 } else {
                     dom.btnPass.classList.add('hidden');
                     showThought(0, 'Elige extremo', 0);
