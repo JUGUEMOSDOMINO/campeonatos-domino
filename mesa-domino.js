@@ -178,15 +178,163 @@ document.addEventListener('DOMContentLoaded', () => {
         return tileEl;
     }
 
-    function renderBoard() {
+        function renderBoard() {
         dom.carroContainer.innerHTML = '';
-        state.board.forEach(item => {
-            const isHorizontal = !item.isDouble;
-            const tileEl = createTileElement(item.left, item.right, isHorizontal);
-            dom.carroContainer.appendChild(tileEl);
-        });
-    }
+        if (state.board.length === 0) return;
 
+        // Buscar la ficha de salida (la primera colocada en el carro)
+        let centerIdx = state.board.findIndex(t => t.isCenter);
+        if (centerIdx === -1) centerIdx = 0;
+
+        const isMobile = window.innerWidth <= 900;
+        const S = isMobile ? 22 : 34; // Ancho corto de ficha
+        const L = S * 2;              // Largo de ficha
+        const GAP = 2;
+
+        const stage = document.createElement('div');
+        stage.className = 'carro-stage';
+
+        const placed = new Array();
+
+        function addPlacedTile(item, cx, cy, dir) {
+            // dir: 'R' (derecha), 'L' (izquierda), 'U' (arriba), 'D' (abajo)
+            const isHoriz = item.isDouble ? (dir === 'U' || dir === 'D') : (dir === 'R' || dir === 'L');
+            const w = isHoriz ? L : S;
+            const h = isHoriz ? S : L;
+
+            let v1 = item.left;
+            let v2 = item.right;
+            // Orientar los puntos según dirección de avance
+            if (!item.isDouble) {
+                if (dir === 'L' || dir === 'U') {
+                    v1 = item.right;
+                    v2 = item.left;
+                }
+            }
+
+            const el = createTileElement(v1, v2, isHoriz);
+            el.style.width = w + 'px';
+            el.style.height = h + 'px';
+            el.style.left = (cx - w / 2) + 'px';
+            el.style.top = (cy - h / 2) + 'px';
+            stage.appendChild(el);
+            placed.push({ cx, cy, w, h });
+            return { w, h };
+        }
+
+        // 1. Colocar ficha de salida en (0, 0)
+        const centerItem = state.board.at(centerIdx);
+        const cDims = addPlacedTile(centerItem, 0, 0, 'R');
+
+        // 2. Rama Derecha (avanza -> R, quiebra antihorario -> U, luego paralelo -> L)
+        let rX = cDims.w / 2;
+        let rY = 0;
+        let rDir = 'R';
+        let rNonDoubles = 0;
+
+        for (let i = centerIdx + 1; i < state.board.length; i++) {
+            const item = state.board.at(i);
+            if (!item.isDouble) rNonDoubles++;
+
+            // Quiebre reglamentario FED tras 3 fichas (sin contar dobles)
+            if (rDir === 'R' && rNonDoubles === 4) {
+                rDir = 'U';
+                rX -= S / 2;
+                rY -= S / 2;
+            } else if (rDir === 'U' && rNonDoubles === 6) {
+                rDir = 'L';
+                rX += S / 2;
+                rY -= S / 2;
+            }
+
+            const isHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
+            const w = isHoriz ? L : S;
+            const h = isHoriz ? S : L;
+
+            let cx = rX;
+            let cy = rY;
+            if (rDir === 'R') {
+                cx = rX + GAP + w / 2;
+                rX = cx + w / 2;
+            } else if (rDir === 'U') {
+                cy = rY - GAP - h / 2;
+                rY = cy - h / 2;
+            } else if (rDir === 'L') {
+                cx = rX - GAP - w / 2;
+                rX = cx - w / 2;
+            }
+
+            addPlacedTile(item, cx, cy, rDir);
+        }
+
+        // 3. Rama Izquierda (avanza -> L, quiebra antihorario -> D, luego paralelo -> R)
+        let lX = -cDims.w / 2;
+        let lY = 0;
+        let lDir = 'L';
+        let lNonDoubles = 0;
+
+        for (let i = centerIdx - 1; i >= 0; i--) {
+            const item = state.board.at(i);
+            if (!item.isDouble) lNonDoubles++;
+
+            if (lDir === 'L' && lNonDoubles === 4) {
+                lDir = 'D';
+                lX += S / 2;
+                lY += S / 2;
+            } else if (lDir === 'D' && lNonDoubles === 6) {
+                lDir = 'R';
+                lX -= S / 2;
+                lY += S / 2;
+            }
+
+            const isHoriz = item.isDouble ? (lDir === 'U' || lDir === 'D') : (lDir === 'R' || lDir === 'L');
+            const w = isHoriz ? L : S;
+            const h = isHoriz ? S : L;
+
+            let cx = lX;
+            let cy = lY;
+            if (lDir === 'L') {
+                cx = lX - GAP - w / 2;
+                lX = cx - w / 2;
+            } else if (lDir === 'D') {
+                cy = lY + GAP + h / 2;
+                lY = cy + h / 2;
+            } else if (lDir === 'R') {
+                cx = lX + GAP + w / 2;
+                lX = cx + w / 2;
+            }
+
+            addPlacedTile(item, cx, cy, lDir);
+        }
+
+        // 4. Calcular caja envolvente y centrar + escalar automáticamente al espacio disponible
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        placed.forEach(p => {
+            minX = Math.min(minX, p.cx - p.w / 2);
+            maxX = Math.max(maxX, p.cx + p.w / 2);
+            minY = Math.min(minY, p.cy - p.h / 2);
+            maxY = Math.max(maxY, p.cy + p.h / 2);
+        });
+
+        const totalW = maxX - minX;
+        const totalH = maxY - minY;
+        const offsetX = -(minX + totalW / 2);
+        const offsetY = -(minY + totalH / 2);
+
+        Array.from(stage.children).forEach(el => {
+            el.style.left = (parseFloat(el.style.left) + offsetX) + 'px';
+            el.style.top = (parseFloat(el.style.top) + offsetY) + 'px';
+        });
+
+        dom.carroContainer.appendChild(stage);
+
+        const availW = dom.carroContainer.clientWidth - 16;
+        const availH = dom.carroContainer.clientHeight - 16;
+        if (availW > 0 && availH > 0 && (totalW > availW || totalH > availH)) {
+            const scale = Math.min(availW / totalW, availH / totalH, 1);
+            stage.style.transform = `scale(${scale.toFixed(3)})`;
+        }
+    }
     function renderHands() {
         const userContainer = dom.handContainers.at(0);
         userContainer.innerHTML = '';
