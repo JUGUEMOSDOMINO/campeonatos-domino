@@ -45,6 +45,11 @@ document.addEventListener('DOMContentLoaded', () => {
         rankingBody: document.getElementById('ranking-body'),
         btnShowRanking: document.getElementById('btn-show-ranking'),
         btnCloseRanking: document.getElementById('btn-close-ranking'),
+     handSummaryModal: document.getElementById('hand-summary-modal'),
+     summaryTitle: document.getElementById('summary-title'),
+     summaryDetail: document.getElementById('summary-detail'),
+     summaryScores: document.getElementById('summary-scores'),
+     btnNextHand: document.getElementById('btn-next-hand'),
 
         lblUserName: document.getElementById('lbl-user-name'),
         badgeUserName: document.getElementById('badge-user-name'),
