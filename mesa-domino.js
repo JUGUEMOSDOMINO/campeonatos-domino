@@ -398,6 +398,19 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el) el.textContent = '';
         });
     }
+     function highlightActivePlayer(playerIdx) {
+     dom.thoughtBubbles.forEach((el, idx) => {
+         if (!el) return;
+         const badge = el.closest('.player-badge');
+         if (!badge) return;
+         if (idx === playerIdx && state.gameActive) {
+             badge.classList.add('active-turn');
+         } else {
+             badge.classList.remove('active-turn');
+         }
+     });
+ }
+
 // === FIN BLOQUE 2 DE 4 ===
 
 // === INICIO BLOQUE 3A ===
@@ -466,6 +479,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!state.gameActive) return;
         hideSideSelector();
         renderHands();
+     const p = state.currentTurn;
+     highlightActivePlayer(p);
 
         const p = state.currentTurn;
         const playableIndices = new Array();
@@ -768,6 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function handleHandWinByDomino(winnerIdx) {
         state.gameActive = false;
+             highlightActivePlayer(-1);
         const usWon = winnerIdx === 0 || winnerIdx === 2;
 
         const pointsUsRemaining = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
