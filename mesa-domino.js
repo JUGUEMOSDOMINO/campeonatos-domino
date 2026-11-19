@@ -274,7 +274,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return arr;
     }
 // === FIN BLOQUE 1 DE 4 ===
-
 // === INICIO BLOQUE 2 DE 4 ===
     function isDouble(tile) {
         return tile.a === tile.b;
@@ -321,10 +320,14 @@ document.addEventListener('DOMContentLoaded', () => {
         return sides;
     }
 
-    function createHalfElement(value) {
+    function createHalfElement(value, isHorizontal = false) {
         const half = document.createElement('div');
         half.className = 'half';
-        const activeIndices = PIP_MAP[value] || new Array();
+        let activeIndices = PIP_MAP[value] || new Array();
+        // En horizontal, el 6 tiene 2 filas de 3 puntos (índices 0,1,2 y 6,7,8)
+        if (value === 6 && isHorizontal) {
+            activeIndices = Array.of(0, 1, 2, 6, 7, 8);
+        }
         for (let i = 0; i < 9; i++) {
             const cell = document.createElement('div');
             if (activeIndices.includes(i)) {
@@ -339,10 +342,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const tileEl = document.createElement('div');
         tileEl.className = 'domino-tile' + (isHorizontal ? ' horizontal' : '');
 
-        const half1 = createHalfElement(val1);
+        const half1 = createHalfElement(val1, isHorizontal);
         const divider = document.createElement('div');
         divider.className = 'divider';
-        const half2 = createHalfElement(val2);
+        const half2 = createHalfElement(val2, isHorizontal);
 
         tileEl.appendChild(half1);
         tileEl.appendChild(divider);
@@ -350,7 +353,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-
     function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
@@ -359,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (centerIdx === -1) centerIdx = 0;
 
         const isMobile = window.innerWidth <= 900;
-        const S = isMobile ? 22 : 34;
+        const S = isMobile ? 24 : 44;
         const L = S * 2;
         const GAP = 2;
 
@@ -391,6 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return { w, h };
         }
 
+        // Ficha de salida clavada en el centro exacto (0,0)
         const centerItem = state.board.at(centerIdx);
         const cDims = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
 
@@ -472,30 +475,22 @@ document.addEventListener('DOMContentLoaded', () => {
             addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
         }
 
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        // Escalado simétrico manteniendo el centro (0,0) fijo
+        let maxAbsX = 0, maxAbsY = 0;
         placed.forEach(p => {
-            minX = Math.min(minX, p.cx - p.w / 2);
-            maxX = Math.max(maxX, p.cx + p.w / 2);
-            minY = Math.min(minY, p.cy - p.h / 2);
-            maxY = Math.max(maxY, p.cy + p.h / 2);
+            maxAbsX = Math.max(maxAbsX, Math.abs(p.cx) + p.w / 2);
+            maxAbsY = Math.max(maxAbsY, Math.abs(p.cy) + p.h / 2);
         });
 
-        const totalW = maxX - minX;
-        const totalH = maxY - minY;
-        const offsetX = -(minX + totalW / 2);
-        const offsetY = -(minY + totalH / 2);
-
-        Array.from(stage.children).forEach(el => {
-            el.style.left = (parseFloat(el.style.left) + offsetX) + 'px';
-            el.style.top = (parseFloat(el.style.top) + offsetY) + 'px';
-        });
+        const reqW = maxAbsX * 2;
+        const reqH = maxAbsY * 2;
 
         dom.carroContainer.appendChild(stage);
 
         const availW = dom.carroContainer.clientWidth - 16;
         const availH = dom.carroContainer.clientHeight - 16;
-        if (availW > 0 && availH > 0 && (totalW > availW || totalH > availH)) {
-            const scale = Math.min(availW / totalW, availH / totalH, 1);
+        if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
+            const scale = Math.min(availW / reqW, availH / reqH, 1);
             stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
     }
@@ -534,7 +529,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 // === FIN BLOQUE 2 DE 4 ===
-       function updateScoreboard() {
+    function updateScoreboard() {
         dom.scoreUs.textContent = state.scores.us;
         dom.scoreThem.textContent = state.scores.them;
     }
@@ -577,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
- 
+
 // === INICIO BLOQUE 3A ===
     function drawStartingPlayerFED() {
         const drawDeck = shuffleDeck(createDeck());
@@ -615,6 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function startNewMatch() {
         clearTimers();
+        assignRandomBots();
         state.scores = { us: 0, them: 0 };
         state.isFirstHand = true;
         state.startingPlayer = null;
@@ -663,7 +659,6 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHands();
         beginTurn();
     }
-
     function getPlayerLabel(idx) {
         return idx === 0 ? state.userName : PLAYER_NAMES.at(idx);
     }
@@ -691,7 +686,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (state.gameActive && state.currentTurn === 0) {
                         passTurn(0, false);
                     }
-                }, 1700);
+                }, 2600);
             } else if (playableIndices.length === 1) {
                 const onlyIdx = playableIndices.at(0);
                 const onlyTile = state.hands.at(0).at(onlyIdx);
@@ -710,11 +705,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     dom.btnPass.classList.add('hidden');
                     showThought(0, 'Elige extremo', 0);
                     setLog('Tu ficha entra por ambos lados: elige extremo.');
+                    sound.yourTurn();
                 }
             } else {
                 dom.btnPass.classList.add('hidden');
                 showThought(0, 'Tu turno', 0);
                 setLog('Tu turno: selecciona una ficha iluminada.');
+                sound.yourTurn();
             }
         } else {
             dom.btnPass.classList.add('hidden');
@@ -741,12 +738,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 state.timeLeft = 5;
                 dom.timerBox.classList.add('warning');
                 dom.timerVal.textContent = '+' + state.timeLeft;
+                sound.tick();
                 return;
             }
 
             if (inExtraTime) {
                 dom.timerVal.textContent = '+' + Math.max(0, state.timeLeft);
-                if (state.timeLeft <= 0) {
+                if (state.timeLeft > 0) {
+                    sound.tick();
+                } else {
                     clearInterval(state.timerInterval);
                     handleTimeoutAutoPlay();
                 }
@@ -765,7 +765,6 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.timerBox.classList.remove('warning');
     }
 // === FIN BLOQUE 3A ===
-
 // === INICIO BLOQUE 3B ===
     function handleTimeoutAutoPlay() {
         if (!state.gameActive) return;
@@ -821,12 +820,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
-        // 1. Sin fichas que casen: obligado por norma FED a pasar con prontitud (1,7s)
+        // 1. Sin fichas que casen: pasa a 2,6s (2600 ms) para que se perciba con calma
         if (validMoves.length === 0) {
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 passTurn(botIdx, false);
-            }, 1700);
+            }, 2600);
             return;
         }
 
@@ -900,8 +899,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, thinkDelay);
     }
 // === FIN BLOQUE 3B ===
-
-
 // === INICIO BLOQUE 4A ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
@@ -934,6 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
+        sound.clack();
         state.consecutivePasses = 0;
         state.isFirstHand = false;
 
@@ -957,6 +955,7 @@ document.addEventListener('DOMContentLoaded', () => {
         hideSideSelector();
         dom.btnPass.classList.add('hidden');
 
+        sound.pass();
         state.consecutivePasses++;
         const reason = byTimeout ? '¡Tiempo agotado! Paso' : '¡Paso!';
         showThought(playerIdx, reason, 2000);
@@ -988,30 +987,28 @@ document.addEventListener('DOMContentLoaded', () => {
         let title = '';
         let summaryText = '';
 
+        const detailLines =
+            `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+            `• ${PLAYER_NAMES.at(2)}: ${formatHandList(state.hands.at(2))}\n` +
+            `• ${PLAYER_NAMES.at(1)}: ${formatHandList(state.hands.at(1))}\n` +
+            `• ${PLAYER_NAMES.at(3)}: ${formatHandList(state.hands.at(3))}`;
+
         if (usWon) {
+            sound.win();
             state.scores.us += totalGained;
             title = `🎉 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
-            summaryText = `Nosotros ganamos la mano y sumamos +${totalGained} tantos (todas las fichas sobrantes).\n` +
-                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
-                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
-                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
+            summaryText = `Nosotros ganamos la mano y sumamos +${totalGained} tantos (todas las fichas sobrantes).\n${detailLines}`;
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Nosotros sumamos +${totalGained} puntos.`);
         } else {
             state.scores.them += totalGained;
             title = `😔 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
-            summaryText = `Los rivales ganan la mano y suman +${totalGained} tantos (todas las fichas sobrantes).\n` +
-                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
-                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
-                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
+            summaryText = `Los rivales ganan la mano y suman +${totalGained} tantos (todas las fichas sobrantes).\n${detailLines}`;
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Rivales suman +${totalGained} puntos.`);
         }
 
         updateScoreboard();
         showHandSummaryModal(title, summaryText);
     }
-
     function handleHandClosed() {
         state.gameActive = false;
         highlightActivePlayer(-1);
@@ -1022,28 +1019,23 @@ document.addEventListener('DOMContentLoaded', () => {
         let title = '🔒 ¡MANO CERRADA (TRANCA)!';
         let summaryText = '';
 
+        const detailLines =
+            `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
+            `• ${PLAYER_NAMES.at(2)}: ${formatHandList(state.hands.at(2))}\n` +
+            `• ${PLAYER_NAMES.at(1)}: ${formatHandList(state.hands.at(1))}\n` +
+            `• ${PLAYER_NAMES.at(3)}: ${formatHandList(state.hands.at(3))}`;
+
         if (ptsUs < ptsThem) {
+            sound.win();
             state.scores.us += totalPoints;
-            summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${totalPoints} tantos.\n` +
-                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
-                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
-                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
+            summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${totalPoints} tantos.\n${detailLines}`;
             setLog(`¡CIERRE! Nosotros (${ptsUs} pts) ganamos a Rivales (${ptsThem} pts). +${totalPoints} puntos.`);
         } else if (ptsThem < ptsUs) {
             state.scores.them += totalPoints;
-            summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${totalPoints} tantos.\n` +
-                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
-                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
-                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
+            summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${totalPoints} tantos.\n${detailLines}`;
             setLog(`¡CIERRE! Rivales (${ptsThem} pts) ganan a Nosotros (${ptsUs} pts). +${totalPoints} puntos.`);
         } else {
-            summaryText = `¡Cierre empatado a ${ptsUs} puntos! Nadie suma tantos y corre el turno de salida.\n` +
-                `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-                `• Bot 3 (Compañero): ${formatHandList(state.hands.at(2))}\n` +
-                `• Bot 2 (Rival Der): ${formatHandList(state.hands.at(1))}\n` +
-                `• Bot 4 (Rival Izq): ${formatHandList(state.hands.at(3))}`;
+            summaryText = `¡Cierre empatado a ${ptsUs} puntos! Nadie suma tantos y corre el turno de salida.\n${detailLines}`;
             setLog(`¡CIERRE EMPATADO a ${ptsUs} puntos! Nadie suma y corre mano.`);
         }
 
@@ -1056,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (matchFinished) {
             const weWonMatch = state.scores.us >= TARGET_SCORE && state.scores.us > state.scores.them;
-            saveMatchResultToRanking(weWonMatch, state.scores.us);
+            saveMatchResultToRanking(weWonMatch, state.scores.us, state.scores.them);
             dom.summaryTitle.textContent = weWonMatch
                 ? '🏆 ¡VICTORIA EN LA PARTIDA!'
                 : 'Fin de la Partida';
@@ -1076,7 +1068,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1200);
     }
 // === FIN BLOQUE 4A ===
-
 // === INICIO BLOQUE 4B ===
     function getRanking() {
         try {
@@ -1085,29 +1076,35 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (e) {
             console.error('Error leyendo ranking:', e);
         }
-        return Array.of(
-            { name: 'Maestro FED (Valencia)', wins: 12, points: 3680 },
-            { name: 'Peña El 6 Doble', wins: 9, points: 2810 },
-            { name: 'Chiva Dominó', wins: 7, points: 2150 },
-            { name: 'La Tranca', wins: 5, points: 1620 },
-            { name: 'As de Pitos', wins: 3, points: 980 }
-        );
+        return new Array();
     }
 
-    function saveMatchResultToRanking(won, matchPoints) {
+    function upsertRankingPlayer(ranking, playerName, won, matchPoints) {
+        if (!playerName) return;
+        let entry = ranking.find(r => r.name.toLowerCase() === playerName.toLowerCase());
+        if (!entry) {
+            entry = { name: playerName, wins: 0, points: 0 };
+            ranking.push(entry);
+        }
+        if (won) entry.wins += 1;
+        entry.points += matchPoints;
+    }
+
+    function saveMatchResultToRanking(weWonMatch, pointsUs, pointsThem) {
         const ranking = getRanking();
-        const displayName = state.userClub
+        const userDisplayName = state.userClub
             ? `${state.userName} (${state.userClub})`
             : state.userName;
 
-        let entry = ranking.find(r => r.name.toLowerCase() === displayName.toLowerCase());
-        if (!entry) {
-            entry = { name: displayName, wins: 0, points: 0 };
-            ranking.push(entry);
-        }
+        const partnerBot = state.botSeats.at(2);
+        const rivalRightBot = state.botSeats.at(1);
+        const rivalLeftBot = state.botSeats.at(3);
+        const rivalsWonMatch = !weWonMatch && pointsThem >= TARGET_SCORE;
 
-        if (won) entry.wins += 1;
-        entry.points += matchPoints;
+        upsertRankingPlayer(ranking, userDisplayName, weWonMatch, pointsUs);
+        upsertRankingPlayer(ranking, partnerBot, weWonMatch, pointsUs);
+        upsertRankingPlayer(ranking, rivalRightBot, rivalsWonMatch, pointsThem);
+        upsertRankingPlayer(ranking, rivalLeftBot, rivalsWonMatch, pointsThem);
 
         ranking.sort((a, b) => (b.wins - a.wins) || (b.points - a.points));
         const top10 = ranking.slice(0, 10);
@@ -1122,6 +1119,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderRankingTable() {
         const ranking = getRanking();
         dom.rankingBody.innerHTML = '';
+
+        if (ranking.length === 0) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td colspan="4" style="text-align:center; opacity:0.8;">Aún no hay partidas terminadas. ¡Sé el primero en puntuar!</td>`;
+            dom.rankingBody.appendChild(tr);
+            return;
+        }
+
         ranking.forEach((item, index) => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -1151,6 +1156,10 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.badgeUserName.textContent = state.userClub
             ? `${state.userName} · ${state.userClub}`
             : `${state.userName} (Tú)`;
+
+        if (!state.isMuted) {
+            getAudioCtx();
+        }
 
         dom.loginModal.classList.add('hidden');
         startNewMatch();
@@ -1198,7 +1207,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.rankingModal.classList.remove('hidden');
     });
 
-       dom.btnCloseRanking.addEventListener('click', () => {
+    dom.btnCloseRanking.addEventListener('click', () => {
         dom.rankingModal.classList.add('hidden');
     });
 
@@ -1207,4 +1216,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 // === FIN BLOQUE 4B ===
-
