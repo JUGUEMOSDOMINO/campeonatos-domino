@@ -1122,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tile = removed.at(0);
         const dbl = isDouble(tile);
 
-                if (state.board.length === 0 || side === 'center') {
+                      if (state.board.length === 0 || side === 'center') {
             const minV = Math.min(tile.a, tile.b);
             const maxV = Math.max(tile.a, tile.b);
             // Jugador 0 (Abajo) y Rival 3 (Izquierda) -> punta menor en left (Abajo/Izquierda)
