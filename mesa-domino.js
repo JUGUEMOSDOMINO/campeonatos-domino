@@ -361,7 +361,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (centerIdx === -1) centerIdx = 0;
 
         const isMobile = window.innerWidth <= 900;
-        const S = isMobile ? 24 : 44;
+        const S = isMobile ? 24 : 42;
         const L = S * 2;
         const GAP = 2;
 
@@ -397,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const centerItem = state.board.at(centerIdx);
         const cDims = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
 
+        // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
         let rX = cDims.w / 2;
         let rY = 0;
         let rDir = 'R';
@@ -414,6 +415,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 rDir = 'L';
                 rX += S / 2;
                 rY -= S / 2;
+            } else if (rDir === 'L' && rNonDoubles === 12) {
+                rDir = 'D';
+                rX += S / 2;
+                rY += S / 2;
             }
 
             const isHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
@@ -431,11 +436,14 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (rDir === 'L') {
                 cx = rX - GAP - w / 2;
                 rX = cx - w / 2;
+            } else if (rDir === 'D') {
+                cy = rY + GAP + h / 2;
+                rY = cy + h / 2;
             }
 
             addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
         }
-
+        // BRAZO IZQUIERDO: espiral antihorario (L -> D -> R -> U)
         let lX = -cDims.w / 2;
         let lY = 0;
         let lDir = 'L';
@@ -453,6 +461,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 lDir = 'R';
                 lX -= S / 2;
                 lY += S / 2;
+            } else if (lDir === 'R' && lNonDoubles === 12) {
+                lDir = 'U';
+                lX -= S / 2;
+                lY -= S / 2;
             }
 
             const isHoriz = item.isDouble ? (lDir === 'U' || lDir === 'D') : (lDir === 'R' || lDir === 'L');
@@ -470,12 +482,15 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (lDir === 'R') {
                 cx = lX + GAP + w / 2;
                 lX = cx + w / 2;
+            } else if (lDir === 'U') {
+                cy = lY - GAP - h / 2;
+                lY = cy - h / 2;
             }
 
             addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
         }
 
-        // Escalado simétrico manteniendo el centro (0,0) fijo
+        // Escalado centrado en (0,0) sin mover nunca la ficha de salida
         let maxAbsX = 0, maxAbsY = 0;
         placed.forEach(p => {
             maxAbsX = Math.max(maxAbsX, Math.abs(p.cx) + p.w / 2);
@@ -487,10 +502,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.carroContainer.appendChild(stage);
 
-        const availW = dom.carroContainer.clientWidth - 16;
-        const availH = dom.carroContainer.clientHeight - 16;
+        const availW = dom.carroContainer.clientWidth - 12;
+        const availH = dom.carroContainer.clientHeight - 12;
         if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
-            const scale = Math.min(availW / reqW, availH / reqH, 1);
+            const rawScale = Math.min(availW / reqW, availH / reqH, 1);
+            const minScale = isMobile ? 0.45 : 0.68;
+            const scale = Math.max(rawScale, minScale);
             stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
     }
@@ -529,6 +546,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 // === FIN BLOQUE 2 DE 4 ===
+
     function updateScoreboard() {
         dom.scoreUs.textContent = state.scores.us;
         dom.scoreThem.textContent = state.scores.them;
