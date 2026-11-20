@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // Solo en móvil: vertical cuando sale el Jugador (0) o su compañero (2); en Laptop siempre horizontal
         const isVerticalStart = isMobile && (state.startingPlayer === 0 || state.startingPlayer === 2);
 
-        const S = isMobile ? 24 : 42;
+               const S = isMobile ? 28 : 42;
         const L = S * 2;
         const GAP = 2;
 
@@ -510,6 +510,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return { cx: last.cx, cy: last.cy + last.h / 2 + GAP + h / 2 };
         }
 
+        // Límites de giro compactos en móvil para no encoger las fichas
+        const t1 = isMobile ? 2 : 4;
+        const t2 = isMobile ? 4 : 6;
+        const t3 = isMobile ? 7 : 12;
+
         // Ficha de salida clavada en el centro exacto (0,0)
         const centerItem = state.board.at(centerIdx);
         const initialRightDir = isVerticalStart ? 'U' : 'R';
@@ -534,13 +539,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let justTurned = false;
             if (!item.isDouble && rNormalSinceDouble >= 2) {
                 if (!isVerticalStart) {
-                    if (rDir === 'R' && rNonDoubles >= 4) { rDir = 'U'; justTurned = true; }
-                    else if (rDir === 'U' && rNonDoubles >= 6) { rDir = 'L'; justTurned = true; }
-                    else if (rDir === 'L' && rNonDoubles >= 12) { rDir = 'D'; justTurned = true; }
+                    if (rDir === 'R' && rNonDoubles >= t1) { rDir = 'U'; justTurned = true; }
+                    else if (rDir === 'U' && rNonDoubles >= t2) { rDir = 'L'; justTurned = true; }
+                    else if (rDir === 'L' && rNonDoubles >= t3) { rDir = 'D'; justTurned = true; }
                 } else {
-                    if (rDir === 'U' && rNonDoubles >= 3) { rDir = 'L'; justTurned = true; }
-                    else if (rDir === 'L' && rNonDoubles >= 7) { rDir = 'D'; justTurned = true; }
-                    else if (rDir === 'D' && rNonDoubles >= 12) { rDir = 'R'; justTurned = true; }
+                    if (rDir === 'U' && rNonDoubles >= t1) { rDir = 'L'; justTurned = true; }
+                    else if (rDir === 'L' && rNonDoubles >= t2) { rDir = 'D'; justTurned = true; }
+                    else if (rDir === 'D' && rNonDoubles >= t3) { rDir = 'R'; justTurned = true; }
                 }
             }
 
@@ -573,13 +578,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let justTurned = false;
             if (!item.isDouble && lNormalSinceDouble >= 2) {
                 if (!isVerticalStart) {
-                    if (lDir === 'L' && lNonDoubles >= 4) { lDir = 'D'; justTurned = true; }
-                    else if (lDir === 'D' && lNonDoubles >= 6) { lDir = 'R'; justTurned = true; }
-                    else if (lDir === 'R' && lNonDoubles >= 12) { lDir = 'U'; justTurned = true; }
+                    if (lDir === 'L' && lNonDoubles >= t1) { lDir = 'D'; justTurned = true; }
+                    else if (lDir === 'D' && lNonDoubles >= t2) { lDir = 'R'; justTurned = true; }
+                    else if (lDir === 'R' && lNonDoubles >= t3) { lDir = 'U'; justTurned = true; }
                 } else {
-                    if (lDir === 'D' && lNonDoubles >= 3) { lDir = 'R'; justTurned = true; }
-                    else if (lDir === 'R' && lNonDoubles >= 7) { lDir = 'U'; justTurned = true; }
-                    else if (lDir === 'U' && lNonDoubles >= 12) { lDir = 'L'; justTurned = true; }
+                    if (lDir === 'D' && lNonDoubles >= t1) { lDir = 'R'; justTurned = true; }
+                    else if (lDir === 'R' && lNonDoubles >= t2) { lDir = 'U'; justTurned = true; }
+                    else if (lDir === 'U' && lNonDoubles >= t3) { lDir = 'L'; justTurned = true; }
                 }
             }
 
@@ -594,7 +599,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
         }
 
-        // Escalado centrado en (0,0) sin mover nunca la ficha de salida
+        // Escalado centrado en (0,0) con mínimo legible en móvil
         let maxAbsX = 0, maxAbsY = 0;
         placed.forEach(p => {
             maxAbsX = Math.max(maxAbsX, Math.abs(p.cx) + p.w / 2);
@@ -606,11 +611,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.carroContainer.appendChild(stage);
 
-        const availW = dom.carroContainer.clientWidth - 16;
-        const availH = dom.carroContainer.clientHeight - 16;
+        const availW = dom.carroContainer.clientWidth - 12;
+        const availH = dom.carroContainer.clientHeight - 12;
         if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
-            const scale = Math.min(availW / reqW, availH / reqH, 1);
-            stage.style.transform = `scale(${scale.toFixed(3)})`;
+            const rawScale = Math.min(availW / reqW, availH / reqH, 1);
+            const finalScale = isMobile ? Math.max(rawScale, 0.68) : rawScale;
+            stage.style.transform = `scale(${finalScale.toFixed(3)})`;
         }
     }
 
