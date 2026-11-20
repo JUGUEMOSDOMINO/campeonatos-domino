@@ -1091,11 +1091,11 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.summaryDetail.textContent = detailText;
         dom.summaryScores.textContent = `Marcador: Nosotros ${state.scores.us} — Rivales ${state.scores.them} (Meta: ${TARGET_SCORE})`;
 
-        setTimeout(() => {
-            dom.handSummaryModal.classList.remove('hidden');
-        }, 1200);
-    }
-// === FIN BLOQUE 4A ===
+             setTimeout(() => {
+         dom.handSummaryModal.classList.remove('hidden');
+     }, 4500);
+
+       // === FIN BLOQUE 4A ===
 // === INICIO BLOQUE 4B ===
     function getRanking() {
         try {
