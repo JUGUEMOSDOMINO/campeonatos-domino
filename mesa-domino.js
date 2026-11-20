@@ -543,35 +543,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextH = nextIsHoriz ? S : L;
             const straightPos = computeStraightCoords(rLast, rDir, nextW, nextH);
 
-            let justTurned = false;
-            if (!item.isDouble && rNormalSinceDouble >= 2) {
+                      let justTurned = false;
+            if (!item.isDouble) {
                 if (isMobile && isVerticalStart) {
-                    if (rDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                    if (rDir === 'D' && rNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH - 6)) {
                         rDir = 'R'; justTurned = true; rLegTiles = 0;
                     } else if (rDir === 'R' && rLegTiles >= 2) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                    } else if (rDir === 'U' && rNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH + 6)) {
                         rDir = 'L'; justTurned = true; rLegTiles = 0;
                     }
                 } else if (isMobile && !isVerticalStart) {
                     if (rDir === 'R' && rLegTiles >= 2) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                    } else if (rDir === 'U' && rNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH + 6)) {
                         rDir = 'L'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                    } else if (rDir === 'L' && rNormalSinceDouble >= 2 && (straightPos.cx - nextW / 2 < -halfW + 6)) {
                         rDir = 'D'; justTurned = true; rLegTiles = 0;
                     }
                 } else {
-                    if (rDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                    if (rDir === 'R' && rNormalSinceDouble >= 2 && (straightPos.cx + nextW / 2 > halfW - 6)) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
                     } else if (rDir === 'U' && rLegTiles >= 2) {
                         rDir = 'L'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                    } else if (rDir === 'L' && rNormalSinceDouble >= 2 && (straightPos.cx - nextW / 2 < -halfW + 6)) {
                         rDir = 'D'; justTurned = true; rLegTiles = 0;
                     }
                 }
             }
-
+ 
             const isHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
@@ -604,35 +604,35 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextH = nextIsHoriz ? S : L;
             const straightPos = computeStraightCoords(lLast, lDir, nextW, nextH);
 
-            let justTurned = false;
-            if (!item.isDouble && lNormalSinceDouble >= 2) {
+                     let justTurned = false;
+            if (!item.isDouble) {
                 if (isMobile && isVerticalStart) {
-                    if (lDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                    if (lDir === 'U' && lNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH + 6)) {
                         lDir = 'L'; justTurned = true; lLegTiles = 0;
                     } else if (lDir === 'L' && lLegTiles >= 2) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                    } else if (lDir === 'D' && lNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH - 6)) {
                         lDir = 'R'; justTurned = true; lLegTiles = 0;
                     }
                 } else if (isMobile && !isVerticalStart) {
                     if (lDir === 'L' && lLegTiles >= 2) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                    } else if (lDir === 'D' && lNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH - 6)) {
                         lDir = 'R'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                    } else if (lDir === 'R' && lNormalSinceDouble >= 2 && (straightPos.cx + nextW / 2 > halfW - 6)) {
                         lDir = 'U'; justTurned = true; lLegTiles = 0;
                     }
                 } else {
-                    if (lDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                    if (lDir === 'L' && lNormalSinceDouble >= 2 && (straightPos.cx - nextW / 2 < -halfW + 6)) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
                     } else if (lDir === 'D' && lLegTiles >= 2) {
                         lDir = 'R'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                    } else if (lDir === 'R' && lNormalSinceDouble >= 2 && (straightPos.cx + nextW / 2 > halfW - 6)) {
                         lDir = 'U'; justTurned = true; lLegTiles = 0;
                     }
                 }
             }
-
+ 
             const isHoriz = item.isDouble ? (lDir === 'U' || lDir === 'D') : (lDir === 'R' || lDir === 'L');
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
