@@ -432,13 +432,13 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
-        let centerIdx = state.board.findIndex(t => t.isCenter);
+               let centerIdx = state.board.findIndex(t => t.isCenter);
         if (centerIdx === -1) centerIdx = 0;
 
-        // Vertical cuando sale el Jugador (0) o su compañero (2); Horizontal cuando salen los rivales (1 o 3)
-        const isVerticalStart = (state.startingPlayer === 0 || state.startingPlayer === 2);
-
         const isMobile = window.innerWidth <= 900;
+        // Solo en móvil: vertical cuando sale el Jugador (0) o su compañero (2); en Laptop siempre horizontal
+        const isVerticalStart = isMobile && (state.startingPlayer === 0 || state.startingPlayer === 2);
+
         const S = isMobile ? 24 : 42;
         const L = S * 2;
         const GAP = 2;
