@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Federación Valenciana de Dominó JAUME I y sus Asociaciones · Juguemos Dominó</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #f59e0b;
+      --text: #f8fafc;
+      --muted: #94a3b8;
+      --border: #334155;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 16px;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .back-btn {
+      display: inline-block;
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding: 8px 14px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+    }
+    header {
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    header h1 {
+      font-size: 1.5rem;
+      margin: 0 0 8px;
+      color: var(--accent);
+    }
+    header p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .card.featured {
+      grid-column: 1 / -1;
+      border-color: var(--accent);
+    }
+    .card-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .logo {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      background: #ffffff;
+      border-radius: 10px;
+      padding: 4px;
+      flex-shrink: 0;
+    }
+    .card-title {
+      margin: 0;
+      font-size: 1.05rem;
+      line-height: 1.25;
+    }
+    .card-sub {
+      margin: 2px 0 0;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+    .photo {
+      width: 100%;
+      height: 220px;
+      object-fit: cover;
+      cursor: zoom-in;
+      display: block;
+    }
+    .card.featured .photo {
+      height: 300px;
+    }
+    .lightbox {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 999;
+    }
+    .lightbox.open { display: flex; }
+    .lightbox img {
+      max-width: 100%;
+      max-height: 90vh;
+      border-radius: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <a href="index.html" class="back-btn">⬅ Volver a Juguemos Dominó</a>
+
+    <header>
+      <h1>🏛️ Federación Valenciana de Dominó JAUME I y sus Asociaciones</h1>
+      <p>Provincia de Valencia · Toca cualquier fotografía para verla ampliada</p>
+    </header>
+
+    <main class="grid">
+      <!-- TARJETA PRINCIPAL DE LA FEDERACIÓN -->
+      <article class="card featured">
+        <div class="card-header">
+          <img src="img/jaume-i/logo-federacion.jpg" alt="Logo Federación Jaume I" class="logo">
+          <div>
+            <h2 class="card-title">Federación Valenciana de Dominó JAUME I</h2>
+            <p class="card-sub">Provincia de Valencia</p>
+          </div>
+        </div>
+        <img src="img/jaume-i/foto-federacion.jpg" alt="Federación Valenciana de Dominó JAUME I" class="photo" onclick="openLightbox(this.src)">
+      </article>
+
+      <!-- ASOCIACIÓN 1 (Duplica este bloque <article> para cada asociación de Valencia) -->
+      <article class="card">
+        <div class="card-header">
+          <img src="img/jaume-i/logo-asoc-01.jpg" alt="Logo Asociación 1" class="logo" loading="lazy">
+          <div>
+            <h2 class="card-title">Nombre de la Asociación / Club</h2>
+            <p class="card-sub">Localidad (Valencia)</p>
+          </div>
+        </div>
+        <img src="img/jaume-i/foto-asoc-01.jpg" alt="Foto Asociación 1" class="photo" loading="lazy" onclick="openLightbox(this.src)">
+      </article>
+
+      <!-- ASOCIACIÓN 2 -->
+      <article class="card">
+        <div class="card-header">
+          <img src="img/jaume-i/logo-asoc-02.jpg" alt="Logo Asociación 2" class="logo" loading="lazy">
+          <div>
+            <h2 class="card-title">Nombre de la Asociación / Club</h2>
+            <p class="card-sub">Localidad (Valencia)</p>
+          </div>
+        </div>
+        <img src="img/jaume-i/foto-asoc-02.jpg" alt="Foto Asociación 2" class="photo" loading="lazy" onclick="openLightbox(this.src)">
+      </article>
+    </main>
+  </div>
+
+  <div id="lightbox" class="lightbox" onclick="this.classList.remove('open')">
+    <img id="lightbox-img" src="" alt="Vista ampliada">
+  </div>
+
+  <script>
+    function openLightbox(src) {
+      document.getElementById('lightbox-img').src = src;
+      document.getElementById('lightbox').classList.add('open');
+    }
+  </script>
+</body>
+</html>
