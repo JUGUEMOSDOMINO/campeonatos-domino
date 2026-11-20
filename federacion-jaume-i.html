@@ -41,7 +41,7 @@
       margin-bottom: 24px;
     }
     header h1 {
-      font-size: 1.5rem;
+      font-size: 1.45rem;
       margin: 0 0 8px;
       color: var(--accent);
     }
@@ -62,46 +62,46 @@
       overflow: hidden;
       display: flex;
       flex-direction: column;
+      justify-content: space-between;
     }
     .card.featured {
       grid-column: 1 / -1;
       border-color: var(--accent);
     }
-    .card-header {
+    .logo-box {
+      background: #ffffff;
+      padding: 18px;
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px 14px;
-      border-bottom: 1px solid var(--border);
+      justify-content: center;
+      height: 170px;
+      cursor: zoom-in;
     }
-    .logo {
-      width: 52px;
-      height: 52px;
+    .card.featured .logo-box {
+      height: 210px;
+    }
+    .logo-box img {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
       object-fit: contain;
-      background: #ffffff;
-      border-radius: 10px;
-      padding: 4px;
-      flex-shrink: 0;
+      display: block;
+    }
+    .card-info {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      text-align: center;
     }
     .card-title {
       margin: 0;
-      font-size: 1.05rem;
-      line-height: 1.25;
+      font-size: 1.08rem;
+      line-height: 1.3;
     }
     .card-sub {
-      margin: 2px 0 0;
-      font-size: 0.85rem;
+      margin: 4px 0 0;
+      font-size: 0.88rem;
       color: var(--muted);
-    }
-    .photo {
-      width: 100%;
-      height: 220px;
-      object-fit: cover;
-      cursor: zoom-in;
-      display: block;
-    }
-    .card.featured .photo {
-      height: 300px;
     }
     .lightbox {
       position: fixed;
@@ -117,7 +117,9 @@
     .lightbox img {
       max-width: 100%;
       max-height: 90vh;
-      border-radius: 10px;
+      background: #ffffff;
+      padding: 12px;
+      border-radius: 12px;
     }
   </style>
 </head>
@@ -127,44 +129,41 @@
 
     <header>
       <h1>🏛️ Federación Valenciana de Dominó JAUME I y sus Asociaciones</h1>
-      <p>Provincia de Valencia · Toca cualquier fotografía para verla ampliada</p>
+      <p>Provincia de Valencia · Toca cualquier escudo para verlo ampliado</p>
     </header>
 
     <main class="grid">
       <!-- TARJETA PRINCIPAL DE LA FEDERACIÓN -->
       <article class="card featured">
-        <div class="card-header">
-          <img src="img/jaume-i/logo-federacion.jpg" alt="Logo Federación Jaume I" class="logo">
-          <div>
-            <h2 class="card-title">Federación Valenciana de Dominó JAUME I</h2>
-            <p class="card-sub">Provincia de Valencia</p>
-          </div>
+        <div class="logo-box" onclick="openLightbox('img/jaume-i/logo-federacion.jpg')">
+          <img src="img/jaume-i/logo-federacion.jpg" alt="Escudo Federación Valenciana de Dominó JAUME I">
         </div>
-        <img src="img/jaume-i/foto-federacion.jpg" alt="Federación Valenciana de Dominó JAUME I" class="photo" onclick="openLightbox(this.src)">
+        <div class="card-info">
+          <h2 class="card-title">Federación Valenciana de Dominó JAUME I</h2>
+          <p class="card-sub">Provincia de Valencia</p>
+        </div>
       </article>
 
-      <!-- ASOCIACIÓN 1 (Duplica este bloque <article> para cada asociación de Valencia) -->
+      <!-- CLUB DE DOMINÓ TORREFIEL -->
       <article class="card">
-        <div class="card-header">
-          <img src="img/jaume-i/logo-asoc-01.jpg" alt="Logo Asociación 1" class="logo" loading="lazy">
-          <div>
-            <h2 class="card-title">Nombre de la Asociación / Club</h2>
-            <p class="card-sub">Localidad (Valencia)</p>
-          </div>
+        <div class="logo-box" onclick="openLightbox('img/jaume-i/logo-torrefiel.jpg')">
+          <img src="img/jaume-i/logo-torrefiel.jpg" alt="Escudo Club de Dominó Torrefiel" loading="lazy">
         </div>
-        <img src="img/jaume-i/foto-asoc-01.jpg" alt="Foto Asociación 1" class="photo" loading="lazy" onclick="openLightbox(this.src)">
+        <div class="card-info">
+          <h2 class="card-title">Club de Dominó Torrefiel</h2>
+          <p class="card-sub">Torrefiel · València</p>
+        </div>
       </article>
 
-      <!-- ASOCIACIÓN 2 -->
+      <!-- ASOCIACIÓN BLANCA DOBLE DOMINÓ -->
       <article class="card">
-        <div class="card-header">
-          <img src="img/jaume-i/logo-asoc-02.jpg" alt="Logo Asociación 2" class="logo" loading="lazy">
-          <div>
-            <h2 class="card-title">Nombre de la Asociación / Club</h2>
-            <p class="card-sub">Localidad (Valencia)</p>
-          </div>
+        <div class="logo-box" onclick="openLightbox('img/jaume-i/logo-blanca-doble.jpg')">
+          <img src="img/jaume-i/logo-blanca-doble.jpg" alt="Logo Asociación Blanca Doble Dominó" loading="lazy">
         </div>
-        <img src="img/jaume-i/foto-asoc-02.jpg" alt="Foto Asociación 2" class="photo" loading="lazy" onclick="openLightbox(this.src)">
+        <div class="card-info">
+          <h2 class="card-title">Asociación Blanca Doble Dominó</h2>
+          <p class="card-sub">València</p>
+        </div>
       </article>
     </main>
   </div>
