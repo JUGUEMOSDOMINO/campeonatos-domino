@@ -1101,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             dom.handSummaryModal.classList.remove('hidden');
-        }, 5500);
+        }, 6500);
     }
 // === FIN BLOQUE 4A ===
 
