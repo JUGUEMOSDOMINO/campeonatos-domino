@@ -400,7 +400,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const centerItem = state.board.at(centerIdx);
         const cDims = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
 
-             // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
+                     // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
         let rX = cDims.w / 2;
         let rY = 0;
         let rDir = 'R';
@@ -410,35 +410,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = state.board.at(i);
             if (!item.isDouble) rNonDoubles++;
 
+            let justTurned = false;
             if (rDir === 'R' && rNonDoubles === 4) {
                 rDir = 'U';
                 rX -= S / 2;
                 rY -= S / 2;
+                justTurned = true;
             } else if (rDir === 'U' && rNonDoubles === 6) {
                 rDir = 'L';
                 rX += S / 2;
+                justTurned = true;
             } else if (rDir === 'L' && rNonDoubles === 12) {
                 rDir = 'D';
                 rX += S / 2;
+                justTurned = true;
             }
 
             const isHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
+            const stepGap = justTurned ? GAP : GAP;
 
             let cx = rX;
             let cy = rY;
             if (rDir === 'R') {
-                cx = rX + GAP + w / 2;
+                cx = rX + (justTurned ? 0 : GAP) + w / 2;
                 rX = cx + w / 2;
             } else if (rDir === 'U') {
-                cy = rY - GAP - h / 2;
+                cy = rY - stepGap - h / 2;
                 rY = cy - h / 2;
             } else if (rDir === 'L') {
-                cx = rX - GAP - w / 2;
+                cx = rX - (justTurned ? 0 : GAP) - w / 2;
                 rX = cx - w / 2;
             } else if (rDir === 'D') {
-                cy = rY + GAP + h / 2;
+                cy = rY + stepGap + h / 2;
                 rY = cy + h / 2;
             }
 
@@ -455,16 +460,20 @@ document.addEventListener('DOMContentLoaded', () => {
             const item = state.board.at(i);
             if (!item.isDouble) lNonDoubles++;
 
+            let justTurned = false;
             if (lDir === 'L' && lNonDoubles === 4) {
                 lDir = 'D';
                 lX += S / 2;
                 lY += S / 2;
+                justTurned = true;
             } else if (lDir === 'D' && lNonDoubles === 6) {
                 lDir = 'R';
                 lX -= S / 2;
+                justTurned = true;
             } else if (lDir === 'R' && lNonDoubles === 12) {
                 lDir = 'U';
                 lX -= S / 2;
+                justTurned = true;
             }
 
             const isHoriz = item.isDouble ? (lDir === 'U' || lDir === 'D') : (lDir === 'R' || lDir === 'L');
@@ -474,13 +483,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let cx = lX;
             let cy = lY;
             if (lDir === 'L') {
-                cx = lX - GAP - w / 2;
+                cx = lX - (justTurned ? 0 : GAP) - w / 2;
                 lX = cx - w / 2;
             } else if (lDir === 'D') {
                 cy = lY + GAP + h / 2;
                 lY = cy + h / 2;
             } else if (lDir === 'R') {
-                cx = lX + GAP + w / 2;
+                cx = lX + (justTurned ? 0 : GAP) + w / 2;
                 lX = cx + w / 2;
             } else if (lDir === 'U') {
                 cy = lY - GAP - h / 2;
