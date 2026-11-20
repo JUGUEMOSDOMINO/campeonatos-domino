@@ -428,7 +428,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-      function renderBoard() {
+         // === INICIO RENDERBOARD - PARTE A (CONFIGURACIÓN Y BRAZO DERECHO) ===
+    function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
@@ -444,8 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const GAP = 2;
 
         // Límites reales disponibles desde el centro (0,0) del tablero
-        const halfW = Math.max(110, (dom.carroContainer.clientWidth - 20) / 2);
-        const halfH = Math.max(110, (dom.carroContainer.clientHeight - 20) / 2);
+        const halfW = Math.max(100, (dom.carroContainer.clientWidth - 20) / 2);
+        const halfH = Math.max(100, (dom.carroContainer.clientHeight - 20) / 2);
 
         const stage = document.createElement('div');
         stage.className = 'carro-stage';
@@ -520,7 +521,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialLeftDir = isVerticalStart ? 'U' : 'L';
         const initialRightDir = isVerticalStart ? 'D' : 'R';
 
-        // Orientación de la ficha de salida para que leftEnd quede en initialLeftDir y rightEnd en initialRightDir
         const centerIn = isVerticalStart ? centerItem.right : centerItem.left;
         const centerOut = isVerticalStart ? centerItem.left : centerItem.right;
         const cBox = addPlacedTile(centerIn, centerOut, centerItem.isDouble, 0, 0, initialRightDir);
@@ -546,23 +546,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let justTurned = false;
             if (!item.isDouble && rNormalSinceDouble >= 2) {
-                if (!isVerticalStart) {
-                    // Salida horizontal: R -> U -> L (paralela continua hasta borde izq) -> D
-                    if (rDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6 || rLegTiles >= 4)) {
+                if (isMobile && isVerticalStart) {
+                    if (rDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                        rDir = 'R'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'R' && rLegTiles >= 2) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'U' && rLegTiles >= 2) {
+                    } else if (rDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                        rDir = 'L'; justTurned = true; rLegTiles = 0;
+                    }
+                } else if (isMobile && !isVerticalStart) {
+                    if (rDir === 'R' && rLegTiles >= 2) {
+                        rDir = 'U'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
                         rDir = 'L'; justTurned = true; rLegTiles = 0;
                     } else if (rDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
                         rDir = 'D'; justTurned = true; rLegTiles = 0;
                     }
                 } else {
-                    // Salida vertical: D (gira a la 2.ª ficha) -> R -> U (paralela continua hasta borde sup) -> L
-                    if (rDir === 'D' && rLegTiles >= 2) {
-                        rDir = 'R'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                    if (rDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                    } else if (rDir === 'U' && rLegTiles >= 2) {
                         rDir = 'L'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                        rDir = 'D'; justTurned = true; rLegTiles = 0;
                     }
                 }
             }
@@ -578,7 +584,8 @@ document.addEventListener('DOMContentLoaded', () => {
             rLast = addPlacedTile(item.left, item.right, item.isDouble, pos.cx, pos.cy, rDir);
             rLegTiles++;
         }
-
+    // === FIN RENDERBOARD - PARTE A ===
+    // === INICIO RENDERBOARD - PARTE B (BRAZO IZQUIERDO Y ESCALADO) ===
         // BRAZO IZQUIERDO LÓGICO (leftEnd -> Izquierda en horizontal / Arriba-Izquierda en vertical)
         let lLast = cBox;
         let lDir = initialLeftDir;
@@ -600,23 +607,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let justTurned = false;
             if (!item.isDouble && lNormalSinceDouble >= 2) {
-                if (!isVerticalStart) {
-                    // Salida horizontal: L -> D -> R (paralela continua hasta borde der) -> U
-                    if (lDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6 || lLegTiles >= 4)) {
+                if (isMobile && isVerticalStart) {
+                    if (lDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                        lDir = 'L'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'L' && lLegTiles >= 2) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'D' && lLegTiles >= 2) {
+                    } else if (lDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                        lDir = 'R'; justTurned = true; lLegTiles = 0;
+                    }
+                } else if (isMobile && !isVerticalStart) {
+                    if (lDir === 'L' && lLegTiles >= 2) {
+                        lDir = 'D'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
                         lDir = 'R'; justTurned = true; lLegTiles = 0;
                     } else if (lDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
                         lDir = 'U'; justTurned = true; lLegTiles = 0;
                     }
                 } else {
-                    // Salida vertical: U (gira a la 2.ª ficha) -> L -> D (paralela continua hasta borde inf) -> R
-                    if (lDir === 'U' && lLegTiles >= 2) {
-                        lDir = 'L'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                    if (lDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                    } else if (lDir === 'D' && lLegTiles >= 2) {
                         lDir = 'R'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                        lDir = 'U'; justTurned = true; lLegTiles = 0;
                     }
                 }
             }
@@ -652,6 +665,7 @@ document.addEventListener('DOMContentLoaded', () => {
             stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
     }
+    // === FIN RENDERBOARD - PARTE B ===
 
     function renderHands() {
         const userContainer = dom.handContainers.at(0);
