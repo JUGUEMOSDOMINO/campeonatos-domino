@@ -221,7 +221,6 @@ button {
 
 .carro-stage .domino-tile {
     position: absolute;
-    box-sizing: border-box;
     margin: 0;
 }
 
@@ -461,11 +460,20 @@ th { color: var(--accent-gold); }
         gap: 2px;
         align-content: center;
     }
-        .carro-container .domino-tile {
+    .carro-container .domino-tile {
+        width: 5.2vw;
+        height: 10.4vw;
+        max-width: 24px;
+        max-height: 48px;
         border-width: 1px;
         border-radius: 3px;
     }
-
+    .carro-container .domino-tile.horizontal {
+        width: 10.4vw;
+        height: 5.2vw;
+        max-width: 48px;
+        max-height: 24px;
+    }
     .carro-container .domino-tile .half { padding: 1.5px; }
     .carro-container .pip { width: 3px; height: 3px; }
 
