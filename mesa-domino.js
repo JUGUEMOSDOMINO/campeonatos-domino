@@ -1141,13 +1141,14 @@ document.addEventListener('DOMContentLoaded', () => {
             `• ${PLAYER_NAMES.at(3)}: ${formatHandList(state.hands.at(3))}`;
 
         if (usWon) {
-            sound.win();
             state.scores.us += totalGained;
+            if (state.scores.us < TARGET_SCORE) sound.handEnd();
             title = `🎉 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
             summaryText = `Nosotros ganamos la mano y sumamos +${totalGained} tantos (todas las fichas sobrantes).\n${detailLines}`;
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Nosotros sumamos +${totalGained} puntos.`);
         } else {
             state.scores.them += totalGained;
+            if (state.scores.them < TARGET_SCORE) sound.handEnd();
             title = `😔 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
             summaryText = `Los rivales ganan la mano y suman +${totalGained} tantos (todas las fichas sobrantes).\n${detailLines}`;
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Rivales suman +${totalGained} puntos.`);
@@ -1156,6 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateScoreboard();
         showHandSummaryModal(title, summaryText);
     }
+
     function handleHandClosed() {
         state.gameActive = false;
         highlightActivePlayer(-1);
@@ -1173,15 +1175,17 @@ document.addEventListener('DOMContentLoaded', () => {
             `• ${PLAYER_NAMES.at(3)}: ${formatHandList(state.hands.at(3))}`;
 
         if (ptsUs < ptsThem) {
-            sound.win();
             state.scores.us += totalPoints;
+            if (state.scores.us < TARGET_SCORE) sound.handEnd();
             summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${totalPoints} tantos.\n${detailLines}`;
             setLog(`¡CIERRE! Nosotros (${ptsUs} pts) ganamos a Rivales (${ptsThem} pts). +${totalPoints} puntos.`);
         } else if (ptsThem < ptsUs) {
             state.scores.them += totalPoints;
+            if (state.scores.them < TARGET_SCORE) sound.handEnd();
             summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${totalPoints} tantos.\n${detailLines}`;
             setLog(`¡CIERRE! Rivales (${ptsThem} pts) ganan a Nosotros (${ptsUs} pts). +${totalPoints} puntos.`);
         } else {
+            sound.handEnd();
             summaryText = `¡Cierre empatado a ${ptsUs} puntos! Nadie suma tantos y corre el turno de salida.\n${detailLines}`;
             setLog(`¡CIERRE EMPATADO a ${ptsUs} puntos! Nadie suma y corre mano.`);
         }
@@ -1195,6 +1199,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (matchFinished) {
             const weWonMatch = state.scores.us >= TARGET_SCORE && state.scores.us > state.scores.them;
+            if (weWonMatch) {
+                sound.win();
+            } else {
+                sound.lose();
+            }
             saveMatchResultToRanking(weWonMatch, state.scores.us, state.scores.them);
             dom.summaryTitle.textContent = weWonMatch
                 ? '🏆 ¡VICTORIA EN LA PARTIDA!'
@@ -1205,7 +1214,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnNextHand.textContent = '▶ Jugar Siguiente Mano';
         }
 
-                dom.summaryDetail.style.whiteSpace = 'pre-line';
+        dom.summaryDetail.style.whiteSpace = 'pre-line';
         dom.summaryDetail.style.textAlign = 'left';
         dom.summaryDetail.textContent = detailText;
         dom.summaryScores.textContent = `Marcador: Nosotros ${state.scores.us} — Rivales ${state.scores.them} (Meta: ${TARGET_SCORE})`;
