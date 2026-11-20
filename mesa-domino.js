@@ -1100,6 +1100,54 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 // === FIN BLOQUE 4A ===
 // === INICIO BLOQUE 4B ===
+    function createDeck() {
+        const deck = new Array();
+        for (let i = 0; i <= 6; i++) {
+            for (let j = i; j <= 6; j++) {
+                deck.push({ a: i, b: j });
+            }
+        }
+        return deck;
+    }
+
+    function shuffleDeck(deck) {
+        const arr = deck.slice();
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            const temp = arr.at(i);
+            arr.splice(i, 1, arr.at(j));
+            arr.splice(j, 1, temp);
+        }
+        return arr;
+    }
+
+    function assignRandomBots() {
+        const shuffled = shuffleDeck(BOT_POOL);
+        const rightBot = shuffled.at(0);
+        const partnerBot = shuffled.at(1);
+        const leftBot = shuffled.at(2);
+
+        state.botSeats = Array.of(null, rightBot, partnerBot, leftBot);
+        PLAYER_NAMES = Array.of(
+            state.userName,
+            `${rightBot} (Der)`,
+            `${partnerBot} (Compañero)`,
+            `${leftBot} (Izq)`
+        );
+
+        if (dom.lblPartnerName) dom.lblPartnerName.textContent = partnerBot;
+        if (dom.lblRivalsNames) dom.lblRivalsNames.textContent = `${rightBot} & ${leftBot}`;
+        if (dom.nameLabels.at(1)) dom.nameLabels.at(1).textContent = `${rightBot} (Der)`;
+        if (dom.nameLabels.at(2)) dom.nameLabels.at(2).textContent = `${partnerBot} (Compañero)`;
+        if (dom.nameLabels.at(3)) dom.nameLabels.at(3).textContent = `${leftBot} (Izq)`;
+    }
+
+    function updateSoundButtonUI() {
+        if (dom.btnToggleSound) {
+            dom.btnToggleSound.textContent = state.isMuted ? '🔇' : '🔊';
+        }
+    }
+
     function getRanking() {
         try {
             const raw = localStorage.getItem(STORAGE_RANKING_KEY);
@@ -1176,6 +1224,22 @@ document.addEventListener('DOMContentLoaded', () => {
         return div.innerHTML;
     }
 
+    updateSoundButtonUI();
+
+    if (dom.btnToggleSound) {
+        dom.btnToggleSound.addEventListener('click', () => {
+            state.isMuted = !state.isMuted;
+            localStorage.setItem(STORAGE_MUTE_KEY, String(state.isMuted));
+            updateSoundButtonUI();
+            if (!state.isMuted) {
+                getAudioCtx();
+                sound.clack();
+            } else if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        });
+    }
+
     dom.btnStartGame.addEventListener('click', () => {
         const alias = dom.playerAlias.value.trim();
         const club = dom.playerClub.value.trim();
@@ -1226,6 +1290,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     dom.btnNextHand.addEventListener('click', () => {
         dom.handSummaryModal.classList.add('hidden');
+        state.revealHands = false;
         if (state.scores.us >= TARGET_SCORE || state.scores.them >= TARGET_SCORE) {
             startNewMatch();
         } else {
