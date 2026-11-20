@@ -706,11 +706,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         startTurnTimer();
 
-        if (p === 0) {
+                if (p === 0) {
             if (playableIndices.length === 0) {
                 dom.btnPass.classList.remove('hidden');
-                showThought(0, 'Paso', 0);
-                setLog('No llevas fichas que casen: pasando...');
+                showThought(0, 'Pasando...', 0);
+                setLog('No llevas fichas que casen...');
                 state.botTimeout = setTimeout(() => {
                     if (state.gameActive && state.currentTurn === 0) {
                         passTurn(0, false);
@@ -729,7 +729,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (state.gameActive && state.currentTurn === 0) {
                             playTile(0, onlyIdx, validSides.at(0));
                         }
-                    }, 1700);
+                    }, 1900);
                 } else {
                     dom.btnPass.classList.add('hidden');
                     showThought(0, 'Elige extremo', 0);
@@ -746,7 +746,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnPass.classList.add('hidden');
             planAndExecuteBotTurn(p);
         }
-    }
+}
 
     function startTurnTimer() {
         clearInterval(state.timerInterval);
@@ -903,7 +903,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 playTile(botIdx, bestMove.idx, bestMove.side);
-            }, 1700);
+            }, 1900);
             return;
         }
 
@@ -1087,12 +1087,12 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnNextHand.textContent = '▶ Jugar Siguiente Mano';
         }
 
-        dom.summaryDetail.style.whiteSpace = 'pre-line';
+                dom.summaryDetail.style.whiteSpace = 'pre-line';
         dom.summaryDetail.style.textAlign = 'left';
         dom.summaryDetail.textContent = detailText;
         dom.summaryScores.textContent = `Marcador: Nosotros ${state.scores.us} — Rivales ${state.scores.them} (Meta: ${TARGET_SCORE})`;
 
-              state.revealHands = true;
+        state.revealHands = true;
         renderHands();
 
         setTimeout(() => {
@@ -1100,6 +1100,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 4500);
     }
 // === FIN BLOQUE 4A ===
+
 // === INICIO BLOQUE 4B ===
     function getRanking() {
         try {
