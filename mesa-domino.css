@@ -493,3 +493,39 @@ th { color: var(--accent-gold); }
     .side-selector { bottom: 4px; padding: 6px 10px; font-size: 0.75rem; gap: 6px; }
     .modal-content button { padding: 12px 18px; font-size: 1.05rem; }
 }
+/* Fichas descubiertas de los bots al terminar la mano */
+.bot-hand .domino-tile.revealed-tile {
+    width: 22px;
+    height: 42px;
+    border-width: 1.5px;
+    box-shadow: 0 0 8px rgba(251, 192, 45, 0.75);
+}
+
+.bot-hand.vertical .domino-tile.revealed-tile {
+    width: 42px;
+    height: 22px;
+}
+
+.bot-hand .domino-tile.revealed-tile .half {
+    padding: 1.5px;
+}
+
+.bot-hand .domino-tile.revealed-tile .pip {
+    width: 3px;
+    height: 3px;
+}
+
+@media (max-width: 900px) {
+    .bot-hand .domino-tile.revealed-tile {
+        width: 15px;
+        height: 28px;
+    }
+    .bot-hand.vertical .domino-tile.revealed-tile {
+        width: 28px;
+        height: 15px;
+    }
+    .bot-hand .domino-tile.revealed-tile .pip {
+        width: 2px;
+        height: 2px;
+    }
+}
