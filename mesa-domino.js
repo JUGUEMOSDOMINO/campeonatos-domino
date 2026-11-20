@@ -1030,7 +1030,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-       function handleUserTileClick(tileIndex) {
+          // === INICIO SELECTOR DE EXTREMO (IZQ / DER EN VERTICAL Y HORIZONTAL) ===
+    function handleUserTileClick(tileIndex) {
         if (!state.gameActive || state.currentTurn !== 0) return;
         const tile = state.hands.at(0).at(tileIndex);
         if (!canPlayTile(tile)) return;
@@ -1051,6 +1052,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playTile(0, tileIndex, sides.at(0));
         }
     }
+    // === FIN SELECTOR DE EXTREMO ===
  
     function hideSideSelector() {
         dom.sideSelector.classList.add('hidden');
