@@ -418,40 +418,40 @@ th { color: var(--accent-gold); }
         justify-content: space-between;
     }
 
-    .top-zone { margin-bottom: 6px; }
+    .top-zone { margin-bottom: 4px; }
     .bottom-zone {
         padding-bottom: env(safe-area-inset-bottom, 10px);
         flex-shrink: 0;
     }
 
     .player-badge { padding: 2px 7px; font-size: 0.68rem; gap: 4px; margin-bottom: 3px; }
-    .left-zone, .right-zone { width: 68px; min-width: 68px; max-width: 68px; }
+    .left-zone, .right-zone { width: 56px; min-width: 56px; max-width: 56px; }
     .left-zone .player-badge, .right-zone .player-badge {
         flex-direction: column;
         text-align: center;
         padding: 3px 2px;
-        font-size: 0.62rem;
+        font-size: 0.6rem;
         width: 100%;
     }
     .left-zone .thought-bubble, .right-zone .thought-bubble {
-        font-size: 0.62rem;
+        font-size: 0.6rem;
         white-space: nowrap;
         letter-spacing: -0.2px;
     }
 
-    .tile-back { width: 19px; height: 33px; border-width: 1.5px; }
-    .bot-hand.vertical .tile-back { width: 33px; height: 18px; }
+    .tile-back { width: 16px; height: 28px; border-width: 1.5px; }
+    .bot-hand.vertical .tile-back { width: 28px; height: 16px; }
 
     .board-area { padding: 2px; overflow-y: auto; overflow-x: hidden; }
     .game-log {
-        margin: 6px auto 4px auto;
-        padding: 6px 10px;
-        font-size: 0.76rem;
-        line-height: 1.28;
+        margin: 4px auto 3px auto;
+        padding: 5px 8px;
+        font-size: 0.75rem;
+        line-height: 1.25;
         width: 98%;
         max-width: 98%;
-        height: 74px;
-        min-height: 74px;
+        height: 54px;
+        min-height: 54px;
     }
     .carro-container {
         width: 100%;
@@ -489,44 +489,7 @@ th { color: var(--accent-gold); }
         max-height: 66px;
         border-width: 1.5px;
     }
-       .user-hand .pip { width: 4px; height: 4px; }
+    .user-hand .pip { width: 4px; height: 4px; }
     .side-selector { bottom: 4px; padding: 6px 10px; font-size: 0.75rem; gap: 6px; }
     .modal-content button { padding: 12px 18px; font-size: 1.05rem; }
-}
-
-/* Fichas descubiertas de los bots al terminar la mano */
-.bot-hand .domino-tile.revealed-tile {
-    width: 28px;
-    height: 54px;
-    border-width: 1.5px;
-    box-shadow: 0 0 8px rgba(251, 192, 45, 0.75);
-}
-
-.bot-hand.vertical .domino-tile.revealed-tile {
-    width: 54px;
-    height: 28px;
-}
-
-.bot-hand .domino-tile.revealed-tile .half {
-    padding: 1.5px;
-}
-
-.bot-hand .domino-tile.revealed-tile .pip {
-    width: 4px;
-    height: 4px;
-}
-
-@media (max-width: 900px) {
-    .bot-hand .domino-tile.revealed-tile {
-        width: 22px;
-        height: 40px;
-    }
-    .bot-hand.vertical .domino-tile.revealed-tile {
-        width: 40px;
-        height: 22px;
-    }
-    .bot-hand .domino-tile.revealed-tile .pip {
-        width: 2.5px;
-        height: 2.5px;
-    }
 }
