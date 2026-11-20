@@ -400,19 +400,24 @@ document.addEventListener('DOMContentLoaded', () => {
         const centerItem = state.board.at(centerIdx);
         const cDims = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
 
-                         // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
+                                // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
         let rX = cDims.w / 2;
         let rY = 0;
         let rDir = 'R';
         let rNonDoubles = 0;
-        let rPrevWasDouble = centerItem.isDouble;
+        let rNormalSinceDouble = centerItem.isDouble ? 0 : 2;
 
         for (let i = centerIdx + 1; i < state.board.length; i++) {
             const item = state.board.at(i);
-            if (!item.isDouble) rNonDoubles++;
+            if (item.isDouble) {
+                rNormalSinceDouble = 0;
+            } else {
+                rNonDoubles++;
+                rNormalSinceDouble++;
+            }
 
             let justTurned = false;
-            if (!item.isDouble && !rPrevWasDouble) {
+            if (!item.isDouble && rNormalSinceDouble >= 2) {
                 if (rDir === 'R' && rNonDoubles >= 4) {
                     rDir = 'U';
                     rX -= S / 2;
@@ -450,7 +455,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
-            rPrevWasDouble = item.isDouble;
         }
 
         // BRAZO IZQUIERDO: espiral antihorario (L -> D -> R -> U)
@@ -458,14 +462,19 @@ document.addEventListener('DOMContentLoaded', () => {
         let lY = 0;
         let lDir = 'L';
         let lNonDoubles = 0;
-        let lPrevWasDouble = centerItem.isDouble;
+        let lNormalSinceDouble = centerItem.isDouble ? 0 : 2;
 
         for (let i = centerIdx - 1; i >= 0; i--) {
             const item = state.board.at(i);
-            if (!item.isDouble) lNonDoubles++;
+            if (item.isDouble) {
+                lNormalSinceDouble = 0;
+            } else {
+                lNonDoubles++;
+                lNormalSinceDouble++;
+            }
 
             let justTurned = false;
-            if (!item.isDouble && !lPrevWasDouble) {
+            if (!item.isDouble && lNormalSinceDouble >= 2) {
                 if (lDir === 'L' && lNonDoubles >= 4) {
                     lDir = 'D';
                     lX += S / 2;
@@ -503,9 +512,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
-            lPrevWasDouble = item.isDouble;
         }
- 
+
         // Escalado centrado en (0,0) sin mover nunca la ficha de salida
         let maxAbsX = 0, maxAbsY = 0;
         placed.forEach(p => {
