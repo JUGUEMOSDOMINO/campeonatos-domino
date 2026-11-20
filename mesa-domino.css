@@ -495,15 +495,15 @@ th { color: var(--accent-gold); }
 }
 /* Fichas descubiertas de los bots al terminar la mano */
 .bot-hand .domino-tile.revealed-tile {
-    width: 22px;
-    height: 42px;
+    width: 25px;
+    height: 48px;
     border-width: 1.5px;
     box-shadow: 0 0 8px rgba(251, 192, 45, 0.75);
 }
 
 .bot-hand.vertical .domino-tile.revealed-tile {
-    width: 42px;
-    height: 22px;
+    width: 48px;
+    height: 25px;
 }
 
 .bot-hand .domino-tile.revealed-tile .half {
@@ -511,21 +511,21 @@ th { color: var(--accent-gold); }
 }
 
 .bot-hand .domino-tile.revealed-tile .pip {
-    width: 3px;
-    height: 3px;
+    width: 3.5px;
+    height: 3.5px;
 }
 
 @media (max-width: 900px) {
     .bot-hand .domino-tile.revealed-tile {
-        width: 15px;
-        height: 28px;
+        width: 19px;
+        height: 36px;
     }
     .bot-hand.vertical .domino-tile.revealed-tile {
-        width: 28px;
-        height: 15px;
+        width: 36px;
+        height: 19px;
     }
     .bot-hand .domino-tile.revealed-tile .pip {
-        width: 2px;
-        height: 2px;
+        width: 2.3px;
+        height: 2.3px;
     }
 }
