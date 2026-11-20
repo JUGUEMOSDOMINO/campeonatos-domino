@@ -221,6 +221,7 @@ button {
 
 .carro-stage .domino-tile {
     position: absolute;
+    box-sizing: border-box;
     margin: 0;
 }
 
