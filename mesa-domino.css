@@ -212,7 +212,10 @@ button {
 
 .carro-stage {
     position: relative;
-    transform-origin: center center;
+    width: 0;
+    height: 0;
+    overflow: visible;
+    transform-origin: 0 0;
     transition: transform 0.25s ease;
 }
 
