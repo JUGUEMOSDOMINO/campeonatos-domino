@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         )
     };
 
-    // === SISTEMA DE AUDIO Y VOZ EN ESPAÑOL ===
+   // === SISTEMA DE AUDIO Y VOZ EN ESPAÑOL ===
     let audioCtx = null;
 
     function getAudioCtx() {
@@ -120,7 +120,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function speakSpanish(text) {
         if (state.isMuted || !('speechSynthesis' in window)) return;
         try {
-            window.speechSynthesis.cancel();
+            if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
+                window.speechSynthesis.cancel();
+            }
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-ES';
             utter.rate = 1.05;
@@ -172,7 +174,23 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         yourTurn() {
             if (state.isMuted) return;
-            speakSpanish('Tu turno');
+            const ctx = getAudioCtx();
+            if (ctx) {
+                const now = ctx.currentTime;
+                Array.of(0, 0.11).forEach((offset, idx) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(idx === 0 ? 587.33 : 880, now + offset);
+                    gain.gain.setValueAtTime(0.18, now + offset);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + offset + 0.14);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(now + offset);
+                    osc.stop(now + offset + 0.16);
+                });
+            }
+            setTimeout(() => speakSpanish('Tu turno'), 160);
         },
         tick() {
             if (state.isMuted) return;
@@ -230,7 +248,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
-
+ 
     // === ROTACIÓN ALEATORIA DE ASIENTOS DE BOTS ===
     function assignRandomBots() {
         const shuffled = shuffleDeck(BOT_POOL);
