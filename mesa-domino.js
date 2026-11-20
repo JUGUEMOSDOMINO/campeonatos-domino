@@ -418,7 +418,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (rDir === 'U' && rNonDoubles === 6) {
                 rDir = 'L';
                 rX += rLastDims.w / 2;
-                rY -= rLastDims.h / 2;
+                rY += rLastDims.h / 2;
             } else if (rDir === 'L' && rNonDoubles === 12) {
                 rDir = 'D';
                 rX += rLastDims.w / 2;
@@ -466,7 +466,7 @@ document.addEventListener('DOMContentLoaded', () => {
             } else if (lDir === 'D' && lNonDoubles === 6) {
                 lDir = 'R';
                 lX -= lLastDims.w / 2;
-                lY += lLastDims.h / 2;
+                lY -= lLastDims.h / 2;
             } else if (lDir === 'R' && lNonDoubles === 12) {
                 lDir = 'U';
                 lX -= lLastDims.w / 2;
@@ -1101,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             dom.handSummaryModal.classList.remove('hidden');
-        }, 6500);
+        }, 7500);
     }
 // === FIN BLOQUE 4A ===
 
