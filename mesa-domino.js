@@ -521,9 +521,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialLeftDir = isVerticalStart ? 'U' : 'L';
         const initialRightDir = isVerticalStart ? 'D' : 'R';
 
-        const centerIn = isVerticalStart ? centerItem.right : centerItem.left;
-        const centerOut = isVerticalStart ? centerItem.left : centerItem.right;
-        const cBox = addPlacedTile(centerIn, centerOut, centerItem.isDouble, 0, 0, initialRightDir);
+                // En vertical: centerItem.left queda arriba (hacia 'U') y centerItem.right queda abajo (hacia 'D')
+        const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, initialRightDir);
 
         // BRAZO DERECHO LÓGICO (rightEnd -> Derecha en horizontal / Abajo-Derecha en vertical)
         let rLast = cBox;
