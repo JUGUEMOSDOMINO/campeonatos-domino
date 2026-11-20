@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-    function renderBoard() {
+      function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
@@ -442,6 +442,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const S = isMobile ? 24 : 42;
         const L = S * 2;
         const GAP = 2;
+
+        // Límites reales disponibles desde el centro (0,0) del tablero
+        const halfW = Math.max(110, (dom.carroContainer.clientWidth - 20) / 2);
+        const halfH = Math.max(110, (dom.carroContainer.clientHeight - 20) / 2);
 
         const stage = document.createElement('div');
         stage.className = 'carro-stage';
@@ -511,15 +515,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Ficha de salida clavada en el centro exacto (0,0)
+        // En vertical: 'left' sube ('U') y dobla a Izquierda ('L'); 'right' baja ('D') y dobla a Derecha ('R')
         const centerItem = state.board.at(centerIdx);
-        const initialRightDir = isVerticalStart ? 'U' : 'R';
-        const initialLeftDir = isVerticalStart ? 'D' : 'L';
-        const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, initialRightDir);
+        const initialLeftDir = isVerticalStart ? 'U' : 'L';
+        const initialRightDir = isVerticalStart ? 'D' : 'R';
 
-        // BRAZO DERECHO LÓGICO (rightEnd)
+        // Orientación de la ficha de salida para que leftEnd quede en initialLeftDir y rightEnd en initialRightDir
+        const centerIn = isVerticalStart ? centerItem.right : centerItem.left;
+        const centerOut = isVerticalStart ? centerItem.left : centerItem.right;
+        const cBox = addPlacedTile(centerIn, centerOut, centerItem.isDouble, 0, 0, initialRightDir);
+
+        // BRAZO DERECHO LÓGICO (rightEnd -> Derecha en horizontal / Abajo-Derecha en vertical)
         let rLast = cBox;
         let rDir = initialRightDir;
-        let rNonDoubles = 0;
+        let rLegTiles = 0;
         let rNormalSinceDouble = centerItem.isDouble ? 0 : 2;
 
         for (let i = centerIdx + 1; i < state.board.length; i++) {
@@ -527,20 +536,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.isDouble) {
                 rNormalSinceDouble = 0;
             } else {
-                rNonDoubles++;
                 rNormalSinceDouble++;
             }
+
+            const nextIsHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
+            const nextW = nextIsHoriz ? L : S;
+            const nextH = nextIsHoriz ? S : L;
+            const straightPos = computeStraightCoords(rLast, rDir, nextW, nextH);
 
             let justTurned = false;
             if (!item.isDouble && rNormalSinceDouble >= 2) {
                 if (!isVerticalStart) {
-                    if (rDir === 'R' && rNonDoubles >= 4) { rDir = 'U'; justTurned = true; }
-                    else if (rDir === 'U' && rNonDoubles >= 6) { rDir = 'L'; justTurned = true; }
-                    else if (rDir === 'L' && rNonDoubles >= 12) { rDir = 'D'; justTurned = true; }
+                    // Salida horizontal: R -> U -> L (paralela continua hasta borde izq) -> D
+                    if (rDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6 || rLegTiles >= 4)) {
+                        rDir = 'U'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'U' && rLegTiles >= 2) {
+                        rDir = 'L'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                        rDir = 'D'; justTurned = true; rLegTiles = 0;
+                    }
                 } else {
-                    if (rDir === 'U' && rNonDoubles >= 3) { rDir = 'L'; justTurned = true; }
-                    else if (rDir === 'L' && rNonDoubles >= 7) { rDir = 'D'; justTurned = true; }
-                    else if (rDir === 'D' && rNonDoubles >= 12) { rDir = 'R'; justTurned = true; }
+                    // Salida vertical: D (gira a la 2.ª ficha) -> R -> U (paralela continua hasta borde sup) -> L
+                    if (rDir === 'D' && rLegTiles >= 2) {
+                        rDir = 'R'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                        rDir = 'U'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'U' && (straightPos.cy - nextH / 2 < -halfH + 6)) {
+                        rDir = 'L'; justTurned = true; rLegTiles = 0;
+                    }
                 }
             }
 
@@ -553,12 +576,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 : computeStraightCoords(rLast, rDir, w, h);
 
             rLast = addPlacedTile(item.left, item.right, item.isDouble, pos.cx, pos.cy, rDir);
+            rLegTiles++;
         }
 
-        // BRAZO IZQUIERDO LÓGICO (leftEnd)
+        // BRAZO IZQUIERDO LÓGICO (leftEnd -> Izquierda en horizontal / Arriba-Izquierda en vertical)
         let lLast = cBox;
         let lDir = initialLeftDir;
-        let lNonDoubles = 0;
+        let lLegTiles = 0;
         let lNormalSinceDouble = centerItem.isDouble ? 0 : 2;
 
         for (let i = centerIdx - 1; i >= 0; i--) {
@@ -566,20 +590,34 @@ document.addEventListener('DOMContentLoaded', () => {
             if (item.isDouble) {
                 lNormalSinceDouble = 0;
             } else {
-                lNonDoubles++;
                 lNormalSinceDouble++;
             }
+
+            const nextIsHoriz = item.isDouble ? (lDir === 'U' || lDir === 'D') : (lDir === 'R' || lDir === 'L');
+            const nextW = nextIsHoriz ? L : S;
+            const nextH = nextIsHoriz ? S : L;
+            const straightPos = computeStraightCoords(lLast, lDir, nextW, nextH);
 
             let justTurned = false;
             if (!item.isDouble && lNormalSinceDouble >= 2) {
                 if (!isVerticalStart) {
-                    if (lDir === 'L' && lNonDoubles >= 4) { lDir = 'D'; justTurned = true; }
-                    else if (lDir === 'D' && lNonDoubles >= 6) { lDir = 'R'; justTurned = true; }
-                    else if (lDir === 'R' && lNonDoubles >= 12) { lDir = 'U'; justTurned = true; }
+                    // Salida horizontal: L -> D -> R (paralela continua hasta borde der) -> U
+                    if (lDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6 || lLegTiles >= 4)) {
+                        lDir = 'D'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'D' && lLegTiles >= 2) {
+                        lDir = 'R'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'R' && (straightPos.cx + nextW / 2 > halfW - 6)) {
+                        lDir = 'U'; justTurned = true; lLegTiles = 0;
+                    }
                 } else {
-                    if (lDir === 'D' && lNonDoubles >= 3) { lDir = 'R'; justTurned = true; }
-                    else if (lDir === 'R' && lNonDoubles >= 7) { lDir = 'U'; justTurned = true; }
-                    else if (lDir === 'U' && lNonDoubles >= 12) { lDir = 'L'; justTurned = true; }
+                    // Salida vertical: U (gira a la 2.ª ficha) -> L -> D (paralela continua hasta borde inf) -> R
+                    if (lDir === 'U' && lLegTiles >= 2) {
+                        lDir = 'L'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'L' && (straightPos.cx - nextW / 2 < -halfW + 6)) {
+                        lDir = 'D'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'D' && (straightPos.cy + nextH / 2 > halfH - 6)) {
+                        lDir = 'R'; justTurned = true; lLegTiles = 0;
+                    }
                 }
             }
 
@@ -592,6 +630,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 : computeStraightCoords(lLast, lDir, w, h);
 
             lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
+            lLegTiles++;
         }
 
         // Escalado centrado en (0,0) sin mover nunca la ficha de salida
