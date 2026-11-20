@@ -428,25 +428,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-       function renderBoard() {
+        function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
-               let centerIdx = state.board.findIndex(t => t.isCenter);
+        let centerIdx = state.board.findIndex(t => t.isCenter);
         if (centerIdx === -1) centerIdx = 0;
 
         const isMobile = window.innerWidth <= 900;
-        // Solo en móvil: vertical cuando sale el Jugador (0) o su compañero (2); en Laptop siempre horizontal
         const isVerticalStart = isMobile && (state.startingPlayer === 0 || state.startingPlayer === 2);
 
-               const S = isMobile ? 28 : 42;
+        const S = isMobile ? 32 : 42;
         const L = S * 2;
-        const GAP = 2;
+        const GAP = 0;
 
         const stage = document.createElement('div');
         stage.className = 'carro-stage';
 
-        const placed = new Array();
+        const placed = [];
 
         function addPlacedTile(inVal, outVal, isDbl, cx, cy, dir) {
             const isHoriz = isDbl ? (dir === 'U' || dir === 'D') : (dir === 'R' || dir === 'L');
@@ -510,18 +509,15 @@ document.addEventListener('DOMContentLoaded', () => {
             return { cx: last.cx, cy: last.cy + last.h / 2 + GAP + h / 2 };
         }
 
-        // Límites de giro compactos en móvil para no encoger las fichas
-        const t1 = isMobile ? 2 : 4;
+        const t1 = isMobile ? 1 : 4;
         const t2 = isMobile ? 4 : 6;
-        const t3 = isMobile ? 7 : 12;
+        const t3 = isMobile ? 6 : 12;
 
-        // Ficha de salida clavada en el centro exacto (0,0)
         const centerItem = state.board.at(centerIdx);
         const initialRightDir = isVerticalStart ? 'U' : 'R';
         const initialLeftDir = isVerticalStart ? 'D' : 'L';
         const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, initialRightDir);
 
-        // BRAZO DERECHO LÓGICO (rightEnd)
         let rLast = cBox;
         let rDir = initialRightDir;
         let rNonDoubles = 0;
@@ -560,7 +556,6 @@ document.addEventListener('DOMContentLoaded', () => {
             rLast = addPlacedTile(item.left, item.right, item.isDouble, pos.cx, pos.cy, rDir);
         }
 
-        // BRAZO IZQUIERDO LÓGICO (leftEnd)
         let lLast = cBox;
         let lDir = initialLeftDir;
         let lNonDoubles = 0;
@@ -599,24 +594,27 @@ document.addEventListener('DOMContentLoaded', () => {
             lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
         }
 
-        // Escalado centrado en (0,0) con mínimo legible en móvil
-        let maxAbsX = 0, maxAbsY = 0;
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         placed.forEach(p => {
-            maxAbsX = Math.max(maxAbsX, Math.abs(p.cx) + p.w / 2);
-            maxAbsY = Math.max(maxAbsY, Math.abs(p.cy) + p.h / 2);
+            minX = Math.min(minX, p.cx - p.w / 2);
+            maxX = Math.max(maxX, p.cx + p.w / 2);
+            minY = Math.min(minY, p.cy - p.h / 2);
+            maxY = Math.max(maxY, p.cy + p.h / 2);
         });
 
-        const reqW = maxAbsX * 2;
-        const reqH = maxAbsY * 2;
+        const reqW = maxX - minX;
+        const reqH = maxY - minY;
+        const offsetX = (minX + maxX) / 2;
+        const offsetY = (minY + maxY) / 2;
 
         dom.carroContainer.appendChild(stage);
 
-        const availW = dom.carroContainer.clientWidth - 12;
-        const availH = dom.carroContainer.clientHeight - 12;
-        if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
+        const availW = dom.carroContainer.clientWidth - 16;
+        const availH = dom.carroContainer.clientHeight - 16;
+        if (availW > 0 && availH > 0) {
             const rawScale = Math.min(availW / reqW, availH / reqH, 1);
-            const finalScale = isMobile ? Math.max(rawScale, 0.68) : rawScale;
-            stage.style.transform = `scale(${finalScale.toFixed(3)})`;
+            const finalScale = isMobile ? Math.max(rawScale, 0.65) : rawScale;
+            stage.style.transform = `translate(${-offsetX * finalScale}px, ${-offsetY * finalScale}px) scale(${finalScale.toFixed(3)})`;
         }
     }
 
