@@ -547,7 +547,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     revealedTile.classList.add('revealed-tile');
                     botContainer.appendChild(revealedTile);
                 });
-                        } else {
+                                   } else {
                 for (let i = 0; i < count; i++) {
                     const back = document.createElement('div');
                     back.className = 'tile-back';
