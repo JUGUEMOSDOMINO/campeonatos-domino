@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-         function renderBoard() {
+    function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
@@ -436,16 +436,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (centerIdx === -1) centerIdx = 0;
 
         const isMobile = window.innerWidth <= 900;
+        // Solo en móvil: vertical cuando sale el Jugador (0) o su compañero (2); en Laptop siempre horizontal
         const isVerticalStart = isMobile && (state.startingPlayer === 0 || state.startingPlayer === 2);
 
-        const S = isMobile ? 28 : 42;
+        const S = isMobile ? 24 : 42;
         const L = S * 2;
-        const GAP = 0;
+        const GAP = 2;
 
         const stage = document.createElement('div');
         stage.className = 'carro-stage';
 
-        const placed = [];
+        const placed = new Array();
 
         function addPlacedTile(inVal, outVal, isDbl, cx, cy, dir) {
             const isHoriz = isDbl ? (dir === 'U' || dir === 'D') : (dir === 'R' || dir === 'L');
@@ -509,11 +510,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return { cx: last.cx, cy: last.cy + last.h / 2 + GAP + h / 2 };
         }
 
-        // Giros amplios para evitar cualquier choque o superposición entre brazos
-        const t1 = isMobile ? (isVerticalStart ? 3 : 2) : 4;
-        const t2 = isMobile ? (isVerticalStart ? 5 : 6) : 6;
-        const t3 = isMobile ? 11 : 12;
-
+        // Ficha de salida clavada en el centro exacto (0,0)
         const centerItem = state.board.at(centerIdx);
         const initialRightDir = isVerticalStart ? 'U' : 'R';
         const initialLeftDir = isVerticalStart ? 'D' : 'L';
@@ -537,13 +534,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let justTurned = false;
             if (!item.isDouble && rNormalSinceDouble >= 2) {
                 if (!isVerticalStart) {
-                    if (rDir === 'R' && rNonDoubles >= t1) { rDir = 'U'; justTurned = true; }
-                    else if (rDir === 'U' && rNonDoubles >= t2) { rDir = 'L'; justTurned = true; }
-                    else if (rDir === 'L' && rNonDoubles >= t3) { rDir = 'D'; justTurned = true; }
+                    if (rDir === 'R' && rNonDoubles >= 4) { rDir = 'U'; justTurned = true; }
+                    else if (rDir === 'U' && rNonDoubles >= 6) { rDir = 'L'; justTurned = true; }
+                    else if (rDir === 'L' && rNonDoubles >= 12) { rDir = 'D'; justTurned = true; }
                 } else {
-                    if (rDir === 'U' && rNonDoubles >= t1) { rDir = 'L'; justTurned = true; }
-                    else if (rDir === 'L' && rNonDoubles >= t2) { rDir = 'D'; justTurned = true; }
-                    else if (rDir === 'D' && rNonDoubles >= t3) { rDir = 'R'; justTurned = true; }
+                    if (rDir === 'U' && rNonDoubles >= 3) { rDir = 'L'; justTurned = true; }
+                    else if (rDir === 'L' && rNonDoubles >= 7) { rDir = 'D'; justTurned = true; }
+                    else if (rDir === 'D' && rNonDoubles >= 12) { rDir = 'R'; justTurned = true; }
                 }
             }
 
@@ -576,13 +573,13 @@ document.addEventListener('DOMContentLoaded', () => {
             let justTurned = false;
             if (!item.isDouble && lNormalSinceDouble >= 2) {
                 if (!isVerticalStart) {
-                    if (lDir === 'L' && lNonDoubles >= t1) { lDir = 'D'; justTurned = true; }
-                    else if (lDir === 'D' && lNonDoubles >= t2) { lDir = 'R'; justTurned = true; }
-                    else if (lDir === 'R' && lNonDoubles >= t3) { lDir = 'U'; justTurned = true; }
+                    if (lDir === 'L' && lNonDoubles >= 4) { lDir = 'D'; justTurned = true; }
+                    else if (lDir === 'D' && lNonDoubles >= 6) { lDir = 'R'; justTurned = true; }
+                    else if (lDir === 'R' && lNonDoubles >= 12) { lDir = 'U'; justTurned = true; }
                 } else {
-                    if (lDir === 'D' && lNonDoubles >= t1) { lDir = 'R'; justTurned = true; }
-                    else if (lDir === 'R' && lNonDoubles >= t2) { lDir = 'U'; justTurned = true; }
-                    else if (lDir === 'U' && lNonDoubles >= t3) { lDir = 'L'; justTurned = true; }
+                    if (lDir === 'D' && lNonDoubles >= 3) { lDir = 'R'; justTurned = true; }
+                    else if (lDir === 'R' && lNonDoubles >= 7) { lDir = 'U'; justTurned = true; }
+                    else if (lDir === 'U' && lNonDoubles >= 12) { lDir = 'L'; justTurned = true; }
                 }
             }
 
@@ -597,30 +594,23 @@ document.addEventListener('DOMContentLoaded', () => {
             lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
         }
 
-        // Centrado dinámico sobre el bloque real de fichas
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        // Escalado centrado en (0,0) sin mover nunca la ficha de salida
+        let maxAbsX = 0, maxAbsY = 0;
         placed.forEach(p => {
-            minX = Math.min(minX, p.cx - p.w / 2);
-            maxX = Math.max(maxX, p.cx + p.w / 2);
-            minY = Math.min(minY, p.cy - p.h / 2);
-            maxY = Math.max(maxY, p.cy + p.h / 2);
+            maxAbsX = Math.max(maxAbsX, Math.abs(p.cx) + p.w / 2);
+            maxAbsY = Math.max(maxAbsY, Math.abs(p.cy) + p.h / 2);
         });
 
-        const reqW = maxX - minX;
-        const reqH = maxY - minY;
-        const offsetX = (minX + maxX) / 2;
-        const offsetY = (minY + maxY) / 2;
+        const reqW = maxAbsX * 2;
+        const reqH = maxAbsY * 2;
 
         dom.carroContainer.appendChild(stage);
 
         const availW = dom.carroContainer.clientWidth - 16;
         const availH = dom.carroContainer.clientHeight - 16;
-        if (availW > 0 && availH > 0) {
-            // Escala máxima constante desde la jugada 1 para evitar que al inicio sean gigantes
-            const maxBaseScale = isMobile ? 0.82 : 0.92;
-            const fitScale = Math.min(availW / reqW, availH / reqH, maxBaseScale);
-            const finalScale = isMobile ? Math.max(fitScale, 0.62) : fitScale;
-            stage.style.transform = `translate(${-offsetX * finalScale}px, ${-offsetY * finalScale}px) scale(${finalScale.toFixed(3)})`;
+        if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
+            const scale = Math.min(availW / reqW, availH / reqH, 1);
+            stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
     }
 
