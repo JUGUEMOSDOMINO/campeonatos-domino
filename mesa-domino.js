@@ -533,20 +533,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
             userContainer.appendChild(tileEl);
         });
-
         for (let p = 1; p <= 3; p++) {
             const botContainer = dom.handContainers.at(p);
             botContainer.innerHTML = '';
-            const count = state.hands.at(p).length;
+            const botHand = state.hands.at(p);
+            const count = botHand.length;
             dom.countLabels.at(p).textContent = count;
 
-            for (let i = 0; i < count; i++) {
-                const back = document.createElement('div');
-                back.className = 'tile-back';
-                botContainer.appendChild(back);
+            if (state.revealHands) {
+                const isSideBot = (p === 1 || p === 3);
+                botHand.forEach(tile => {
+                    const revealedTile = createTileElement(tile.a, tile.b, isSideBot);
+                    revealedTile.classList.add('revealed-tile');
+                    botContainer.appendChild(revealedTile);
+                });
+            } else {
+                for (let i = 0; i < count; i++) {
+                    const back = document.createElement('div');
+                    back.className = 'tile-back';
+                    botContainer.appendChild(back);
+                }
             }
         }
-    }
 // === FIN BLOQUE 2 DE 4 ===
 
     function updateScoreboard() {
