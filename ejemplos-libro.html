@@ -153,7 +153,6 @@
     </details>
   </article>
 </section>
-
 <script>
 document.querySelectorAll('.caso-item').forEach(function(item) {
   var summary = item.querySelector('summary');
@@ -161,8 +160,9 @@ document.querySelectorAll('.caso-item').forEach(function(item) {
   var aviso = item.querySelector('.aviso-escribir');
 
   summary.addEventListener('click', function(e) {
-    if (textarea.value.trim().length === 0) {
+    if (textarea.value.trim().length < 5) {
       e.preventDefault();
+      aviso.textContent = '⚠️ Escribe al menos 5 caracteres para desplegar la respuesta.';
       aviso.style.display = 'block';
       textarea.focus();
     } else {
@@ -171,7 +171,7 @@ document.querySelectorAll('.caso-item').forEach(function(item) {
   });
 
   textarea.addEventListener('input', function() {
-    if (textarea.value.trim().length > 0) {
+    if (textarea.value.trim().length >= 5) {
       aviso.style.display = 'none';
     }
   });
