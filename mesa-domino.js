@@ -666,12 +666,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.hands.at(0).sort((x, y) => (x.a - y.a) || (x.b - y.b));
 
-        state.board = new Array();
+                state.board = new Array();
         state.leftEnd = null;
         state.rightEnd = null;
         state.consecutivePasses = 0;
         state.pendingTileIndex = null;
         state.gameActive = true;
+        state.revealHands = false;
 
         if (state.isFirstHand) {
             const drawResult = drawStartingPlayerFED();
