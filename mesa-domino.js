@@ -374,7 +374,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-    function renderBoard() {
+   function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
@@ -410,17 +410,17 @@ document.addEventListener('DOMContentLoaded', () => {
             el.style.left = (cx - w / 2) + 'px';
             el.style.top = (cy - h / 2) + 'px';
             stage.appendChild(el);
-            placed.push({ cx, cy, w, h });
-            return { w, h };
+            const box = { cx, cy, w, h };
+            placed.push(box);
+            return box;
         }
 
         // Ficha de salida clavada en el centro exacto (0,0)
         const centerItem = state.board.at(centerIdx);
-        const cDims = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
+        const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
 
-                                // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
-        let rX = cDims.w / 2;
-        let rY = 0;
+        // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
+        let rLast = cBox;
         let rDir = 'R';
         let rNonDoubles = 0;
         let rNormalSinceDouble = centerItem.isDouble ? 0 : 2;
@@ -438,16 +438,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!item.isDouble && rNormalSinceDouble >= 2) {
                 if (rDir === 'R' && rNonDoubles >= 4) {
                     rDir = 'U';
-                    rX -= S / 2;
-                    rY -= S / 2;
                     justTurned = true;
                 } else if (rDir === 'U' && rNonDoubles >= 6) {
                     rDir = 'L';
-                    rX += S / 2;
                     justTurned = true;
                 } else if (rDir === 'L' && rNonDoubles >= 12) {
                     rDir = 'D';
-                    rX += S / 2;
                     justTurned = true;
                 }
             }
@@ -456,28 +452,44 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
 
-            let cx = rX;
-            let cy = rY;
-            if (rDir === 'R') {
-                cx = rX + (justTurned ? 0 : GAP) + w / 2;
-                rX = cx + w / 2;
-            } else if (rDir === 'U') {
-                cy = rY - GAP - h / 2;
-                rY = cy - h / 2;
-            } else if (rDir === 'L') {
-                cx = rX - (justTurned ? 0 : GAP) - w / 2;
-                rX = cx - w / 2;
-            } else if (rDir === 'D') {
-                cy = rY + GAP + h / 2;
-                rY = cy + h / 2;
+            let cx = rLast.cx;
+            let cy = rLast.cy;
+
+            if (justTurned) {
+                if (rDir === 'U') {
+                    // Giro de R -> U: alinea borde derecho de la nueva ficha con borde derecho de rLast, y apoya sobre su borde superior
+                    cx = rLast.cx + rLast.w / 2 - w / 2;
+                    cy = rLast.cy - rLast.h / 2 - GAP - h / 2;
+                } else if (rDir === 'L') {
+                    // Giro de U -> L: alinea borde superior de la nueva ficha con borde superior de rLast, y apoya a su izquierda
+                    cx = rLast.cx - rLast.w / 2 - GAP - w / 2;
+                    cy = rLast.cy - rLast.h / 2 + h / 2;
+                } else if (rDir === 'D') {
+                    // Giro de L -> D: alinea borde izquierdo de la nueva ficha con borde izquierdo de rLast, y apoya bajo su borde inferior
+                    cx = rLast.cx - rLast.w / 2 + w / 2;
+                    cy = rLast.cy + rLast.h / 2 + GAP + h / 2;
+                }
+            } else {
+                if (rDir === 'R') {
+                    cx = rLast.cx + rLast.w / 2 + GAP + w / 2;
+                    cy = rLast.cy;
+                } else if (rDir === 'U') {
+                    cx = rLast.cx;
+                    cy = rLast.cy - rLast.h / 2 - GAP - h / 2;
+                } else if (rDir === 'L') {
+                    cx = rLast.cx - rLast.w / 2 - GAP - w / 2;
+                    cy = rLast.cy;
+                } else if (rDir === 'D') {
+                    cx = rLast.cx;
+                    cy = rLast.cy + rLast.h / 2 + GAP + h / 2;
+                }
             }
 
-            addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
+            rLast = addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
         }
 
         // BRAZO IZQUIERDO: espiral antihorario (L -> D -> R -> U)
-        let lX = -cDims.w / 2;
-        let lY = 0;
+        let lLast = cBox;
         let lDir = 'L';
         let lNonDoubles = 0;
         let lNormalSinceDouble = centerItem.isDouble ? 0 : 2;
@@ -495,16 +507,12 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!item.isDouble && lNormalSinceDouble >= 2) {
                 if (lDir === 'L' && lNonDoubles >= 4) {
                     lDir = 'D';
-                    lX += S / 2;
-                    lY += S / 2;
                     justTurned = true;
                 } else if (lDir === 'D' && lNonDoubles >= 6) {
                     lDir = 'R';
-                    lX -= S / 2;
                     justTurned = true;
                 } else if (lDir === 'R' && lNonDoubles >= 12) {
                     lDir = 'U';
-                    lX -= S / 2;
                     justTurned = true;
                 }
             }
@@ -513,23 +521,40 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
 
-            let cx = lX;
-            let cy = lY;
-            if (lDir === 'L') {
-                cx = lX - (justTurned ? 0 : GAP) - w / 2;
-                lX = cx - w / 2;
-            } else if (lDir === 'D') {
-                cy = lY + GAP + h / 2;
-                lY = cy + h / 2;
-            } else if (lDir === 'R') {
-                cx = lX + (justTurned ? 0 : GAP) + w / 2;
-                lX = cx + w / 2;
-            } else if (lDir === 'U') {
-                cy = lY - GAP - h / 2;
-                lY = cy - h / 2;
+            let cx = lLast.cx;
+            let cy = lLast.cy;
+
+            if (justTurned) {
+                if (lDir === 'D') {
+                    // Giro de L -> D: alinea borde izquierdo de la nueva ficha con borde izquierdo de lLast, y apoya bajo su borde inferior
+                    cx = lLast.cx - lLast.w / 2 + w / 2;
+                    cy = lLast.cy + lLast.h / 2 + GAP + h / 2;
+                } else if (lDir === 'R') {
+                    // Giro de D -> R: alinea borde inferior de la nueva ficha con borde inferior de lLast, y apoya a su derecha
+                    cx = lLast.cx + lLast.w / 2 + GAP + w / 2;
+                    cy = lLast.cy + lLast.h / 2 - h / 2;
+                } else if (lDir === 'U') {
+                    // Giro de R -> U: alinea borde derecho de la nueva ficha con borde derecho de lLast, y apoya sobre su borde superior
+                    cx = lLast.cx + lLast.w / 2 - w / 2;
+                    cy = lLast.cy - lLast.h / 2 - GAP - h / 2;
+                }
+            } else {
+                if (lDir === 'L') {
+                    cx = lLast.cx - lLast.w / 2 - GAP - w / 2;
+                    cy = lLast.cy;
+                } else if (lDir === 'D') {
+                    cx = lLast.cx;
+                    cy = lLast.cy + lLast.h / 2 + GAP + h / 2;
+                } else if (lDir === 'R') {
+                    cx = lLast.cx + lLast.w / 2 + GAP + w / 2;
+                    cy = lLast.cy;
+                } else if (lDir === 'U') {
+                    cx = lLast.cx;
+                    cy = lLast.cy - lLast.h / 2 - GAP - h / 2;
+                }
             }
 
-            addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
+            lLast = addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
         }
 
         // Escalado centrado en (0,0) sin mover nunca la ficha de salida
@@ -544,14 +569,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.carroContainer.appendChild(stage);
 
-              const availW = dom.carroContainer.clientWidth - 16;
+        const availW = dom.carroContainer.clientWidth - 16;
         const availH = dom.carroContainer.clientHeight - 16;
         if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
             const scale = Math.min(availW / reqW, availH / reqH, 1);
             stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
-
-         }
+    }
 
     function renderHands() {
         const userContainer = dom.handContainers.at(0);
@@ -586,7 +610,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     revealedTile.classList.add('revealed-tile');
                     botContainer.appendChild(revealedTile);
                 });
-                                   } else {
+            } else {
                 for (let i = 0; i < count; i++) {
                     const back = document.createElement('div');
                     back.className = 'tile-back';
