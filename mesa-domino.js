@@ -428,12 +428,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-   function renderBoard() {
+       function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
         let centerIdx = state.board.findIndex(t => t.isCenter);
         if (centerIdx === -1) centerIdx = 0;
+
+        // Vertical cuando sale el Jugador (0) o su compañero (2); Horizontal cuando salen los rivales (1 o 3)
+        const isVerticalStart = (state.startingPlayer === 0 || state.startingPlayer === 2);
 
         const isMobile = window.innerWidth <= 900;
         const S = isMobile ? 24 : 42;
@@ -469,13 +472,53 @@ document.addEventListener('DOMContentLoaded', () => {
             return box;
         }
 
+        function computeTurnedCoords(last, nextDir, w, h) {
+            if (nextDir === 'U') {
+                return {
+                    cx: last.cx + last.w / 2 - w / 2,
+                    cy: last.cy - last.h / 2 - GAP - h / 2
+                };
+            }
+            if (nextDir === 'L') {
+                return {
+                    cx: last.cx - last.w / 2 - GAP - w / 2,
+                    cy: last.cy - last.h / 2 + h / 2
+                };
+            }
+            if (nextDir === 'D') {
+                return {
+                    cx: last.cx - last.w / 2 + w / 2,
+                    cy: last.cy + last.h / 2 + GAP + h / 2
+                };
+            }
+            return {
+                cx: last.cx + last.w / 2 + GAP + w / 2,
+                cy: last.cy + last.h / 2 - h / 2
+            };
+        }
+
+        function computeStraightCoords(last, dir, w, h) {
+            if (dir === 'R') {
+                return { cx: last.cx + last.w / 2 + GAP + w / 2, cy: last.cy };
+            }
+            if (dir === 'U') {
+                return { cx: last.cx, cy: last.cy - last.h / 2 - GAP - h / 2 };
+            }
+            if (dir === 'L') {
+                return { cx: last.cx - last.w / 2 - GAP - w / 2, cy: last.cy };
+            }
+            return { cx: last.cx, cy: last.cy + last.h / 2 + GAP + h / 2 };
+        }
+
         // Ficha de salida clavada en el centro exacto (0,0)
         const centerItem = state.board.at(centerIdx);
-        const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, 'R');
+        const initialRightDir = isVerticalStart ? 'U' : 'R';
+        const initialLeftDir = isVerticalStart ? 'D' : 'L';
+        const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, initialRightDir);
 
-        // BRAZO DERECHO: espiral antihorario (R -> U -> L -> D)
+        // BRAZO DERECHO LÓGICO (rightEnd)
         let rLast = cBox;
-        let rDir = 'R';
+        let rDir = initialRightDir;
         let rNonDoubles = 0;
         let rNormalSinceDouble = centerItem.isDouble ? 0 : 2;
 
@@ -490,15 +533,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let justTurned = false;
             if (!item.isDouble && rNormalSinceDouble >= 2) {
-                if (rDir === 'R' && rNonDoubles >= 4) {
-                    rDir = 'U';
-                    justTurned = true;
-                } else if (rDir === 'U' && rNonDoubles >= 6) {
-                    rDir = 'L';
-                    justTurned = true;
-                } else if (rDir === 'L' && rNonDoubles >= 12) {
-                    rDir = 'D';
-                    justTurned = true;
+                if (!isVerticalStart) {
+                    if (rDir === 'R' && rNonDoubles >= 4) { rDir = 'U'; justTurned = true; }
+                    else if (rDir === 'U' && rNonDoubles >= 6) { rDir = 'L'; justTurned = true; }
+                    else if (rDir === 'L' && rNonDoubles >= 12) { rDir = 'D'; justTurned = true; }
+                } else {
+                    if (rDir === 'U' && rNonDoubles >= 3) { rDir = 'L'; justTurned = true; }
+                    else if (rDir === 'L' && rNonDoubles >= 7) { rDir = 'D'; justTurned = true; }
+                    else if (rDir === 'D' && rNonDoubles >= 12) { rDir = 'R'; justTurned = true; }
                 }
             }
 
@@ -506,45 +548,16 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
 
-            let cx = rLast.cx;
-            let cy = rLast.cy;
+            const pos = justTurned
+                ? computeTurnedCoords(rLast, rDir, w, h)
+                : computeStraightCoords(rLast, rDir, w, h);
 
-            if (justTurned) {
-                if (rDir === 'U') {
-                    // Giro de R -> U: alinea borde derecho de la nueva ficha con borde derecho de rLast, y apoya sobre su borde superior
-                    cx = rLast.cx + rLast.w / 2 - w / 2;
-                    cy = rLast.cy - rLast.h / 2 - GAP - h / 2;
-                } else if (rDir === 'L') {
-                    // Giro de U -> L: alinea borde superior de la nueva ficha con borde superior de rLast, y apoya a su izquierda
-                    cx = rLast.cx - rLast.w / 2 - GAP - w / 2;
-                    cy = rLast.cy - rLast.h / 2 + h / 2;
-                } else if (rDir === 'D') {
-                    // Giro de L -> D: alinea borde izquierdo de la nueva ficha con borde izquierdo de rLast, y apoya bajo su borde inferior
-                    cx = rLast.cx - rLast.w / 2 + w / 2;
-                    cy = rLast.cy + rLast.h / 2 + GAP + h / 2;
-                }
-            } else {
-                if (rDir === 'R') {
-                    cx = rLast.cx + rLast.w / 2 + GAP + w / 2;
-                    cy = rLast.cy;
-                } else if (rDir === 'U') {
-                    cx = rLast.cx;
-                    cy = rLast.cy - rLast.h / 2 - GAP - h / 2;
-                } else if (rDir === 'L') {
-                    cx = rLast.cx - rLast.w / 2 - GAP - w / 2;
-                    cy = rLast.cy;
-                } else if (rDir === 'D') {
-                    cx = rLast.cx;
-                    cy = rLast.cy + rLast.h / 2 + GAP + h / 2;
-                }
-            }
-
-            rLast = addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
+            rLast = addPlacedTile(item.left, item.right, item.isDouble, pos.cx, pos.cy, rDir);
         }
 
-        // BRAZO IZQUIERDO: espiral antihorario (L -> D -> R -> U)
+        // BRAZO IZQUIERDO LÓGICO (leftEnd)
         let lLast = cBox;
-        let lDir = 'L';
+        let lDir = initialLeftDir;
         let lNonDoubles = 0;
         let lNormalSinceDouble = centerItem.isDouble ? 0 : 2;
 
@@ -559,15 +572,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
             let justTurned = false;
             if (!item.isDouble && lNormalSinceDouble >= 2) {
-                if (lDir === 'L' && lNonDoubles >= 4) {
-                    lDir = 'D';
-                    justTurned = true;
-                } else if (lDir === 'D' && lNonDoubles >= 6) {
-                    lDir = 'R';
-                    justTurned = true;
-                } else if (lDir === 'R' && lNonDoubles >= 12) {
-                    lDir = 'U';
-                    justTurned = true;
+                if (!isVerticalStart) {
+                    if (lDir === 'L' && lNonDoubles >= 4) { lDir = 'D'; justTurned = true; }
+                    else if (lDir === 'D' && lNonDoubles >= 6) { lDir = 'R'; justTurned = true; }
+                    else if (lDir === 'R' && lNonDoubles >= 12) { lDir = 'U'; justTurned = true; }
+                } else {
+                    if (lDir === 'D' && lNonDoubles >= 3) { lDir = 'R'; justTurned = true; }
+                    else if (lDir === 'R' && lNonDoubles >= 7) { lDir = 'U'; justTurned = true; }
+                    else if (lDir === 'U' && lNonDoubles >= 12) { lDir = 'L'; justTurned = true; }
                 }
             }
 
@@ -575,40 +587,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
 
-            let cx = lLast.cx;
-            let cy = lLast.cy;
+            const pos = justTurned
+                ? computeTurnedCoords(lLast, lDir, w, h)
+                : computeStraightCoords(lLast, lDir, w, h);
 
-            if (justTurned) {
-                if (lDir === 'D') {
-                    // Giro de L -> D: alinea borde izquierdo de la nueva ficha con borde izquierdo de lLast, y apoya bajo su borde inferior
-                    cx = lLast.cx - lLast.w / 2 + w / 2;
-                    cy = lLast.cy + lLast.h / 2 + GAP + h / 2;
-                } else if (lDir === 'R') {
-                    // Giro de D -> R: alinea borde inferior de la nueva ficha con borde inferior de lLast, y apoya a su derecha
-                    cx = lLast.cx + lLast.w / 2 + GAP + w / 2;
-                    cy = lLast.cy + lLast.h / 2 - h / 2;
-                } else if (lDir === 'U') {
-                    // Giro de R -> U: alinea borde derecho de la nueva ficha con borde derecho de lLast, y apoya sobre su borde superior
-                    cx = lLast.cx + lLast.w / 2 - w / 2;
-                    cy = lLast.cy - lLast.h / 2 - GAP - h / 2;
-                }
-            } else {
-                if (lDir === 'L') {
-                    cx = lLast.cx - lLast.w / 2 - GAP - w / 2;
-                    cy = lLast.cy;
-                } else if (lDir === 'D') {
-                    cx = lLast.cx;
-                    cy = lLast.cy + lLast.h / 2 + GAP + h / 2;
-                } else if (lDir === 'R') {
-                    cx = lLast.cx + lLast.w / 2 + GAP + w / 2;
-                    cy = lLast.cy;
-                } else if (lDir === 'U') {
-                    cx = lLast.cx;
-                    cy = lLast.cy - lLast.h / 2 - GAP - h / 2;
-                }
-            }
-
-            lLast = addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
+            lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
         }
 
         // Escalado centrado en (0,0) sin mover nunca la ficha de salida
