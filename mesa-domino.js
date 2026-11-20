@@ -718,7 +718,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
 // === INICIO BLOQUE 3A ===
     function drawStartingPlayerFED() {
         const drawDeck = shuffleDeck(createDeck());
@@ -824,6 +823,50 @@ document.addEventListener('DOMContentLoaded', () => {
         return idx === 0 ? state.userName : PLAYER_NAMES.at(idx);
     }
 
+    function isClosingPlay(tile, side) {
+        if (state.board.length === 0 || side === 'center') return false;
+
+        let newLeft = state.leftEnd;
+        let newRight = state.rightEnd;
+
+        if (side === 'left') {
+            newLeft = (tile.b === state.leftEnd) ? tile.a : tile.b;
+        } else if (side === 'right') {
+            newRight = (tile.a === state.rightEnd) ? tile.b : tile.a;
+        }
+
+        if (newLeft !== newRight) return false;
+
+        const targetSuit = newLeft;
+        let playedOfSuit = 0;
+        state.board.forEach(b => {
+            if (b.left === targetSuit || b.right === targetSuit) {
+                playedOfSuit++;
+            }
+        });
+        if (tile.a === targetSuit || tile.b === targetSuit) {
+            playedOfSuit++;
+        }
+
+        return playedOfSuit >= 7;
+    }
+
+    function hasClosingMove(playerIdx) {
+        if (state.board.length < 6) return false;
+        const hand = state.hands.at(playerIdx);
+        for (let i = 0; i < hand.length; i++) {
+            const tile = hand.at(i);
+            if (!canPlayTile(tile)) continue;
+            const sides = getValidSides(tile);
+            for (let s = 0; s < sides.length; s++) {
+                if (isClosingPlay(tile, sides.at(s))) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     function beginTurn() {
         if (!state.gameActive) return;
         hideSideSelector();
@@ -836,7 +879,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (canPlayTile(t)) playableIndices.push(idx);
         });
 
-        startTurnTimer();
+        const possibleClose = hasClosingMove(p);
+        startTurnTimer(possibleClose ? 60 : TURN_TIME_LIMIT);
 
         if (p === 0) {
             if (playableIndices.length === 0) {
@@ -848,7 +892,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         passTurn(0, false);
                     }
                 }, 2600);
-            } else if (playableIndices.length === 1) {
+            } else if (playableIndices.length === 1 && !possibleClose) {
                 const onlyIdx = playableIndices.at(0);
                 const onlyTile = state.hands.at(0).at(onlyIdx);
                 const validSides = getValidSides(onlyTile);
@@ -870,19 +914,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } else {
                 dom.btnPass.classList.add('hidden');
-                showThought(0, 'Tu turno', 0);
-                setLog('Tu turno: selecciona una ficha iluminada.');
+                if (possibleClose) {
+                    showThought(0, '⚠️ Posible cierre (60s)', 0);
+                    setLog('⚠️ Jugada de posible cierre: dispones de 60s para contar tantos.');
+                } else {
+                    showThought(0, 'Tu turno', 0);
+                    setLog('Tu turno: selecciona una ficha iluminada.');
+                }
                 sound.yourTurn();
             }
         } else {
             dom.btnPass.classList.add('hidden');
-            planAndExecuteBotTurn(p);
+            planAndExecuteBotTurn(p, possibleClose);
         }
     }
 
-    function startTurnTimer() {
+    function startTurnTimer(customLimit) {
         clearInterval(state.timerInterval);
-        state.timeLeft = TURN_TIME_LIMIT;
+        state.timeLeft = (typeof customLimit === 'number') ? customLimit : TURN_TIME_LIMIT;
         let inExtraTime = false;
         dom.timerVal.textContent = state.timeLeft;
         dom.timerBox.classList.remove('warning');
@@ -966,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', () => {
         state.pendingTileIndex = null;
     }
 
-    function planAndExecuteBotTurn(botIdx) {
+    function planAndExecuteBotTurn(botIdx, possibleClose = false) {
         if (!state.gameActive || state.currentTurn !== botIdx) return;
 
         const hand = state.hands.at(botIdx);
@@ -999,6 +1048,13 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
 
+        // Estimación de puntos restantes en la mesa si hay posible cierre
+        let boardPoints = 0;
+        state.board.forEach(b => {
+            boardPoints += (b.left + b.right);
+        });
+        const myPoints = handPoints(hand);
+
         // Elegir la mejor jugada táctica
         let bestMove = validMoves.at(0);
         let bestScore = -999;
@@ -1024,14 +1080,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             score += suitCounts.at(newOpenEnd) * 6;
 
+            // Valoración táctica si la jugada cierra la mano
+            if (typeof isClosingPlay === 'function' && isClosingPlay(tile, side)) {
+                const myRemainingAfter = myPoints - tileWeight(tile);
+                const unplayedOthers = Math.max(0, 168 - boardPoints - myPoints);
+                const avgOtherHand = unplayedOthers / 3;
+                if (myRemainingAfter <= avgOtherHand * 0.85) {
+                    score += 45;
+                } else {
+                    score -= 40;
+                }
+            }
+
             if (score > bestScore) {
                 bestScore = score;
                 bestMove = move;
             }
         });
 
-        // 2. Una sola jugada posible (1 ficha y 1 solo lado): obligado por norma FED a jugar a 1,7s
-        if (validMoves.length === 1) {
+        // 2. Una sola jugada posible sin cierre (obligado por norma FED a jugar rápido)
+        if (validMoves.length === 1 && !possibleClose) {
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 playTile(botIdx, bestMove.idx, bestMove.side);
@@ -1039,7 +1107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 3. Sistema Combinado de la Pensada (tiene 2 o más opciones)
+        // 3. Sistema Combinado de la Pensada (con tiempo extendido si hay posible cierre)
         let openedSuit = null;
         if (bestMove.side === 'center') {
             openedSuit = bestMove.tile.a;
@@ -1052,9 +1120,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const remainingInOpenedSuit = suitCounts.at(openedSuit) - 1;
         const isStrongSuit = remainingInOpenedSuit >= 2 || (isDouble(bestMove.tile) && remainingInOpenedSuit >= 1);
 
-        const thinkDelay = isStrongSuit ? 5500 : 9500;
+        const thinkDelay = possibleClose ? 12000 : (isStrongSuit ? 5500 : 9500);
+        const thinkLabel = possibleClose ? 'Contando cierre...' : 'Pensando...';
 
-        showThought(botIdx, 'Pensando...', 0);
+        showThought(botIdx, thinkLabel, 0);
         state.botTimeout = setTimeout(() => {
             playTile(botIdx, bestMove.idx, bestMove.side);
         }, thinkDelay);
