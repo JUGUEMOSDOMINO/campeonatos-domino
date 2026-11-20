@@ -1173,6 +1173,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 // === FIN BLOQUE 3B ===
 // === INICIO BLOQUE 4A ===
+        // === INICIO PLAYTILE (CON CIERRE INMEDIATO) ===
     function playTile(playerIdx, tileIndex, side) {
         clearTimers();
         hideSideSelector();
@@ -1182,7 +1183,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const tile = removed.at(0);
         const dbl = isDouble(tile);
 
-                      if (state.board.length === 0 || side === 'center') {
+        if (state.board.length === 0 || side === 'center') {
             const minV = Math.min(tile.a, tile.b);
             const maxV = Math.max(tile.a, tile.b);
             // Jugador 0 (Abajo) y Rival 3 (Izquierda) -> punta menor en left (Abajo/Izquierda)
@@ -1194,7 +1195,6 @@ document.addEventListener('DOMContentLoaded', () => {
             state.leftEnd = cLeft;
             state.rightEnd = cRight;
         } else if (side === 'left') {
-
             if (tile.b === state.leftEnd) {
                 state.board.unshift({ left: tile.a, right: tile.b, isDouble: dbl });
                 state.leftEnd = tile.a;
@@ -1227,9 +1227,25 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Cierre inmediato: si ambos extremos tienen el mismo palo y ya están las 7 fichas en la mesa
+        if (state.leftEnd === state.rightEnd) {
+            const targetSuit = state.leftEnd;
+            let playedOfSuit = 0;
+            state.board.forEach(b => {
+                if (b.left === targetSuit || b.right === targetSuit) {
+                    playedOfSuit++;
+                }
+            });
+            if (playedOfSuit >= 7) {
+                handleHandClosed();
+                return;
+            }
+        }
+
         state.currentTurn = (state.currentTurn + 1) % 4;
         beginTurn();
     }
+    // === FIN PLAYTILE (CON CIERRE INMEDIATO) ===
 
     function passTurn(playerIdx, byTimeout) {
         clearTimers();
