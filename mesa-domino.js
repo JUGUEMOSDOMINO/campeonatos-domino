@@ -502,15 +502,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
         dom.carroContainer.appendChild(stage);
 
-        const availW = dom.carroContainer.clientWidth - 12;
-        const availH = dom.carroContainer.clientHeight - 12;
+              const availW = dom.carroContainer.clientWidth - 16;
+        const availH = dom.carroContainer.clientHeight - 16;
         if (availW > 0 && availH > 0 && (reqW > availW || reqH > availH)) {
-            const rawScale = Math.min(availW / reqW, availH / reqH, 1);
-            const minScale = isMobile ? 0.45 : 0.68;
-            const scale = Math.max(rawScale, minScale);
+            const scale = Math.min(availW / reqW, availH / reqH, 1);
             stage.style.transform = `scale(${scale.toFixed(3)})`;
         }
-    }
+
+         }
 
     function renderHands() {
         const userContainer = dom.handContainers.at(0);
