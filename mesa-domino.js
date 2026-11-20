@@ -783,7 +783,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         state.hands.at(0).sort((x, y) => (x.a - y.a) || (x.b - y.b));
 
-                state.board = new Array();
+        state.board = new Array();
         state.leftEnd = null;
         state.rightEnd = null;
         state.consecutivePasses = 0;
@@ -791,21 +791,35 @@ document.addEventListener('DOMContentLoaded', () => {
         state.gameActive = true;
         state.revealHands = false;
 
+        let startDelayMs = 0;
         if (state.isFirstHand) {
             const drawResult = drawStartingPlayerFED();
             state.startingPlayer = drawResult.winner;
             state.currentTurn = drawResult.winner;
             setLog(drawResult.logMsg, true);
+            const starterLabel = state.currentTurn === 0 ? `sales tú, ${state.userName}` : `sale ${getPlayerLabel(state.currentTurn)}`;
+            sound.announce(`Bienvenido a la mesa de Juguemos Dominó, ${state.userName}. Tras el sorteo, ${starterLabel}.`, 150);
+            startDelayMs = 2900;
         } else {
             state.startingPlayer = (state.startingPlayer + 1) % 4;
             state.currentTurn = state.startingPlayer;
             setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)} (salida libre).`, true);
+            const starterLabel = state.currentTurn === 0 ? `sales tú, ${state.userName}` : `sale ${getPlayerLabel(state.currentTurn)}`;
+            sound.announce(`Nueva mano, ${starterLabel}.`, 150);
+            startDelayMs = 1700;
         }
 
         renderBoard();
         renderHands();
-        beginTurn();
+        highlightActivePlayer(state.currentTurn);
+
+        state.botTimeout = setTimeout(() => {
+            if (state.gameActive) {
+                beginTurn();
+            }
+        }, startDelayMs);
     }
+
     function getPlayerLabel(idx) {
         return idx === 0 ? state.userName : PLAYER_NAMES.at(idx);
     }
@@ -824,7 +838,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         startTurnTimer();
 
-                if (p === 0) {
+        if (p === 0) {
             if (playableIndices.length === 0) {
                 dom.btnPass.classList.remove('hidden');
                 showThought(0, 'Pasando...', 0);
@@ -864,7 +878,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.btnPass.classList.add('hidden');
             planAndExecuteBotTurn(p);
         }
-}
+    }
 
     function startTurnTimer() {
         clearInterval(state.timerInterval);
