@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-        function renderBoard() {
+         function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
 
@@ -438,7 +438,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMobile = window.innerWidth <= 900;
         const isVerticalStart = isMobile && (state.startingPlayer === 0 || state.startingPlayer === 2);
 
-        const S = isMobile ? 32 : 42;
+        const S = isMobile ? 28 : 42;
         const L = S * 2;
         const GAP = 0;
 
@@ -509,15 +509,17 @@ document.addEventListener('DOMContentLoaded', () => {
             return { cx: last.cx, cy: last.cy + last.h / 2 + GAP + h / 2 };
         }
 
-        const t1 = isMobile ? 1 : 4;
-        const t2 = isMobile ? 4 : 6;
-        const t3 = isMobile ? 6 : 12;
+        // Giros amplios para evitar cualquier choque o superposición entre brazos
+        const t1 = isMobile ? (isVerticalStart ? 3 : 2) : 4;
+        const t2 = isMobile ? (isVerticalStart ? 5 : 6) : 6;
+        const t3 = isMobile ? 11 : 12;
 
         const centerItem = state.board.at(centerIdx);
         const initialRightDir = isVerticalStart ? 'U' : 'R';
         const initialLeftDir = isVerticalStart ? 'D' : 'L';
         const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, initialRightDir);
 
+        // BRAZO DERECHO LÓGICO (rightEnd)
         let rLast = cBox;
         let rDir = initialRightDir;
         let rNonDoubles = 0;
@@ -556,6 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rLast = addPlacedTile(item.left, item.right, item.isDouble, pos.cx, pos.cy, rDir);
         }
 
+        // BRAZO IZQUIERDO LÓGICO (leftEnd)
         let lLast = cBox;
         let lDir = initialLeftDir;
         let lNonDoubles = 0;
@@ -594,6 +597,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
         }
 
+        // Centrado dinámico sobre el bloque real de fichas
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
         placed.forEach(p => {
             minX = Math.min(minX, p.cx - p.w / 2);
@@ -612,8 +616,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const availW = dom.carroContainer.clientWidth - 16;
         const availH = dom.carroContainer.clientHeight - 16;
         if (availW > 0 && availH > 0) {
-            const rawScale = Math.min(availW / reqW, availH / reqH, 1);
-            const finalScale = isMobile ? Math.max(rawScale, 0.65) : rawScale;
+            // Escala máxima constante desde la jugada 1 para evitar que al inicio sean gigantes
+            const maxBaseScale = isMobile ? 0.82 : 0.92;
+            const fitScale = Math.min(availW / reqW, availH / reqH, maxBaseScale);
+            const finalScale = isMobile ? Math.max(fitScale, 0.62) : fitScale;
             stage.style.transform = `translate(${-offsetX * finalScale}px, ${-offsetY * finalScale}px) scale(${finalScale.toFixed(3)})`;
         }
     }
