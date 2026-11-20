@@ -1122,11 +1122,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const tile = removed.at(0);
         const dbl = isDouble(tile);
 
-        if (state.board.length === 0 || side === 'center') {
-            state.board.push({ left: tile.a, right: tile.b, isDouble: dbl, isCenter: true });
-            state.leftEnd = tile.a;
-            state.rightEnd = tile.b;
+                if (state.board.length === 0 || side === 'center') {
+            const minV = Math.min(tile.a, tile.b);
+            const maxV = Math.max(tile.a, tile.b);
+            // Jugador 0 (Abajo) y Rival 3 (Izquierda) -> punta menor en left (Abajo/Izquierda)
+            // Rival 1 (Derecha) y Compañero 2 (Arriba) -> punta menor en right (Derecha/Arriba)
+            const minorOnLeft = (playerIdx === 0 || playerIdx === 3);
+            const cLeft = minorOnLeft ? minV : maxV;
+            const cRight = minorOnLeft ? maxV : minV;
+            state.board.push({ left: cLeft, right: cRight, isDouble: dbl, isCenter: true });
+            state.leftEnd = cLeft;
+            state.rightEnd = cRight;
         } else if (side === 'left') {
+
             if (tile.b === state.leftEnd) {
                 state.board.unshift({ left: tile.a, right: tile.b, isDouble: dbl });
                 state.leftEnd = tile.a;
