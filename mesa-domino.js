@@ -101,7 +101,7 @@ document.addEventListener('DOMContentLoaded', () => {
         )
     };
 
-   // === SISTEMA DE AUDIO Y VOZ EN ESPAÑOL ===
+// === SISTEMA DE AUDIO Y VOZ EN ESPAÑOL ===
     let audioCtx = null;
 
     function getAudioCtx() {
@@ -125,7 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const utter = new SpeechSynthesisUtterance(text);
             utter.lang = 'es-ES';
-            utter.rate = 1.05;
+            utter.rate = 1.03;
             utter.pitch = 1.0;
             const voices = window.speechSynthesis.getVoices();
             const esVoice = voices.find(v => v.lang && v.lang.toLowerCase().startsWith('es'));
@@ -135,6 +135,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     const sound = {
+        announce(text, delayMs = 0) {
+            if (state.isMuted || !text) return;
+            if (delayMs > 0) {
+                setTimeout(() => speakSpanish(text), delayMs);
+            } else {
+                speakSpanish(text);
+            }
+        },
         clack() {
             if (state.isMuted) return;
             const ctx = getAudioCtx();
@@ -208,26 +216,72 @@ document.addEventListener('DOMContentLoaded', () => {
             osc.start(now);
             osc.stop(now + 0.04);
         },
-        win() {
+        handEnd() {
             if (state.isMuted) return;
             const ctx = getAudioCtx();
             if (!ctx) return;
             const now = ctx.currentTime;
-            const notes = Array.of(523.25, 659.25, 783.99, 1046.5);
+            const notes = Array.of(523.25, 659.25);
             notes.forEach((freq, i) => {
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, now + i * 0.11);
-                gain.gain.setValueAtTime(0.25, now + i * 0.11);
-                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.11 + 0.35);
+                osc.frequency.setValueAtTime(freq, now + i * 0.12);
+                gain.gain.setValueAtTime(0.22, now + i * 0.12);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.12 + 0.32);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
-                osc.start(now + i * 0.11);
-                osc.stop(now + i * 0.11 + 0.38);
+                osc.start(now + i * 0.12);
+                osc.stop(now + i * 0.12 + 0.35);
             });
+        },
+        win() {
+            if (state.isMuted) return;
+            const ctx = getAudioCtx();
+            if (ctx) {
+                const now = ctx.currentTime;
+                const notes = Array.of(523.25, 659.25, 783.99, 1046.5, 1318.5);
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'triangle';
+                    const start = now + i * 0.12;
+                    const dur = i === notes.length - 1 ? 0.65 : 0.28;
+                    osc.frequency.setValueAtTime(freq, start);
+                    gain.gain.setValueAtTime(0.28, start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(start);
+                    osc.stop(start + dur + 0.04);
+                });
+            }
+            setTimeout(() => speakSpanish('¡Enhorabuena! Fin de la partida, victoria de nuestra pareja'), 720);
+        },
+        lose() {
+            if (state.isMuted) return;
+            const ctx = getAudioCtx();
+            if (ctx) {
+                const now = ctx.currentTime;
+                const notes = Array.of(440, 392, 349.23, 293.66);
+                notes.forEach((freq, i) => {
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    const start = now + i * 0.15;
+                    osc.frequency.setValueAtTime(freq, start);
+                    gain.gain.setValueAtTime(0.22, start);
+                    gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start(start);
+                    osc.stop(start + 0.38);
+                });
+            }
+            setTimeout(() => speakSpanish('Fin de la partida, ganan los rivales'), 680);
         }
     };
+
     function updateSoundButtonUI() {
         if (!dom.btnToggleSound) return;
         dom.btnToggleSound.textContent = state.isMuted ? '🔇' : '🔊';
