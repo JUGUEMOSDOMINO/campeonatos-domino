@@ -405,6 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let rY = 0;
         let rDir = 'R';
         let rNonDoubles = 0;
+        let rLastDims = cDims;
 
         for (let i = centerIdx + 1; i < state.board.length; i++) {
             const item = state.board.at(i);
@@ -412,16 +413,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (rDir === 'R' && rNonDoubles === 4) {
                 rDir = 'U';
-                rX -= S / 2;
-                rY -= S / 2;
+                rX -= rLastDims.w / 2;
+                rY -= rLastDims.h / 2;
             } else if (rDir === 'U' && rNonDoubles === 6) {
                 rDir = 'L';
-                rX += S / 2;
-                rY -= S / 2;
+                rX += rLastDims.w / 2;
+                rY -= rLastDims.h / 2;
             } else if (rDir === 'L' && rNonDoubles === 12) {
                 rDir = 'D';
-                rX += S / 2;
-                rY += S / 2;
+                rX += rLastDims.w / 2;
+                rY += rLastDims.h / 2;
             }
 
             const isHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
@@ -444,13 +445,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 rY = cy + h / 2;
             }
 
-            addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
+            rLastDims = addPlacedTile(item.left, item.right, item.isDouble, cx, cy, rDir);
         }
+
         // BRAZO IZQUIERDO: espiral antihorario (L -> D -> R -> U)
         let lX = -cDims.w / 2;
         let lY = 0;
         let lDir = 'L';
         let lNonDoubles = 0;
+        let lLastDims = cDims;
 
         for (let i = centerIdx - 1; i >= 0; i--) {
             const item = state.board.at(i);
@@ -458,16 +461,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (lDir === 'L' && lNonDoubles === 4) {
                 lDir = 'D';
-                lX += S / 2;
-                lY += S / 2;
+                lX += lLastDims.w / 2;
+                lY += lLastDims.h / 2;
             } else if (lDir === 'D' && lNonDoubles === 6) {
                 lDir = 'R';
-                lX -= S / 2;
-                lY += S / 2;
+                lX -= lLastDims.w / 2;
+                lY += lLastDims.h / 2;
             } else if (lDir === 'R' && lNonDoubles === 12) {
                 lDir = 'U';
-                lX -= S / 2;
-                lY -= S / 2;
+                lX -= lLastDims.w / 2;
+                lY -= lLastDims.h / 2;
             }
 
             const isHoriz = item.isDouble ? (lDir === 'U' || lDir === 'D') : (lDir === 'R' || lDir === 'L');
@@ -490,7 +493,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 lY = cy - h / 2;
             }
 
-            addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
+            lLastDims = addPlacedTile(item.right, item.left, item.isDouble, cx, cy, lDir);
         }
 
         // Escalado centrado en (0,0) sin mover nunca la ficha de salida
@@ -1098,7 +1101,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         setTimeout(() => {
             dom.handSummaryModal.classList.remove('hidden');
-        }, 4500);
+        }, 5500);
     }
 // === FIN BLOQUE 4A ===
 
