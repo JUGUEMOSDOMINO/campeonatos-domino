@@ -1016,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    function handleUserTileClick(tileIndex) {
+       function handleUserTileClick(tileIndex) {
         if (!state.gameActive || state.currentTurn !== 0) return;
         const tile = state.hands.at(0).at(tileIndex);
         if (!canPlayTile(tile)) return;
@@ -1024,14 +1024,20 @@ document.addEventListener('DOMContentLoaded', () => {
         const sides = getValidSides(tile);
         if (sides.length > 1) {
             state.pendingTileIndex = tileIndex;
-            dom.valLeft.textContent = state.leftEnd;
-            dom.valRight.textContent = state.rightEnd;
+            const isMobile = window.innerWidth <= 900;
+            const isVerticalStart = isMobile && (state.startingPlayer === 0 || state.startingPlayer === 2);
+            dom.btnPlayLeft.innerHTML = isVerticalStart
+                ? `⬆ Izq (<span id="val-left">${state.leftEnd}</span>)`
+                : `⬅ Izq (<span id="val-left">${state.leftEnd}</span>)`;
+            dom.btnPlayRight.innerHTML = isVerticalStart
+                ? `⬇ Der (<span id="val-right">${state.rightEnd}</span>)`
+                : `Der (<span id="val-right">${state.rightEnd}</span>) ➡`;
             dom.sideSelector.classList.remove('hidden');
         } else {
             playTile(0, tileIndex, sides.at(0));
         }
     }
-
+ 
     function hideSideSelector() {
         dom.sideSelector.classList.add('hidden');
         state.pendingTileIndex = null;
