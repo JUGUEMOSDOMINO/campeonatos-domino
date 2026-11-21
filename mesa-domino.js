@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return box;
         }
 
-        function computeTurnedCoords(last, nextDir, w, h) {
+               function computeTurnedCoords(last, nextDir, w, h, prevDir = null) {
             if (nextDir === 'U') {
                 return {
                     cx: last.cx + last.w / 2 - w / 2,
@@ -485,9 +485,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
             }
             if (nextDir === 'L') {
+                const alignBottom = (prevDir === 'D');
                 return {
                     cx: last.cx - last.w / 2 - GAP - w / 2,
-                    cy: last.cy - last.h / 2 + h / 2
+                    cy: alignBottom ? (last.cy + last.h / 2 - h / 2) : (last.cy - last.h / 2 + h / 2)
                 };
             }
             if (nextDir === 'D') {
@@ -496,9 +497,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     cy: last.cy + last.h / 2 + GAP + h / 2
                 };
             }
+            const alignTop = (prevDir === 'U');
             return {
                 cx: last.cx + last.w / 2 + GAP + w / 2,
-                cy: last.cy + last.h / 2 - h / 2
+                cy: alignTop ? (last.cy - last.h / 2 + h / 2) : (last.cy + last.h / 2 - h / 2)
             };
         }
 
