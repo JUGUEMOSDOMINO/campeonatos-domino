@@ -1199,7 +1199,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const maxV = Math.max(tile.a, tile.b);
             // Jugador 0 (Abajo) y Rival 3 (Izquierda) -> punta menor en left (Abajo/Izquierda)
             // Rival 1 (Derecha) y Compañero 2 (Arriba) -> punta menor en right (Derecha/Arriba)
-            const minorOnLeft = (playerIdx === 0 || playerIdx === 3);
+            const minorOnLeft = (playerIdx === 2 || playerIdx === 3);
             const cLeft = minorOnLeft ? minV : maxV;
             const cRight = minorOnLeft ? maxV : minV;
             state.board.push({ left: cLeft, right: cRight, isDouble: dbl, isCenter: true });
