@@ -544,15 +544,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const straightPos = computeStraightCoords(rLast, rDir, nextW, nextH);
 
                       let justTurned = false;
-            if (!item.isDouble) {
-                if (isMobile && isVerticalStart) {
+                            if (isMobile && isVerticalStart) {
                     if (rDir === 'D' && rNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH - 6)) {
                         rDir = 'R'; justTurned = true; rLegTiles = 0;
                     } else if (rDir === 'R' && rLegTiles >= 2) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
-                    } else if (rDir === 'U' && rNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH + 6)) {
-                        rDir = 'L'; justTurned = true; rLegTiles = 0;
+                    } else if (rDir === 'U' && rNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH - 28)) {
+                        rDir = 'R'; justTurned = true; rLegTiles = 0;
                     }
+
                 } else if (isMobile && !isVerticalStart) {
                     if (rDir === 'R' && rLegTiles >= 2) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
@@ -606,14 +606,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
                      let justTurned = false;
             if (!item.isDouble) {
-                if (isMobile && isVerticalStart) {
+                              if (isMobile && isVerticalStart) {
                     if (lDir === 'U' && lNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH + 6)) {
                         lDir = 'L'; justTurned = true; lLegTiles = 0;
                     } else if (lDir === 'L' && lLegTiles >= 2) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
-                    } else if (lDir === 'D' && lNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH - 6)) {
-                        lDir = 'R'; justTurned = true; lLegTiles = 0;
+                    } else if (lDir === 'D' && lNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH + 28)) {
+                        lDir = 'L'; justTurned = true; lLegTiles = 0;
                     }
+ 
                 } else if (isMobile && !isVerticalStart) {
                     if (lDir === 'L' && lLegTiles >= 2) {
                         lDir = 'D'; justTurned = true; lLegTiles = 0;
