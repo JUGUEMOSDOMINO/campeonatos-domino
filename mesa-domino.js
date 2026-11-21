@@ -540,13 +540,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 rNormalSinceDouble++;
             }
 
-            const nextIsHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
-            const nextW = nextIsHoriz ? L : S;
-            const nextH = nextIsHoriz ? S : L;
-            const straightPos = computeStraightCoords(rLast, rDir, nextW, nextH);
-
-                      let justTurned = false;
-                            if (isMobile && isVerticalStart) {
+                        let justTurned = false;
+            const prevrDir = rDir;
+            if (!item.isDouble) {
+                if (isMobile && isVerticalStart) {
                     if (rDir === 'D' && rNormalSinceDouble >= 2 && (straightPos.cy + nextH / 2 > halfH - 6)) {
                         rDir = 'R'; justTurned = true; rLegTiles = 0;
                     } else if (rDir === 'R' && rLegTiles >= 2) {
@@ -554,7 +551,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else if (rDir === 'U' && rNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH - 28)) {
                         rDir = 'R'; justTurned = true; rLegTiles = 0;
                     }
-
                 } else if (isMobile && !isVerticalStart) {
                     if (rDir === 'R' && rLegTiles >= 2) {
                         rDir = 'U'; justTurned = true; rLegTiles = 0;
@@ -579,7 +575,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const h = isHoriz ? S : L;
 
             const pos = justTurned
-                ? computeTurnedCoords(rLast, rDir, w, h)
+                ? computeTurnedCoords(rLast, rDir, w, h, prevrDir)
                 : computeStraightCoords(rLast, rDir, w, h);
 
             rLast = addPlacedTile(item.left, item.right, item.isDouble, pos.cx, pos.cy, rDir);
@@ -606,8 +602,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const nextH = nextIsHoriz ? S : L;
             const straightPos = computeStraightCoords(lLast, lDir, nextW, nextH);
 
-                     let justTurned = false;
+                                 let justTurned = false;
+            const prevlDir = lDir;
             if (!item.isDouble) {
+
                               if (isMobile && isVerticalStart) {
                     if (lDir === 'U' && lNormalSinceDouble >= 2 && (straightPos.cy - nextH / 2 < -halfH + 6)) {
                         lDir = 'L'; justTurned = true; lLegTiles = 0;
@@ -640,8 +638,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
 
-            const pos = justTurned
-                ? computeTurnedCoords(lLast, lDir, w, h)
+                       const pos = justTurned
+                ? computeTurnedCoords(lLast, lDir, w, h, prevlDir)
                 : computeStraightCoords(lLast, lDir, w, h);
 
             lLast = addPlacedTile(item.right, item.left, item.isDouble, pos.cx, pos.cy, lDir);
