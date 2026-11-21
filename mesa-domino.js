@@ -1,6 +1,6 @@
 // === INICIO BLOQUE 1 DE 4 ===
 document.addEventListener('DOMContentLoaded', () => {
-    const TARGET_SCORE = 300;
+    let TARGET_SCORE = 300;
     const TURN_TIME_LIMIT = 20;
     const STORAGE_RANKING_KEY = 'domino_fed_ranking_v2';
     const STORAGE_MUTE_KEY = 'domino_fed_muted_v1';
@@ -43,6 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
         loginModal: document.getElementById('login-modal'),
         playerAlias: document.getElementById('player-alias'),
         playerClub: document.getElementById('player-club'),
+        targetSelector: document.getElementById('target-selector'),
+        lblTargetScore: document.getElementById('lbl-target-score'),
         btnStartGame: document.getElementById('btn-start-game'),
 
         rankingModal: document.getElementById('ranking-modal'),
@@ -102,6 +104,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
 // === SISTEMA DE AUDIO Y VOZ EN ESPAÑOL ===
+
     let audioCtx = null;
 
     function getAudioCtx() {
