@@ -1274,9 +1274,36 @@ function startNewHand() {
         beginTurn();
     }
 
-    function formatHandList(hand) {
-        if (hand.length === 0) return 'Sin fichas (0 pts)';
-        return hand.map(t => `${t.a}|${t.b}`).join(', ') + ` (${handPoints(hand)} pts)`;
+       function formatHandRowHtml(label, hand) {
+        const tilesStr = hand.length === 0
+            ? 'Dominó (sin fichas)'
+            : hand.map(t => `${t.a}|${t.b}`).join(' · ');
+        const pts = handPoints(hand);
+        return `
+            <div class="summary-player-row">
+                <div>
+                    <strong>${escapeHtml(label)}</strong>
+                    <div class="summary-tiles-list">${tilesStr}</div>
+                </div>
+                <span class="summary-pts-pill">${pts} pts</span>
+            </div>`;
+    }
+
+    function buildSummaryHtml(headline) {
+        const ptsUs = handPoints(state.hands.at(0)) + handPoints(state.hands.at(2));
+        const ptsThem = handPoints(state.hands.at(1)) + handPoints(state.hands.at(3));
+        return `
+            <div class="summary-headline">${headline}</div>
+            <div class="summary-pair-card us-card">
+                <div class="summary-pair-title">Nosotros · ${ptsUs} pts en mano</div>
+                ${formatHandRowHtml(state.userName, state.hands.at(0))}
+                ${formatHandRowHtml(PLAYER_NAMES.at(2), state.hands.at(2))}
+            </div>
+            <div class="summary-pair-card them-card">
+                <div class="summary-pair-title">Rivales · ${ptsThem} pts en mano</div>
+                ${formatHandRowHtml(PLAYER_NAMES.at(1), state.hands.at(1))}
+                ${formatHandRowHtml(PLAYER_NAMES.at(3), state.hands.at(3))}
+            </div>`;
     }
 
     function handleHandWinByDomino(winnerIdx) {
@@ -1289,30 +1316,24 @@ function startNewHand() {
         const totalGained = pointsUsRemaining + pointsThemRemaining;
 
         let title = '';
-        let summaryText = '';
-
-        const detailLines =
-            `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-            `• ${PLAYER_NAMES.at(2)}: ${formatHandList(state.hands.at(2))}\n` +
-            `• ${PLAYER_NAMES.at(1)}: ${formatHandList(state.hands.at(1))}\n` +
-            `• ${PLAYER_NAMES.at(3)}: ${formatHandList(state.hands.at(3))}`;
+        let summaryHtml = '';
 
         if (usWon) {
             state.scores.us += totalGained;
             if (state.scores.us < TARGET_SCORE) sound.handEnd();
             title = `🎉 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
-            summaryText = `Nosotros ganamos la mano y sumamos +${totalGained} tantos (todas las fichas sobrantes).\n${detailLines}`;
+            summaryHtml = buildSummaryHtml(`Nosotros ganamos la mano y sumamos <strong>+${totalGained} tantos</strong>.`);
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Nosotros sumamos +${totalGained} puntos.`);
         } else {
             state.scores.them += totalGained;
             if (state.scores.them < TARGET_SCORE) sound.handEnd();
             title = `😔 ¡DOMINÓ de ${getPlayerLabel(winnerIdx)}!`;
-            summaryText = `Los rivales ganan la mano y suman +${totalGained} tantos (todas las fichas sobrantes).\n${detailLines}`;
+            summaryHtml = buildSummaryHtml(`Los rivales ganan la mano y suman <strong>+${totalGained} tantos</strong>.`);
             setLog(`¡DOMINÓ de ${getPlayerLabel(winnerIdx)}! Rivales suman +${totalGained} puntos.`);
         }
 
         updateScoreboard();
-        showHandSummaryModal(title, summaryText);
+        showHandSummaryModal(title, summaryHtml);
     }
 
     function handleHandClosed() {
@@ -1323,35 +1344,29 @@ function startNewHand() {
         const totalPoints = ptsUs + ptsThem;
 
         let title = '🔒 ¡MANO CERRADA (TRANCA)!';
-        let summaryText = '';
-
-        const detailLines =
-            `• ${state.userName}: ${formatHandList(state.hands.at(0))}\n` +
-            `• ${PLAYER_NAMES.at(2)}: ${formatHandList(state.hands.at(2))}\n` +
-            `• ${PLAYER_NAMES.at(1)}: ${formatHandList(state.hands.at(1))}\n` +
-            `• ${PLAYER_NAMES.at(3)}: ${formatHandList(state.hands.at(3))}`;
+        let summaryHtml = '';
 
         if (ptsUs < ptsThem) {
             state.scores.us += totalPoints;
             if (state.scores.us < TARGET_SCORE) sound.handEnd();
-            summaryText = `¡Ganamos el cierre! Nosotros (${ptsUs} pts) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos +${totalPoints} tantos.\n${detailLines}`;
+            summaryHtml = buildSummaryHtml(`¡Ganamos el cierre! Nosotros (<strong>${ptsUs} pts</strong>) tenemos menos puntos que Rivales (${ptsThem} pts) y sumamos <strong>+${totalPoints} tantos</strong>.`);
             setLog(`¡CIERRE! Nosotros (${ptsUs} pts) ganamos a Rivales (${ptsThem} pts). +${totalPoints} puntos.`);
         } else if (ptsThem < ptsUs) {
             state.scores.them += totalPoints;
             if (state.scores.them < TARGET_SCORE) sound.handEnd();
-            summaryText = `Rivales ganan el cierre (${ptsThem} pts frente a ${ptsUs} pts nuestros) y suman +${totalPoints} tantos.\n${detailLines}`;
+            summaryHtml = buildSummaryHtml(`Rivales ganan el cierre (<strong>${ptsThem} pts</strong> frente a ${ptsUs} pts nuestros) y suman <strong>+${totalPoints} tantos</strong>.`);
             setLog(`¡CIERRE! Rivales (${ptsThem} pts) ganan a Nosotros (${ptsUs} pts). +${totalPoints} puntos.`);
         } else {
             sound.handEnd();
-            summaryText = `¡Cierre empatado a ${ptsUs} puntos! Nadie suma tantos y corre el turno de salida.\n${detailLines}`;
+            summaryHtml = buildSummaryHtml(`¡Cierre empatado a <strong>${ptsUs} puntos</strong>! Nadie suma tantos y corre el turno de salida.`);
             setLog(`¡CIERRE EMPATADO a ${ptsUs} puntos! Nadie suma y corre mano.`);
         }
 
         updateScoreboard();
-        showHandSummaryModal(title, summaryText);
+        showHandSummaryModal(title, summaryHtml);
     }
 
-    function showHandSummaryModal(title, detailText) {
+    function showHandSummaryModal(title, summaryHtml) {
         const matchFinished = state.scores.us >= TARGET_SCORE || state.scores.them >= TARGET_SCORE;
 
         if (matchFinished) {
@@ -1371,17 +1386,16 @@ function startNewHand() {
             dom.btnNextHand.textContent = '▶ Jugar Siguiente Mano';
         }
 
-        dom.summaryDetail.style.whiteSpace = 'pre-line';
-        dom.summaryDetail.style.textAlign = 'left';
-        dom.summaryDetail.textContent = detailText;
+        dom.summaryDetail.innerHTML = summaryHtml;
         dom.summaryScores.textContent = `Marcador: Nosotros ${state.scores.us} — Rivales ${state.scores.them} (Meta: ${TARGET_SCORE})`;
 
+        clearAllThoughts();
         state.revealHands = true;
         renderHands();
 
         setTimeout(() => {
             dom.handSummaryModal.classList.remove('hidden');
-        }, 7500);
+        }, 9500);
     }
 // === FIN BLOQUE 4A ===
 
