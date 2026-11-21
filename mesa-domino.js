@@ -783,18 +783,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 winner = p;
             }
         }
-
-               const winTile = drawn.at(winner);
-        const detail = drawn
-            .map((t, idx) => `${getPlayerLabel(idx)} ${t.a}|${t.b}`)
-            .join(' · ');
-
         return {
             winner,
-            logMsg: `Sorteo (${detail}) → Gana ${getPlayerLabel(winner)} (${winTile.a}|${winTile.b}) y tiene salida libre.`
+            logMsg: `Sorteo FED, sale ${getPlayerLabel(winner)} y tiene salida libre.`
         };
- 
-    }
+
+     }
 
     function startNewMatch() {
         clearTimers();
