@@ -1148,8 +1148,8 @@ function startNewHand() {
             }
         });
 
-        // 2. Una sola jugada posible sin cierre (obligado por norma FED a jugar rápido)
-        if (validMoves.length === 1 && !possibleClose) {
+               // 2. Última ficha (dominó) o una sola jugada posible sin cierre: juega rápido a 1,9s (1900 ms)
+        if ((validMoves.length === 1 || hand.length === 1) && !possibleClose) {
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 playTile(botIdx, bestMove.idx, bestMove.side);
