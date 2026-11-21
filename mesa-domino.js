@@ -802,8 +802,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateScoreboard();
         startNewHand();
     }
-
-    function startNewHand() {
+function startNewHand() {
         clearTimers();
         clearAllThoughts();
         hideSideSelector();
@@ -842,7 +841,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             state.startingPlayer = (state.startingPlayer + 1) % 4;
             state.currentTurn = state.startingPlayer;
-            setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)} (salida libre).`, true);
+            setLog(`Nueva mano: sale ${getPlayerLabel(state.currentTurn)}.`, true);
             const starterLabel = state.currentTurn === 0 ? `sales tú, ${state.userName}` : `sale ${getPlayerLabel(state.currentTurn)}`;
             sound.announce(`Nueva mano, ${starterLabel}.`, 150);
             startDelayMs = 1700;
@@ -891,13 +890,12 @@ document.addEventListener('DOMContentLoaded', () => {
         return playedOfSuit >= 7;
     }
 
-       function hasClosingMove(playerIdx) {
+    function hasClosingMove(playerIdx) {
         if (state.board.length < 6) return false;
         const hand = state.hands.at(playerIdx);
         // Si solo queda 1 ficha en la mano, jugarla es DOMINÓ, nunca cierre
         if (hand.length <= 1) return false;
         for (let i = 0; i < hand.length; i++) {
-
             const tile = hand.at(i);
             if (!canPlayTile(tile)) continue;
             const sides = getValidSides(tile);
@@ -934,7 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (state.gameActive && state.currentTurn === 0) {
                         passTurn(0, false);
                     }
-                }, 2600);
+                }, 2800);
             } else if (playableIndices.length === 1 && !possibleClose) {
                 const onlyIdx = playableIndices.at(0);
                 const onlyTile = state.hands.at(0).at(onlyIdx);
@@ -948,7 +946,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (state.gameActive && state.currentTurn === 0) {
                             playTile(0, onlyIdx, validSides.at(0));
                         }
-                    }, 1900);
+                    }, 2100);
                 } else {
                     dom.btnPass.classList.add('hidden');
                     showThought(0, 'Elige extremo', 0);
@@ -971,7 +969,7 @@ document.addEventListener('DOMContentLoaded', () => {
             planAndExecuteBotTurn(p, possibleClose);
         }
     }
-
+    
     function startTurnTimer(customLimit) {
         clearInterval(state.timerInterval);
         state.timeLeft = (typeof customLimit === 'number') ? customLimit : TURN_TIME_LIMIT;
