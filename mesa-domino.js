@@ -784,15 +784,16 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        const winTile = drawn.at(winner);
+               const winTile = drawn.at(winner);
         const detail = drawn
-            .map((t, idx) => `${getPlayerLabel(idx)} (${t.a}|${t.b})`)
-            .join(', ');
+            .map((t, idx) => `${getPlayerLabel(idx)} ${t.a}|${t.b}`)
+            .join(' · ');
 
         return {
             winner,
-            logMsg: `Sorteo FED: ${detail} → Sale ${getPlayerLabel(winner)} con ${winTile.a}|${winTile.b} (salida libre).`
+            logMsg: `Sorteo (${detail}) → Gana ${getPlayerLabel(winner)} (${winTile.a}|${winTile.b}) y tiene salida libre.`
         };
+ 
     }
 
     function startNewMatch() {
