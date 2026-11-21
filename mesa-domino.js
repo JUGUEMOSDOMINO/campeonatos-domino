@@ -1475,7 +1475,7 @@ function startNewHand() {
         div.textContent = str;
         return div.innerHTML;
     }
-    function setSelectedTargetScore(val) {
+      function setSelectedTargetScore(val) {
         const parsed = (Number(val) === 200) ? 200 : 300;
         TARGET_SCORE = parsed;
         if (dom.lblTargetScore) {
@@ -1542,7 +1542,7 @@ function startNewHand() {
         dom.loginModal.classList.add('hidden');
         startNewMatch();
     });
-   
+
     dom.playerAlias.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             dom.btnStartGame.click();
