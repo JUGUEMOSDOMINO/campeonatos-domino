@@ -374,12 +374,12 @@ document.addEventListener('DOMContentLoaded', () => {
         function getValidSides(tile, playerIdx = state.currentTurn) {
         if (state.board.length === 0) return Array.of('center');
 
-        // Regla FED: Solo cuando ambos extremos del carro son del mismo palo
+               // Regla FED: Solo cuando ambos extremos del carro son del mismo palo (a la derecha del jugador)
         if (state.leftEnd === state.rightEnd) {
             if (tile.a === state.rightEnd || tile.b === state.rightEnd) {
-                // Jugadores 0 (Abajo) y 1 (Derecha) -> 'right'
-                // Jugadores 2 (Arriba) y 3 (Izquierda) -> 'left'
-                const forcedSide = (playerIdx === 0 || playerIdx === 1) ? 'right' : 'left';
+                // Jugadores 0 (Abajo) y 3 (Izquierda) -> su derecha es 'right' (Abajo/Derecha)
+                // Jugadores 1 (Derecha) y 2 (Arriba) -> su derecha es 'left' (Arriba/Izquierda)
+                const forcedSide = (playerIdx === 0 || playerIdx === 3) ? 'right' : 'left';
                 return Array.of(forcedSide);
             }
             return new Array();
