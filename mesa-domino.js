@@ -946,7 +946,7 @@ function startNewHand() {
                         if (state.gameActive && state.currentTurn === 0) {
                             playTile(0, onlyIdx, validSides.at(0));
                         }
-                    }, 2100);
+                    }, 2900);
                 } else {
                     dom.btnPass.classList.add('hidden');
                     showThought(0, 'Elige extremo', 0);
