@@ -158,18 +158,23 @@
             width: 3.5px;
             height: 3.5px;
         }
-        .mesa {
-            background-color: #14534f;
+       
+               .mesa {
+            background: radial-gradient(circle at center, #18645f 0%, #0f4541 100%);
             border: 5px solid #0c3a38;
             border-radius: 14px;
-            min-height: 175px;
+            min-height: 185px;
             padding: 16px 10px;
             display: flex;
-            flex-wrap: wrap;
             justify-content: center;
             align-items: center;
-            gap: 8px;
+            position: relative;
+            overflow: hidden;
             margin-bottom: 12px;
+        }
+        .carro-continuo {
+            position: relative;
+            margin: 0 auto;
         }
         .mesa-vacia {
             color: #9cc6c1;
@@ -178,20 +183,21 @@
             font-style: italic;
         }
         .ficha {
-            background-color: #ffffff;
-            border-radius: 6px;
+            background-color: #fdfbf7;
+            border-radius: 5px;
             display: flex;
-            border: 1px solid #cbd5d4;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.28);
+            border: 1.5px solid #163b38;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.34);
+            position: absolute;
         }
         .ficha.horizontal {
-            width: 66px;
-            height: 33px;
+            width: 56px;
+            height: 28px;
             flex-direction: row;
         }
-        .ficha.doble {
-            width: 33px;
-            height: 66px;
+        .ficha.vertical {
+            width: 28px;
+            height: 56px;
             flex-direction: column;
         }
         .mitad {
@@ -199,22 +205,27 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             grid-template-rows: repeat(3, 1fr);
-            padding: 3px;
+            padding: 2px;
         }
         .ficha.horizontal .mitad:first-child {
             border-right: 1.5px solid #0c3a38;
         }
-        .ficha.doble .mitad:first-child {
+        .ficha.vertical .mitad:first-child {
             border-bottom: 1.5px solid #0c3a38;
         }
         .punto {
-            width: 5.5px;
-            height: 5.5px;
+            width: 4.5px;
+            height: 4.5px;
             background-color: #0c3a38;
             border-radius: 50%;
             align-self: center;
             justify-self: center;
         }
+        .ficha.ultima-jugada {
+            border-color: #f59e0b;
+            box-shadow: 0 0 10px rgba(245, 158, 11, 0.85);
+        }
+
         .panel-info {
             background: #eef4f4;
             border-left: 4px solid #0c3a38;
