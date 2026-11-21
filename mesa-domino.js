@@ -1148,12 +1148,13 @@ function startNewHand() {
             }
         });
 
-               // 2. Última ficha (dominó) o una sola jugada posible sin cierre: juega rápido a 1,9s (1900 ms)
+        // 2. Última ficha (dominó) a 1,9s; única jugada posible intermedia sin cierre a 2,9s (2900 ms)
         if ((validMoves.length === 1 || hand.length === 1) && !possibleClose) {
+            const forcedDelay = (hand.length === 1) ? 1900 : 2900;
             showThought(botIdx, '', 0);
             state.botTimeout = setTimeout(() => {
                 playTile(botIdx, bestMove.idx, bestMove.side);
-            }, 1900);
+            }, forcedDelay);
             return;
         }
 
