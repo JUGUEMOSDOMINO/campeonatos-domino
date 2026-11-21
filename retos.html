@@ -463,6 +463,171 @@
         document.getElementById("panel-manos").innerHTML = html;
     }
 
+        function construirCarroContinuoHTML(jugadas, jugadasAnteriores, anchoDisponible) {
+        var W = 56;
+        var H = 28;
+        var GAP = 1;
+        var prevSet = {};
+        for (var p = 0; p < jugadasAnteriores.length; p++) {
+            prevSet[normalizarFicha(jugadasAnteriores.at(p))] = true;
+        }
+
+        // Detectar salida 0-0 y separar fichas a izquierda y derecha
+        var idxSalida = jugadas.indexOf("0-0");
+        if (idxSalida === -1) idxSalida = 0;
+
+        var izqFichas = jugadas.slice(0, idxSalida).reverse();
+        var derFichas = jugadas.slice(idxSalida + 1);
+
+        var colocadas = [];
+        // Ficha central de salida (0-0 vertical atravesada)
+        var s0 = jugadas.at(idxSalida);
+        colocadas.push({
+            a: s0.charAt(0),
+            b: s0.charAt(2),
+            cx: 0,
+            cy: 0,
+            w: H,
+            h: W,
+            orient: "vertical",
+            nueva: !prevSet[normalizarFicha(s0)]
+        });
+
+        // Fichas a la izquierda de la salida (ej. 6-0 pegada a la izquierda del 0-0)
+        var lastL = colocadas.at(0);
+        for (var li = 0; li < izqFichas.length; li++) {
+            var fL = izqFichas.at(li);
+            var aL = fL.charAt(0);
+            var bL = fL.charAt(2);
+            var esDblL = (aL === bL);
+            var fwL = esDblL ? H : W;
+            var fhL = esDblL ? W : H;
+            var cxL = lastL.cx - lastL.w / 2 - GAP - fwL / 2;
+            var itemL = {
+                a: aL,
+                b: bL,
+                cx: cxL,
+                cy: lastL.cy,
+                w: fwL,
+                h: fhL,
+                orient: esDblL ? "vertical" : "horizontal",
+                nueva: !prevSet[normalizarFicha(fL)]
+            };
+            colocadas.push(itemL);
+            lastL = itemL;
+        }
+
+        // Fichas a la derecha en serpentina continua presencial
+        var maxX = Math.max(140, Math.floor((anchoDisponible - 28) / 2));
+        var minX = -maxX;
+        var dir = "R"; // 'R' (derecha), 'L' (izquierda)
+        var lastR = colocadas.at(0);
+
+        for (var ri = 0; ri < derFichas.length; ri++) {
+            var fR = derFichas.at(ri);
+            var p1 = fR.charAt(0);
+            var p2 = fR.charAt(2);
+            var esDbl = (p1 === p2);
+            var itemR = null;
+
+            if (dir === "R") {
+                var fw = esDbl ? H : W;
+                var fh = esDbl ? W : H;
+                var nextCx = lastR.cx + lastR.w / 2 + GAP + fw / 2;
+
+                if (!esDbl && (nextCx + fw / 2 > maxX) && ri >= 2) {
+                    // Girar 90° hacia abajo en el extremo derecho y cambiar sentido a 'L'
+                    var turnCx = lastR.cx + lastR.w / 2 - H / 2;
+                    var turnCy = lastR.cy + lastR.h / 2 + GAP + W / 2;
+                    itemR = {
+                        a: p1,
+                        b: p2,
+                        cx: turnCx,
+                        cy: turnCy,
+                        w: H,
+                        h: W,
+                        orient: "vertical",
+                        nueva: !prevSet[normalizarFicha(fR)]
+                    };
+                    dir = "L";
+                } else {
+                    itemR = {
+                        a: p1,
+                        b: p2,
+                        cx: nextCx,
+                        cy: lastR.cy,
+                        w: fw,
+                        h: fh,
+                        orient: esDbl ? "vertical" : "horizontal",
+                        nueva: !prevSet[normalizarFicha(fR)]
+                    };
+                }
+            } else {
+                // Sentido 'L' (de derecha a izquierda): p1 va a la derecha (tocando) y p2 a la izquierda
+                var fw2 = esDbl ? H : W;
+                var fh2 = esDbl ? W : H;
+                var nextCx2 = lastR.cx - lastR.w / 2 - GAP - fw2 / 2;
+
+                if (!esDbl && (nextCx2 - fw2 / 2 < minX)) {
+                    // Girar 90° hacia abajo en el extremo izquierdo y volver a sentido 'R'
+                    var turnCx2 = lastR.cx - lastR.w / 2 + H / 2;
+                    var turnCy2 = lastR.cy + lastR.h / 2 + GAP + W / 2;
+                    itemR = {
+                        a: p1,
+                        b: p2,
+                        cx: turnCx2,
+                        cy: turnCy2,
+                        w: H,
+                        h: W,
+                        orient: "vertical",
+                        nueva: !prevSet[normalizarFicha(fR)]
+                    };
+                    dir = "R";
+                } else {
+                    itemR = {
+                        a: p2,
+                        b: p1,
+                        cx: nextCx2,
+                        cy: lastR.cy,
+                        w: fw2,
+                        h: fh2,
+                        orient: esDbl ? "vertical" : "horizontal",
+                        nueva: !prevSet[normalizarFicha(fR)]
+                    };
+                }
+            }
+
+            colocadas.push(itemR);
+            lastR = itemR;
+        }
+
+        // Calcular caja envolvente exacta para centrar en el tapete
+        var boxMinX = Infinity, boxMaxX = -Infinity, boxMinY = Infinity, boxMaxY = -Infinity;
+        for (var c = 0; c < colocadas.length; c++) {
+            var it = colocadas.at(c);
+            boxMinX = Math.min(boxMinX, it.cx - it.w / 2);
+            boxMaxX = Math.max(boxMaxX, it.cx + it.w / 2);
+            boxMinY = Math.min(boxMinY, it.cy - it.h / 2);
+            boxMaxY = Math.max(boxMaxY, it.cy + it.h / 2);
+        }
+
+        var totalW = Math.ceil(boxMaxX - boxMinX);
+        var totalH = Math.ceil(boxMaxY - boxMinY);
+        var html = '<div class="carro-continuo" style="width:' + totalW + 'px; height:' + totalH + 'px;">';
+
+        for (var m = 0; m < colocadas.length; m++) {
+            var f = colocadas.at(m);
+            var leftPx = Math.round(f.cx - f.w / 2 - boxMinX);
+            var topPx = Math.round(f.cy - f.h / 2 - boxMinY);
+            var clsNueva = (jugadasAnteriores.length > 0 && f.nueva) ? " ultima-jugada" : "";
+            html += '<div class="ficha ' + f.orient + clsNueva + '" style="left:' + leftPx + 'px; top:' + topPx + 'px;">'
+                 + crearMitadHTML(f.a) + crearMitadHTML(f.b)
+                 + '</div>';
+        }
+        html += '</div>';
+        return html;
+    }
+
     function renderizarPantalla() {
         var datos = anexos.at(anexoActual);
         document.getElementById("titulo-ejemplo").textContent = datos.titulo;
@@ -470,20 +635,14 @@
         document.getElementById("descripcion-paso").innerHTML = datos.textos.at(pasoActual);
 
         var jugadas = datos.jugadasMesa.at(pasoActual);
+        var jugadasPrev = (pasoActual > 0) ? datos.jugadasMesa.at(pasoActual - 1) : [];
         var mesa = document.getElementById("mesa-juego");
 
         if (jugadas.length === 0) {
             mesa.innerHTML = '<div class="mesa-vacia">Mesa vacía · Pulsa «Siguiente ➡» para iniciar la salida</div>';
         } else {
-            var htmlMesa = "";
-            for (var i = 0; i < jugadas.length; i++) {
-                var fStr = jugadas.at(i);
-                var izq = fStr.charAt(0);
-                var der = fStr.charAt(2);
-                var esDoble = (izq === der) ? " doble" : " horizontal";
-                htmlMesa += '<div class="ficha' + esDoble + '">' + crearMitadHTML(izq) + crearMitadHTML(der) + '</div>';
-            }
-            mesa.innerHTML = htmlMesa;
+            var anchoMesa = mesa.clientWidth || 340;
+            mesa.innerHTML = construirCarroContinuoHTML(jugadas, jugadasPrev, anchoMesa);
         }
 
         renderizarManos(jugadas);
@@ -531,6 +690,7 @@
             btn.textContent = "👁️ Ver distribución de fichas (J1 - J4)";
         }
     }
+    window.addEventListener("resize", renderizarPantalla);
 
     renderizarPantalla();
 </script>
