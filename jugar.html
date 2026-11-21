@@ -6,29 +6,43 @@
     <meta name="theme-color" content="#0d633b">
     <link rel="apple-touch-icon" href="./icon-512.png?v=5">
     <title>JUGUEMOS DOMINÓ · Plataforma de Juego</title>
-    <link rel="stylesheet" href="mesa-domino.css?v=7">
+    <link rel="stylesheet" href="mesa-domino.css?v=8">
 </head>
 <body>
 
     <!-- Modal de Bienvenida / Registro de Alias -->
     <div id="login-modal" class="modal">
-        <div class="modal-content">
-            <h2>🁣 PLATAFORMA DE JUEGO</h2>
-            <p>Dominó por Parejas · Normativa FED (300 Tantos)</p>
-            <input type="text" id="player-alias" placeholder="Tu Apodo o Nombre" maxlength="18" required>
-            <input type="text" id="player-club" placeholder="Ciudad / Peña (Opcional)" maxlength="20">
-            <button id="btn-start-game">Entrar a la Mesa</button>
+        <div class="modal-content login-card">
+            <div class="modal-badge">NORMATIVA FED · POR PAREJAS</div>
+            <h2>🁣 MESA DE DOMINÓ</h2>
+            <p class="modal-subtitle">Configura tu asiento y modalidad de partida</p>
+            <div class="input-group">
+                <label for="player-alias">Tu Nombre o Apodo <span class="req">*</span></label>
+                <input type="text" id="player-alias" placeholder="Ej. Carlos, Li, JC..." maxlength="18" required>
+            </div>
+            <div class="input-group">
+                <label for="player-club">Ciudad o Peña <span class="opt">(Opcional)</span></label>
+                <input type="text" id="player-club" placeholder="Ej. València, Club Turia..." maxlength="20">
+            </div>
+            <div class="input-group">
+                <label>Modalidad de Partida</label>
+                <div class="target-selector" id="target-selector">
+                    <button type="button" class="target-opt" data-target="200">200 tantos · Rápida</button>
+                    <button type="button" class="target-opt active" data-target="300">300 tantos · Oficial</button>
+                </div>
+            </div>
+            <button id="btn-start-game" class="btn-primary-gold">Entrar a la Mesa</button>
             <a href="./" class="link-volver">⬅ Volver a Campeonatos</a>
         </div>
     </div>
 
     <!-- Modal Resumen de Mano (con botón para iniciar la siguiente) -->
     <div id="hand-summary-modal" class="modal hidden">
-        <div class="modal-content">
+        <div class="modal-content summary-card">
             <h2 id="summary-title">Resultado de la Mano</h2>
-            <p id="summary-detail" style="line-height: 1.5; font-size: 0.95rem;"></p>
-            <div id="summary-scores" style="background: #2a2a2a; padding: 10px; border-radius: 6px; font-weight: bold; color: var(--accent-gold);"></div>
-            <button id="btn-next-hand">▶ Jugar Siguiente Mano</button>
+            <div id="summary-detail" class="summary-detail-box"></div>
+            <div id="summary-scores" class="summary-scores-box"></div>
+            <button id="btn-next-hand" class="btn-primary-gold">▶ Jugar Siguiente Mano</button>
         </div>
     </div>
 
@@ -47,7 +61,7 @@
                 </thead>
                 <tbody id="ranking-body"></tbody>
             </table>
-            <button id="btn-close-ranking">Cerrar</button>
+            <button id="btn-close-ranking" class="btn-primary-gold">Cerrar</button>
         </div>
     </div>
 
@@ -59,7 +73,7 @@
                 <span class="team-name">NOSOTROS (<span id="lbl-user-name">Tú</span> & <span id="lbl-partner-name">Eduardo</span>)</span>
                 <span class="score" id="score-us">0</span>
             </div>
-            <div class="target-score">Meta: 300</div>
+            <div class="target-score" id="lbl-target-score">Meta: 300</div>
             <div class="team them">
                 <span class="team-name">RIVALES (<span id="lbl-rivals-names">Jesús & Gaby</span>)</span>
                 <span class="score" id="score-them">0</span>
@@ -127,6 +141,6 @@
         </div>
     </main>
 
-    <script src="mesa-domino.js?v=14"></script>
+    <script src="mesa-domino.js?v=15"></script>
 </body>
 </html>
