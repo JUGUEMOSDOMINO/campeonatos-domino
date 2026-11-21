@@ -886,10 +886,13 @@ document.addEventListener('DOMContentLoaded', () => {
         return playedOfSuit >= 7;
     }
 
-    function hasClosingMove(playerIdx) {
+       function hasClosingMove(playerIdx) {
         if (state.board.length < 6) return false;
         const hand = state.hands.at(playerIdx);
+        // Si solo queda 1 ficha en la mano, jugarla es DOMINÓ, nunca cierre
+        if (hand.length <= 1) return false;
         for (let i = 0; i < hand.length; i++) {
+
             const tile = hand.at(i);
             if (!canPlayTile(tile)) continue;
             const sides = getValidSides(tile);
@@ -1123,8 +1126,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
             score += suitCounts.at(newOpenEnd) * 6;
 
-            // Valoración táctica si la jugada cierra la mano
-            if (typeof isClosingPlay === 'function' && isClosingPlay(tile, side)) {
+                       // Valoración táctica si la jugada cierra la mano (solo si no es su última ficha, pues sería dominó)
+            if (hand.length > 1 && typeof isClosingPlay === 'function' && isClosingPlay(tile, side)) {
+
                 const myRemainingAfter = myPoints - tileWeight(tile);
                 const unplayedOthers = Math.max(0, 168 - boardPoints - myPoints);
                 const avgOtherHand = unplayedOthers / 3;
