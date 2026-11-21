@@ -428,7 +428,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return tileEl;
     }
-         // === INICIO RENDERBOARD - PARTE A (CONFIGURACIÓN Y BRAZO DERECHO) ===
+      // === INICIO RENDERBOARD - PARTE A (CONFIGURACIÓN Y BRAZO DERECHO) ===
     function renderBoard() {
         dom.carroContainer.innerHTML = '';
         if (state.board.length === 0) return;
@@ -477,7 +477,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return box;
         }
 
-               function computeTurnedCoords(last, nextDir, w, h, prevDir = null) {
+        function computeTurnedCoords(last, nextDir, w, h, prevDir = null) {
             if (nextDir === 'U') {
                 return {
                     cx: last.cx + last.w / 2 - w / 2,
@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const initialLeftDir = isVerticalStart ? 'U' : 'L';
         const initialRightDir = isVerticalStart ? 'D' : 'R';
 
-                // En vertical: centerItem.left queda arriba (hacia 'U') y centerItem.right queda abajo (hacia 'D')
+        // En vertical: centerItem.left queda arriba (hacia 'U') y centerItem.right queda abajo (hacia 'D')
         const cBox = addPlacedTile(centerItem.left, centerItem.right, centerItem.isDouble, 0, 0, initialRightDir);
 
         // BRAZO DERECHO LÓGICO (rightEnd -> Derecha en horizontal / Abajo-Derecha en vertical)
@@ -540,7 +540,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 rNormalSinceDouble++;
             }
 
-                        let justTurned = false;
+            const nextIsHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
+            const nextW = nextIsHoriz ? L : S;
+            const nextH = nextIsHoriz ? S : L;
+            const straightPos = computeStraightCoords(rLast, rDir, nextW, nextH);
+
+            let justTurned = false;
             const prevrDir = rDir;
             if (!item.isDouble) {
                 if (isMobile && isVerticalStart) {
@@ -569,7 +574,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
             }
- 
+
             const isHoriz = item.isDouble ? (rDir === 'U' || rDir === 'D') : (rDir === 'R' || rDir === 'L');
             const w = isHoriz ? L : S;
             const h = isHoriz ? S : L;
@@ -582,6 +587,7 @@ document.addEventListener('DOMContentLoaded', () => {
             rLegTiles++;
         }
     // === FIN RENDERBOARD - PARTE A ===
+
     // === INICIO RENDERBOARD - PARTE B (BRAZO IZQUIERDO Y ESCALADO) ===
         // BRAZO IZQUIERDO LÓGICO (leftEnd -> Izquierda en horizontal / Arriba-Izquierda en vertical)
         let lLast = cBox;
