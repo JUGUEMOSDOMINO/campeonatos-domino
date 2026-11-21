@@ -1475,12 +1475,59 @@ function startNewHand() {
         div.textContent = str;
         return div.innerHTML;
     }
+    function setSelectedTargetScore(val) {
+        const parsed = (Number(val) === 200) ? 200 : 300;
+        TARGET_SCORE = parsed;
+        if (dom.lblTargetScore) {
+            dom.lblTargetScore.textContent = `Meta: ${TARGET_SCORE}`;
+        }
+        if (dom.targetSelector) {
+            dom.targetSelector.querySelectorAll('.target-opt').forEach(btn => {
+                btn.classList.toggle('active', Number(btn.dataset.target) === TARGET_SCORE);
+            });
+        }
+    }
+
+    try {
+        const savedAlias = localStorage.getItem('domino_player_alias');
+        const savedClub = localStorage.getItem('domino_player_club');
+        const savedTarget = localStorage.getItem('domino_target_score');
+        if (savedAlias) dom.playerAlias.value = savedAlias;
+        if (savedClub) dom.playerClub.value = savedClub;
+        if (savedTarget) setSelectedTargetScore(savedTarget);
+    } catch (e) {}
+
+    if (dom.targetSelector) {
+        dom.targetSelector.querySelectorAll('.target-opt').forEach(btn => {
+            btn.addEventListener('click', () => {
+                setSelectedTargetScore(btn.dataset.target);
+            });
+        });
+    }
+
+    dom.playerAlias.addEventListener('input', () => {
+        dom.playerAlias.setCustomValidity('');
+    });
 
     dom.btnStartGame.addEventListener('click', () => {
         const alias = dom.playerAlias.value.trim();
         const club = dom.playerClub.value.trim();
 
-        state.userName = alias || 'Jugador';
+        if (alias.length < 2) {
+            dom.playerAlias.focus();
+            dom.playerAlias.setCustomValidity('Introduce un nombre o alias de al menos 2 caracteres.');
+            dom.playerAlias.reportValidity();
+            return;
+        }
+        dom.playerAlias.setCustomValidity('');
+
+        try {
+            localStorage.setItem('domino_player_alias', alias);
+            localStorage.setItem('domino_player_club', club);
+            localStorage.setItem('domino_target_score', String(TARGET_SCORE));
+        } catch (e) {}
+
+        state.userName = alias;
         state.userClub = club;
 
         dom.lblUserName.textContent = state.userName;
@@ -1495,7 +1542,7 @@ function startNewHand() {
         dom.loginModal.classList.add('hidden');
         startNewMatch();
     });
-
+   
     dom.playerAlias.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
             dom.btnStartGame.click();
