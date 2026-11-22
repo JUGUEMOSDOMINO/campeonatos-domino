@@ -64,6 +64,21 @@
     "id": 3,
     "corto": "Pons-Giner"
    }
+  },
+  {
+   "id": "1-campeonato-de-ejemplo-de-parejas-2027-02-06",
+   "nombre": "1º CAMPEONATO DE EJEMPLO DE PAREJAS",
+   "tipo": "parejas",
+   "temporada": null,
+   "fecha": "2027-02-06",
+   "estado": "terminado",
+   "jornada_actual": 7,
+   "n_jornadas": 7,
+   "n_participantes": 6,
+   "ganador": {
+    "id": 7,
+    "corto": "Soler-Serra"
+   }
   }
  ]
 }

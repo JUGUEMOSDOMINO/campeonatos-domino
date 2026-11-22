@@ -7,11 +7,12 @@
   const P = window.Partidas;
   const M = window.Mesa;
   const RK = window.Ranking;
+  const RS = window.Resumen;
   // Límites al leer el Excel (el real pesa unos 7 MB; la hoja WEB cabe en 210 filas y 53 columnas).
   const MAX_BYTES = 25 * 1024 * 1024, MAX_FILAS = 300, MAX_COLUMNAS = 80;
   const $ = (s) => document.querySelector(s);
   const NOMBRE_REPO = { web: 'la web', borr: 'borradores' };
-  const E = { modo: null, rk: null, json: null, raw: null, partidas: [], sel: new Set(), aviso: null, omitidas: [], pub: null, vals: [], confirmadas: new Set(), dest: null, indices: { web: null, borr: null }, acceso: { web: null, borr: null }, archivo: '' };
+  const E = { modo: null, rk: null, rs: null, json: null, raw: null, partidas: [], sel: new Set(), aviso: null, omitidas: [], pub: null, vals: [], confirmadas: new Set(), dest: null, indices: { web: null, borr: null }, acceso: { web: null, borr: null }, archivo: '' };
   const tp = (t) => TIPOS[t] || TIPOS.parejas;
 
   /* ---------- paso 1: token ---------- */
@@ -335,7 +336,7 @@
   async function alElegirArchivo(ev) {
     const f = ev.target.files[0];
     ev.target.value = ''; // así se puede volver a elegir el mismo archivo tras guardarlo de nuevo
-    E.json = null; E.partidas = []; E.modo = null; E.rk = null;
+    E.json = null; E.partidas = []; E.modo = null; E.rk = null; E.rs = null;
     $('#paso-revision').hidden = true; $('#paso-publicar').hidden = true;
     if (!f) { poner($('#lectura')); return; }
     const aviso = (t) => poner($('#lectura'), el('p', { class: 'nota caja' }, t));
@@ -346,6 +347,12 @@
     let wb, bytes;
     try {
       bytes = await f.arrayBuffer();
+      // la Hoja de resumen de un organizador no tiene hoja WEB: se reconoce por los nombres de sus hojas y se lee entera (pesa muy poco)
+      if (RS.es({ SheetNames: XLSX.read(bytes, { type: 'array', bookSheets: true }).SheetNames })) {
+        E.archivo = f.name;
+        await revisarResumen(XLSX.read(bytes, { type: 'array', cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false }));
+        return;
+      }
       wb = XLSX.read(bytes, { type: 'array', sheets: 'WEB', cellFormula: false, cellHTML: false, cellStyles: false, cellNF: false });
     } catch (e) { aviso('No se ha podido leer ese archivo. ¿Está dañado o es de otro programa?'); return; }
     const ws = wb.Sheets && wb.Sheets.WEB;
@@ -445,6 +452,7 @@
   async function cambiarDestino(d) {
     E.dest = d;
     if (E.modo === 'ranking') { pintarRanking(); return; }
+    if (E.modo === 'resumen') { pintarResumen(); return; }
     poner($('#lectura'), el('p', { class: 'nota' }, 'Comprobando lo que ya está publicado…'));
     try { E.pub = await estadoPublicado(E.json.torneo.id, d, E.partidas.map((p) => p.k)); } catch (e) { if (!siCaduco(e)) poner($('#lectura'), el('p', { class: 'nota caja' }, e.message)); return; }
     leido();
@@ -533,6 +541,7 @@
 
   function actualizarBoton() {
     if (E.modo === 'ranking') { actualizarBotonRanking(); return; }
+    if (E.modo === 'resumen') { actualizarBotonResumen(); return; }
     const sel = marcadas();
     const bloquea = sel.some((p) => p.vals.some((x) => x.gravedad === 'bloquea'));
     const falta = sel.some((p) => p.vals.filter((x) => x.gravedad === 'confirma').some((x) => !E.confirmadas.has(p.k + ':' + x.cod)));
@@ -561,6 +570,7 @@
   }
   async function publicar() {
     if (E.modo === 'ranking') { await publicarRanking(); return; }
+    if (E.modo === 'resumen') { await publicarResumen(); return; }
     const boton = $('#publicar');
     const js = marcadas().map((p) => p.json).sort((x, y) => x.jornada.numero - y.jornada.numero);
     if (!js.length) return;
@@ -655,6 +665,113 @@
     const ok = await correr(pasos, { pre: $('#registro'), acc: $('#reintento') }, final, async () => {
       poner($('#resultado'), el('a', { href: clave === 'web' ? `ranking.html?r=${encodeURIComponent(id)}` : `ranking.html?r=${encodeURIComponent(id)}&borrador=1`, target: '_blank', rel: 'noopener' },
         clave === 'web' ? 'Abrir el ranking en la web' : 'Ver el borrador'));
+      $('#resultado').hidden = false;
+      await cargarTorneos();
+    });
+    if (!ok) boton.disabled = !M.token.obtener();
+  }
+
+  /* ---------- la Hoja de resumen de un organizador (assets/resumen.js) ---------- */
+  // Del mismo archivo salen dos cosas. A la web va un campeonato de parejas con solo Clasificación, sin licencias. El bloque para el ranking lleva
+  // licencias: se copia al portapapeles en este ordenador y no se sube a ningún sitio.
+  async function revisarResumen(wb) {
+    try {
+      E.modo = 'resumen';
+      E.rs = RS.leer(wb);
+      E.confirmadasRs = new Set();
+      poner($('#lectura'), el('p', { class: 'nota' }, 'Comprobando lo que ya está publicado…'));
+      const web = await M.leer('web', 'datos/indice.json'); E.indices.web = web ? web.json : null;
+      E.acceso.borr = await M.acceso('borr');
+      if (E.acceso.borr.ok) { const b = await M.leer('borr', 'datos/indice.json'); E.indices.borr = b ? b.json : null; }
+      E.dest = enWeb(RS.identificador(E.rs.datos)) ? 'web' : E.acceso.borr.ok ? 'borr' : null;
+    } catch (e) {
+      if (e.estado === 401) { pintarToken(e.message, true); $('#paso-revision').hidden = true; $('#paso-publicar').hidden = true; }
+      poner($('#lectura'), el('p', { class: 'nota caja' }, e instanceof M.ErrorGH ? e.message : 'No se ha podido leer la Hoja de resumen. Comprueba que está guardada y que es el archivo que rellenó el organizador.'));
+      return;
+    }
+    poner($('#lectura'), el('p', { class: 'nota' }, `Leída la Hoja de resumen «${E.archivo}»: ${E.rs.datos.nombre || 'sin nombre'}.`));
+    pintarDestino();
+    pintarResumen();
+    $('#registro').hidden = true; $('#reintento').hidden = true; $('#resultado').hidden = true;
+  }
+  function valsResumen() {
+    const id = RS.identificador(E.rs.datos);
+    const v = RS.validar(E.rs, { indice: E.dest ? E.indices[E.dest] : E.indices.web });
+    if (E.dest === 'borr' && enWeb(id)) v.push({ cod: 'M01', gravedad: 'avisa', msg: 'Este campeonato ya está en la web. El borrador es una copia aparte: la web no cambia hasta que lo publiques.' });
+    if (E.dest === 'web' && !enWeb(id)) v.push({ cod: 'M02', gravedad: 'avisa', msg: 'Este campeonato todavía no está en la web: se publica ahora y lo ve todo el mundo.' });
+    return v;
+  }
+  function copiarBloque(b, aviso) {
+    const ok = () => { aviso.textContent = `Copiado: ${b.filas.length} filas. En el Excel del ranking, pincha en «▸ Bloque» del torneo, ponte en la primera celda amarilla y pega con «Pegar valores».`; };
+    const mal = () => { aviso.textContent = 'No se ha podido copiar. Selecciona la tabla de abajo y cópiala a mano.'; };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(b.tsv).then(ok, mal); else mal();
+  }
+  function pintarResumen() {
+    const d = E.rs.datos;
+    E.valsRs = valsResumen();
+    const bloquea = E.valsRs.some((x) => x.gravedad === 'bloquea');
+    const lista = E.valsRs.map((x) => {
+      if (x.gravedad === 'confirma') {
+        const c = el('input', { type: 'checkbox', checked: E.confirmadasRs.has(x.cod) });
+        c.addEventListener('change', () => { c.checked ? E.confirmadasRs.add(x.cod) : E.confirmadasRs.delete(x.cod); actualizarBotonResumen(); });
+        return el('li', { class: 'confirma' }, el('label', null, c, el('span', null, el('span', { class: 'cod' }, x.cod), x.msg + ' ', el('b', null, 'Marca la casilla si quieres seguir.'))));
+      }
+      return el('li', { class: x.gravedad }, el('span', { class: 'cod' }, x.cod), el('b', null, ETIQ[x.gravedad] + ': '), x.msg);
+    });
+    if (!lista.length) lista.push(el('li', { class: 'ok' }, 'Todo en orden: no hay nada que avisar.'));
+    let vista = null;
+    if (!bloquea) {
+      const j = RS.construir(E.rs, null), b = RS.bloque(E.rs), byId = new Map(j.participantes.map((p) => [p.id, p]));
+      E.json = j;
+      const clas = el('div', { class: 'tabla-caja sep-12' }, el('table', { class: 'clasi' },
+        el('caption', { class: 'solo-lector' }, 'Primeros puestos del grupo A leídos de la Hoja de resumen'),
+        el('thead', null, el('tr', null, el('th', null, '#'), el('th', { class: 'izq' }, 'Pareja'), el('th', null, 'P.G.'), el('th', null, 'Dif.'))),
+        el('tbody', null, j.clasificacion.filter((r) => r.grupo === 'A').slice(0, 8).map((r) => el('tr', null, el('td', null, r.puesto),
+          el('td', { class: 'pareja' }, el('span', { class: 'nom' }, (byId.get(r.id) || {}).corto || '#' + r.id)), el('td', { class: 'gan' }, r.gan), el('td', null, r.dt))))));
+      const aviso = el('p', { class: 'nota sin-margen', 'aria-live': 'polite' });
+      const fila = (f) => el('tr', null, f.map((x, i) => el('td', { class: i === 3 || i === 5 || i === 8 ? 'txt' : null }, x === '' ? '' : String(x))));
+      const cab = ['Grupo', 'Puesto', 'Licencia 1', 'Jugador 1', 'Licencia 2', 'Jugador 2', 'Retirada', 'Lic. sustituto', 'Sustituto', 'Quién', 'Partidas', 'Caso'];
+      const bloque = el('div', { class: 'tabla-caja sep-12' }, el('table', { class: 'clasi', id: 'bloque-ranking' },
+        el('caption', { class: 'solo-lector' }, 'Bloque para pegar en el Excel del ranking'),
+        el('thead', null, el('tr', null, cab.map((t) => el('th', { scope: 'col' }, t)))), el('tbody', null, b.filas.map(fila))));
+      vista = [
+        el('p', { class: 'nota sep-12' }, 'Así empieza la clasificación que verá la web (sin licencias):'), clas,
+        el('h3', { class: 'subtitulo' }, 'Para el ranking'),
+        el('p', { class: 'nota sin-margen' }, `El bloque tiene ${b.filas.length} filas (${b.parejas} parejas). Lleva las licencias: se copia en este ordenador y no se sube a ningún sitio.`),
+        b.avisos.map((t) => el('p', { class: 'nota sin-margen' }, t)),
+        el('div', { class: 'acciones' }, el('button', { class: 'boton', id: 'copiar-bloque', type: 'button', onclick: () => copiarBloque(b, aviso) }, 'Copiar el bloque'), aviso),
+        el('details', { class: 'sep-10' }, el('summary', null, 'Ver el bloque'), bloque)];
+    } else E.json = null;
+    poner($('#revision'),
+      el('div', { class: 'resumen' }, cuadro(d.nombre || '—', 'Campeonato'), cuadro(d.partidas == null ? '—' : d.partidas, 'partidas'),
+        cuadro(E.rs.grupos.A.length + E.rs.grupos.B.length, 'parejas'), cuadro(E.rs.grupos.B.length ? 'Con grupo B' : 'Sin grupo B', 'grupos')),
+      el('ul', { class: 'vals' }, lista),
+      el('p', { class: 'nota sep-12' }, 'Es la Hoja de resumen de un organizador. A la web sube un campeonato de parejas con solo la clasificación.'), vista);
+    $('#paso-revision').hidden = false;
+    $('#paso-publicar').hidden = false;
+    actualizarBotonResumen();
+  }
+  function actualizarBotonResumen() {
+    const v = E.valsRs || [];
+    const bloquea = v.some((x) => x.gravedad === 'bloquea'), falta = v.some((x) => x.gravedad === 'confirma' && !E.confirmadasRs.has(x.cod));
+    $('#publicar').textContent = E.dest === 'borr' ? 'Guardar como borrador' : 'Publicar en la web';
+    $('#publicar').disabled = !E.dest || bloquea || falta;
+    $('#pub-nota').textContent = !E.dest ? 'Elige dónde guardarlo.' : bloquea ? 'Corrige lo que se marca en rojo en la Hoja de resumen, guárdala y elígela otra vez.' : falta ? 'Marca las casillas para poder publicar.' : '';
+  }
+  async function publicarResumen() {
+    const boton = $('#publicar');
+    const clave = E.dest, ahora = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const j = { ...E.json, publicado: ahora }, id = j.torneo.id, nn = String(j.jornada.numero).padStart(2, '0');
+    const msg = `${clave === 'web' ? 'Publicar' : 'Borrador'} ${id}: clasificación final`;
+    boton.disabled = true;
+    const pasos = [
+      { txt: `Escribir jornada_${nn}.json`, fn: () => M.poner(clave, `datos/${id}/jornada_${nn}.json`, C.aTexto(j), msg) },
+      { txt: 'Escribir actual.json', fn: () => M.poner(clave, `datos/${id}/actual.json`, C.aTexto(C.conJornadas(j, [{ numero: j.jornada.numero, completa: true, publicado: ahora }])), msg) },
+      { txt: 'Escribir indice.json', fn: async () => { const i = await M.leer(clave, 'datos/indice.json'); await M.poner(clave, 'datos/indice.json', C.aTexto(C.indiceNuevo(i && i.json, j)), msg); } },
+    ];
+    const final = clave === 'web' ? 'Publicado. La web lo mostrará en uno o dos minutos.' : 'Guardado como borrador. Solo lo ves tú, con el token de este navegador.';
+    const ok = await correr(pasos, { pre: $('#registro'), acc: $('#reintento') }, final, async () => {
+      poner($('#resultado'), el('a', { href: clave === 'web' ? `torneo.html?t=${encodeURIComponent(id)}` : `torneo.html?t=${encodeURIComponent(id)}&borrador=1`, target: '_blank', rel: 'noopener' }, clave === 'web' ? 'Abrir el campeonato en la web' : 'Ver el borrador'));
       $('#resultado').hidden = false;
       await cargarTorneos();
     });

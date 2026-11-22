@@ -97,6 +97,8 @@ function llegaAPuntC() {
   execFileSync('python3', [path.join(__dirname, 'hacer_xlsx.py'), path.join(__dirname, 'datos/nombres-largos/actual.json'), excel]);
   const variasPartidas = path.join(xl, 'partidas.xlsx'); // parejas con las partidas 1 y 2 en las hojas de datos
   execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_partidas.py'), path.join(__dirname, 'datos/parejas-ejemplo-2026-11-14'), '2', variasPartidas]);
+  const resumenOrg = path.join(xl, 'organizador.xlsx'); // Hoja de resumen de un organizador (datos inventados)
+  execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_organizador.py'), resumenOrg]);
 
   for (const [w, h] of TAMANOS) {
     const ctx = await b.newContext({ viewport: { width: w, height: h } });
@@ -155,6 +157,12 @@ function llegaAPuntC() {
       }
     }
 
+    // campeonato publicado desde la Hoja de resumen de un organizador: solo Clasificación, con sus dos grupos
+    await pg.goto(`${base}/torneo.html?${D}&t=1-campeonato-de-ejemplo-de-parejas-2027-02-06`); await pg.waitForSelector('table.clasi');
+    await mira('organizador · clasificación grupo A', llegaAPuntC);
+    await pg.click('.grupos button:has-text("Grupo B")'); await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 2);
+    await mira('organizador · clasificación grupo B');
+
     // mesa de control: listas de la web y de borradores (con nombres largos), cada panel de acción, el Excel con destino, un fallo a mitad y un borrador
     const api = await instalar(ctx);
     await recordarWeb(ctx);
@@ -194,6 +202,10 @@ function llegaAPuntC() {
     await pg.setInputFiles('#archivo', variasPartidas); await pg.waitForSelector('#partidas input[data-k="2"]');
     await pg.check('#partidas input[data-k="1"]'); await pg.waitForSelector('.vals li.confirma, .vals li.avisa');
     await mira('publicar · varias partidas: casillas, avisos y botón');
+    await pg.setInputFiles('#archivo', resumenOrg); await pg.waitForSelector('#copiar-bloque');
+    await mira('publicar · Hoja de resumen: clasificación y botón del bloque');
+    await pg.click('#revision summary'); await pg.waitForSelector('#bloque-ranking');
+    await mira('publicar · Hoja de resumen: bloque del ranking abierto');
     // borrador visto por torneo.html: con token, sin token y con token de otro
     await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&borrador=1&ver=clasificacion`); await pg.waitForSelector('table.clasi');
     await mira('borrador · clasificación');

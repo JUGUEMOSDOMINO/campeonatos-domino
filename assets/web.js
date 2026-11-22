@@ -315,7 +315,17 @@
      ===================================================================== */
   const PESTANAS = [['resumen', 'Resumen'], ['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario'], ['normativa', 'Bases del campeonato']];
   const ANTIGUAS = { emparejamientos: 'mesas', resultados: 'mesas', linea: 'folleto' }; // enlaces de antes del cambio de pestañas
-  const E = { id: null, actual: null, cache: new Map(), ver: 'resumen', j: null, g: 'A', p: null, q: '', quien: '' };
+  const E = { id: null, actual: null, cache: new Map(), ver: 'resumen', j: null, g: 'A', p: null, q: '', quien: '', tabs: PESTANAS };
+  // Un campeonato publicado solo con su clasificación (de la Hoja de resumen de un organizador) no trae mesas: sin Resumen, Partidas, Parejas ni Calendario.
+  const soloClasificacion = (a) => Array.isArray(a.emparejamientos) && a.emparejamientos.length === 0;
+  // ¿hay normativa? Se pregunta una vez (un 404 es lo normal: el campeonato no tiene)
+  const hayNormativa = () => (E.normativa = E.normativa || (BORRADOR ? Promise.resolve(false) : fetch(`${BASE}/${E.id}/normativa.pdf.cifrado`, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false)));
+  // Las pestañas con algo que enseñar. Se calcula antes de pintar porque Bases del campeonato necesita preguntar.
+  async function pestanasVisibles() {
+    if (!soloClasificacion(E.actual)) return PESTANAS;
+    const hay = await hayNormativa();
+    return PESTANAS.filter(([k]) => k === 'clasificacion' || (k === 'normativa' && hay));
+  }
 
   function leerUrl() {
     const x = new URLSearchParams(location.search);
@@ -352,7 +362,8 @@
   function cabecera() {
     const a = E.actual, t = a.torneo, tp = tipoDe(t.tipo);
     document.title = t.nombre;
-    const datos = [t.tipo === 'sp' ? null : fechaLarga(t.fecha), t.temporada && 'Temporada ' + t.temporada, t.lugar, `${t.n_participantes} ${tp.unidades}`, `${tp.jornada} ${a.jornada.numero} de ${t.n_jornadas}`].filter(Boolean);
+    const datos = [t.tipo === 'sp' ? null : fechaLarga(t.fecha), t.temporada && 'Temporada ' + t.temporada, t.lugar, `${t.n_participantes} ${tp.unidades}`,
+      soloClasificacion(a) ? `${t.n_jornadas} ${tp.jornada.toLowerCase()}s` : `${tp.jornada} ${a.jornada.numero} de ${t.n_jornadas}`].filter(Boolean);
     $('#cab').replaceChildren(
       el('div', null, el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado), el('span', { class: 'etiqueta' }, tp.nombre)),
       el('h1', null, t.nombre),
@@ -362,7 +373,7 @@
 
   function pestanas() {
     const ind = E.actual.torneo.tipo === 'individual';
-    $('#pestanas').replaceChildren(...PESTANAS.map(([k, txt]) => el('a', {
+    $('#pestanas').replaceChildren(...E.tabs.map(([k, txt]) => el('a', {
       href: url('torneo.html', { t: E.id, ver: k === 'resumen' ? '' : k, p: E.p }), 'aria-current': E.ver === k ? 'page' : null,
       onclick: (ev) => { if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return; ev.preventDefault(); irA({ ver: k, j: null }, true); },
     }, k === 'parejas' && ind ? 'Jugadores' : txt)));
@@ -598,7 +609,7 @@
       : 'P.G. partidas ganadas · P.F./P.C. tantos a favor/en contra · Dif. diferencia de tantos';
 
     poner(cont,
-      selectorJornada(completas, n, tp, (x) => irA({ j: x }, false)),
+      soloClasificacion(a) ? null : selectorJornada(completas, n, tp, (x) => irA({ j: x }, false)),
       conB ? el('div', { class: 'grupos', role: 'group', 'aria-label': 'Grupo' }, ['A', 'B'].map((x) => el('button', { type: 'button', 'aria-pressed': String(g === x), onclick: () => irA({ g: x }, false) }, 'Grupo ' + x))) : null,
       plazo(jd, tp),
       n === vivo ? el('p', { class: 'nota caja' }, `${tp.jornada} ${n} en juego: la clasificación se actualiza con cada resultado. ⏳ = todavía no ha jugado esta ${tp.jornada.toLowerCase()} (lleva sus cifras de antes).`) : null,
@@ -783,9 +794,7 @@
   }
 
   async function pintarNormativa(cont) {
-    // ¿hay normativa? Se pregunta una vez y solo al abrir Normativa (un 404 aquí es lo normal: el campeonato no tiene)
-    E.normativa = E.normativa || (BORRADOR ? Promise.resolve(false) : fetch(`${BASE}/${E.id}/normativa.pdf.cifrado`, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false));
-    const hay = await E.normativa;
+    const hay = await hayNormativa();
     if (E.ver !== 'normativa') return;
     const aviso = el('p', { class: 'nota sin-margen', 'aria-live': 'polite' });
     const boton = hay ? el('button', { type: 'button', class: 'boton', onclick: () => descargarNormativa(boton, aviso) }, 'Descargar normativa (PDF)') : null;
@@ -796,9 +805,11 @@
   let pintando = 0;
   async function pintar() {
     const marca = ++pintando;
+    E.tabs = await pestanasVisibles();
+    if (marca !== pintando) return;
+    if (!E.tabs.some(([k]) => k === E.ver)) E.ver = 'clasificacion';
     cabecera(); pestanas();
     const cont = $('#contenido');
-    if (marca !== pintando) return;
     if (E.ver === 'resumen') await pintarResumen(cont);
     else if (E.ver === 'clasificacion') await pintarClasificacion(cont);
     else if (E.ver === 'mesas') await pintarMesas(cont);

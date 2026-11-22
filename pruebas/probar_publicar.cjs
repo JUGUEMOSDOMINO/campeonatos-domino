@@ -955,6 +955,67 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.deepStrictEqual(errores, []);
   }
 
+  /* ============ Hoja de resumen de un organizador: a la web, parejas con solo Clasificación y sin licencias; el bloque del ranking, al portapapeles ============ */
+  {
+    const OJ = '1-campeonato-de-ejemplo-de-parejas-2027-02-06', ref = leerJson(OJ + '/actual.json'), ID = ref.torneo.id;
+    const libroOr = (extra = []) => { const f = path.join(tmp, 'organizador' + extra.join('') + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_organizador.py'), f, ...extra]); return f; };
+    const { ctx, pg, api, errores } = await escenario({ semilla: sembrarWeb });
+    await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+    await abrir(pg);
+    await pg.setInputFiles('#archivo', libroOr());
+    await pg.waitForSelector('#revision .resumen');
+    let txt = await pg.textContent('#revision');
+    assert(txt.includes('1º CAMPEONATO DE EJEMPLO DE PAREJAS') && txt.includes('Con grupo B') && txt.includes('Todo en orden') && txt.includes('Mas-Ferrer'), txt);
+    assert(txt.includes('sin licencias') && txt.includes('no se sube a ningún sitio'), txt);
+    assert.strictEqual(await pg.isChecked('input[name=destino][value=borr]'), true);
+    bien('resumen: se reconoce la Hoja de resumen (sin hoja WEB), enseña el campeonato, la clasificación y el bloque; destino por defecto Borrador');
+    await pg.click('#copiar-bloque');
+    await pg.waitForSelector('#revision :text("Copiado: 7 filas")');
+    const pegado = await pg.evaluate(() => navigator.clipboard.readText());
+    assert.strictEqual(pegado.split('\n')[2], ['A', 3, 9005, 'Marta Puig', 9006, 'Xavi Bosch', '', 9007, 'Elena Sala', 2, 3, 'E'].join('\t'));
+    assert.strictEqual(pegado.split('\n').length, 7);
+    bien('resumen: «Copiar el bloque» deja en el portapapeles las 12 columnas del ranking (7 filas, con licencias)');
+    await pg.check('input[name=destino][value=web]');
+    await pg.waitForSelector('#revision li.avisa:has-text("M02")');
+    await pg.click('#publicar');
+    await pg.waitForSelector('#registro:has-text("Publicado")');
+    const sinPub = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.publicado; delete c.jornadas; return c; };
+    for (const f of ['jornada_07.json', 'actual.json']) {
+      const t = api.repos.web.get(`datos/${ID}/${f}`).texto;
+      assert(K.esSobre(t), f + ' no va cifrado');
+      assert.deepStrictEqual(sinPub(api.json('web', `datos/${ID}/${f}`)), sinPub(ref));
+    }
+    assert.deepStrictEqual(api.json('web', `datos/${ID}/actual.json`).jornadas.map((j) => j.numero), [7]);
+    const e = api.json('web', 'datos/indice.json').torneos.find((t) => t.id === ID);
+    assert.deepStrictEqual(e, { id: ID, nombre: ref.torneo.nombre, tipo: 'parejas', temporada: null, fecha: '2027-02-06', estado: 'terminado', jornada_actual: 7, n_jornadas: 7, n_participantes: 6, ganador: { id: 7, corto: 'Soler-Serra' } });
+    assert.strictEqual(await pg.getAttribute('#resultado a', 'href'), 'torneo.html?t=' + ID);
+    assert.deepStrictEqual(api.enClaro, []);
+    bien('resumen: «Publicar en la web» escribe jornada_07.json, actual.json (cifrados, con una sola partida) y su línea de indice.json, tipo parejas, terminado');
+    for (const [, x] of api.repos.web) if (x.plano && /ranking-ejemplo/.test(x.plano) === false) assert(!/licencia|46\/ \d|9001|9013|F201/.test(x.plano), 'licencia en un archivo publicado');
+    bien('resumen: ningún archivo que sube a la web lleva licencias (ni las de la Hoja de resumen)');
+    await pg.setInputFiles('#archivo', libroOr());
+    await pg.waitForSelector('#revision li.confirma:has-text("R13")');
+    assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    await pg.check('#revision li.confirma input');
+    assert.strictEqual(await pg.isDisabled('#publicar'), false);
+    bien('resumen: si ya está publicado, pide confirmar antes de sustituirlo');
+    await pg.setInputFiles('#archivo', libroOr(['--dif-mal']));
+    await pg.waitForSelector('#revision li.bloquea:has-text("R06")');
+    assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
+    bien('resumen: con una cuenta que no cuadra no se puede publicar y no se ofrece el bloque');
+    await pg.setInputFiles('#archivo', libroOr(['--sin-b']));
+    await pg.waitForSelector('#revision .resumen:has-text("Sin grupo B")');
+    await pg.check('input[name=destino][value=borr]');
+    await pg.waitForSelector('#revision li.avisa:has-text("M01")');
+    await pg.click('#publicar');
+    await pg.waitForSelector('#registro:has-text("borrador")');
+    const bj = api.json('borr', `datos/${ID}/actual.json`);
+    assert.deepStrictEqual([bj.torneo.hay_b, bj.clasificacion.length], [false, 4]);
+    bien('resumen: sin grupo B también se guarda (borrador, privado)');
+    assert.deepStrictEqual(errores, []);
+  }
+
   assert.deepStrictEqual(apis.flatMap((a) => a.enClaro), [], 'algún PUT a la web iba sin cifrar');
   bien('en toda la prueba, ningún PUT a campeonatos-domino lleva un JSON en claro ni un PDF sin cifrar');
   assert.deepStrictEqual(externos, []);

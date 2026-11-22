@@ -20,10 +20,10 @@ const D = 'd=datos/_prueba';
 
     await pg.goto(`${base}/index.html?${D}`);
     await pg.waitForSelector('.tarjeta');
-    assert.strictEqual(await pg.locator('.tarjeta').count(), 5);
+    assert.strictEqual(await pg.locator('.tarjeta').count(), 6);
     assert.strictEqual((await pg.locator('#lista h2.seccion').first().textContent()).trim(), 'Ranking');
     assert.strictEqual(await pg.getAttribute('#lista ul.tarjetas >> nth=0 >> a.tarjeta', 'href'), 'ranking.html?r=ranking-ejemplo&d=datos%2F_prueba');
-    await sinDesborde('portada'); bien('portada: el ranking en su propia sección, la primera, y los 4 campeonatos, sin desbordar');
+    await sinDesborde('portada'); bien('portada: el ranking en su propia sección, la primera, y los 5 campeonatos, sin desbordar');
     assert.strictEqual(await pg.locator('.fecha-ficha').count(), 0);
     assert(!/\b(oct|nov|ene|feb)\b/i.test(await pg.locator('#lista').innerText()), 'queda la marca de fecha');
     bien('portada: sin la fecha de inicio en las tarjetas');
@@ -109,6 +109,34 @@ const D = 'd=datos/_prueba';
     await pg.waitForSelector('.calendario, .vacio');
     assert(!(await pg.locator('.dia-unico').count()), 'el SP no usa el día único');
     bien('calendario: un día (con lugar) en parejas e individual, aviso con la celda C37 si falta la fecha, y el SP sigue con su calendario');
+    // un campeonato publicado desde la Hoja de resumen de un organizador: solo Clasificación, sin pestañas vacías
+    const OR = '1-campeonato-de-ejemplo-de-parejas-2027-02-06';
+    await pg.goto(`${base}/torneo.html?t=${OR}&${D}`);
+    await pg.waitForSelector('table.clasi tbody tr');
+    assert.deepStrictEqual(await pg.locator('#pestanas a').allInnerTexts(), ['Clasificación']);
+    assert.strictEqual(await pg.getAttribute('#pestanas a', 'aria-current'), 'page');
+    assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
+    assert.strictEqual(await pg.locator('table.clasi tbody tr').count(), 4);
+    assert.strictEqual(await pg.locator('.jornadas').count(), 0);
+    const cab = await pg.locator('#cab .linea').innerText();
+    assert(/sábado|6 de febrero de 2027/i.test(cab) && cab.includes('Sala de ejemplo') && cab.includes('6 parejas') && cab.includes('7 partidas') && !/Partida 7 de 7/.test(cab), cab);
+    const filaRet = await pg.locator('table.clasi tbody tr', { hasText: 'Nuria Pons' }).innerText();
+    assert(/retirada/i.test(filaRet) && /[-−]700/.test(filaRet), filaRet);
+    await pg.click('.grupos button:has-text("Grupo B")');
+    await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 2);
+    assert((await pg.locator('table.clasi tbody tr').first().innerText()).includes('Vicent Vila'));
+    for (const ver of ['mesas', 'resumen', 'parejas', 'folleto', 'normativa']) {
+      await pg.goto(`${base}/torneo.html?t=${OR}&ver=${ver}&${D}`);
+      await pg.waitForSelector('table.clasi tbody tr');
+      assert.strictEqual(await pg.locator('#pestanas a').count(), 1, ver);
+    }
+    await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&${D}`);
+    await pg.waitForSelector('#pestanas a');
+    assert.strictEqual(await pg.locator('#pestanas a').count(), 6);
+    await pg.goto(`${base}/torneo.html?t=${OR}&${D}`);
+    await pg.waitForSelector('table.clasi tbody tr');
+    await sinDesborde('campeonato solo con clasificación');
+    bien('campeonato de la Hoja de resumen: una sola pestaña (Clasificación) con las columnas del Excel, grupos A y B, la retirada marcada, sin selector de partidas, y las otras direcciones llevan a ella; los demás siguen con sus 6 pestañas');
     await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi tbody tr');
     const pendJ3 = JSON.parse(fs.readFileSync('pruebas/datos/sp-ejemplo/actual.json', 'utf8')).clasificacion.filter((r) => r.grupo === 'A' && r.pendiente).length;
