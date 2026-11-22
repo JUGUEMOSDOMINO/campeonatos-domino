@@ -106,10 +106,11 @@
     pub = pub || {};
     const v = [];
     const add = (cod, gravedad, msg) => v.push({ cod, gravedad, msg });
-    const pdf = r.origen === 'pdf';                 // del PDF de Access: sin licencias ni lugar, y con P.P. para cuadrar las partidas
+    const delPdf = r.origen === 'pdf', pdf = delPdf || r.origen === 'access';   // del informe de Access (PDF o Excel): sin lugar y con P.P. para cuadrar las partidas; el PDF, además, sin licencias
     const donde = (x) => x._donde || `${x._hoja}, fila ${x._ref}`;
     const d = r.datos;
-    if (r.estructura.length) add('R01', 'bloquea', `Este archivo no es la Hoja de resumen o está cambiado (mira ${r.estructura[0]}). Pide la hoja de nuevo.`);
+    if (r.estructura.length) add('R01', 'bloquea', r.origen === 'access' ? `Este Excel no es la exportación de la clasificación de Access que esperamos (${r.estructura[0]}). Pide al organizador que lo exporte otra vez.`
+      : `Este archivo no es la Hoja de resumen o está cambiado (mira ${r.estructura[0]}). Pide la hoja de nuevo.`);
     if (r.celdasError.length) add('R01', 'bloquea', `Hay un error en una celda (${r.celdasError[0]}${r.celdasError.length > 1 ? ' y otras ' + (r.celdasError.length - 1) : ''}). Corrígela en el Excel y guárdalo.`);
     // datos del campeonato
     const p = [];
@@ -121,8 +122,9 @@
     if (!pdf && !r.estructura.length && !p.length && (!d.lugar || !d.organizador)) add('R02', 'avisa', `Falta ${!d.lugar && !d.organizador ? 'el lugar y el organizador' : !d.lugar ? 'el lugar' : 'el organizador'}: la web lo dejará en blanco.`);
     const A = r.grupos.A, B = r.grupos.B, todas = [...A, ...B];
     if (!A.length) add('R03', 'bloquea', 'No hay ninguna pareja en el grupo A.');
-    if (pdf && r.lineasMalas.length) add('P01', 'bloquea', 'Hay líneas del PDF que no se han podido leer, y no se publica sin ellas: ' + rango(r.lineasMalas.map((x) => `página ${x.pag}, línea ${x.n} (${x.motivo}): «${x.t}»`)) + '.');
-    if (pdf) {
+    if (pdf && r.lineasMalas.length) add('P01', 'bloquea', (delPdf ? 'Hay líneas del PDF' : 'Hay filas del Excel') + ' que no se han podido leer, y no se publica sin ellas: ' + rango(r.lineasMalas.map((x) => (x.pag ? `página ${x.pag}, línea ${x.n}` : `fila ${x.n}`) + ` (${x.motivo})` + (x.t ? `: «${x.t}»` : ''))) + '.');
+    if (r.partidasDeducidas && np >= 1) add('P05', 'avisa', `El archivo no dice cuántas partidas hubo. Se toman ${np}: las que suman ganadas y perdidas en el grupo A.`);
+    if (delPdf) {
       const largas = [...A, ...B].filter((x) => String(x.pareja).length >= 50).map((x) => entero(x.num));
       if (largas.length) add('P04', 'avisa', `Access corta los nombres muy largos (acaban en «Ib» o «Prad», por ejemplo). Hay ${largas.length} ${largas.length === 1 ? 'pareja con nombre largo' : 'parejas con nombres largos'} (Nº ${rango(largas.map(String)).replace(/; /g, ', ')}): si alguno sale cortado, se publica cortado.`);
     }
@@ -180,8 +182,12 @@
             : `${donde(x)}: la pareja ${entero(x.num)} tiene ${s} partidas y las demás del grupo ${g}, ${comun}`);
         }
         if (comun > np) cu.push(`grupo ${g}: sus parejas tienen ${comun} partidas y el campeonato tuvo ${np}`);
-        else if (comun !== np && g !== 'A') add('P03', 'avisa', `En el grupo ${g} cada pareja jugó ${comun} ${comun === 1 ? 'partida' : 'partidas'} y el campeonato tuvo ${np}. Si no es lo que esperabas, mira el PDF.`);
+        else if (comun !== np && g !== 'A') add('P03', 'avisa', `En el grupo ${g} cada pareja jugó ${comun} ${comun === 1 ? 'partida' : 'partidas'} y el campeonato tuvo ${np}. Si no es lo que esperabas, mira el archivo.`);
       }
+    }
+    if (r.origen === 'access') {
+      // el puesto sale del orden de las filas: si en un grupo suben las ganadas al bajar, el orden no es el de la clasificación
+      for (const [g, fs] of [['A', A], ['B', B]]) { const i = fs.findIndex((x, k) => k > 0 && x.pg > fs[k - 1].pg); if (i > 0) add('P06', 'avisa', `En el grupo ${g} las filas no vienen ordenadas por ganadas (${donde(fs[i])}). El puesto sale del orden de las filas, así que mira que sea el de la clasificación.`); }
     }
     if (cu.length) add('R06', 'bloquea', 'Hay cuentas que no cuadran: ' + rango(cu) + '.');
     // licencias
@@ -192,7 +198,7 @@
       else if (l.tipo === 'vacia') faltan.push(`${donde(x)} (${quien})`);
       else if (l.tipo === 'fvd') { if (usadas.has(l.n)) dup.push(`la licencia ${l.n} sale dos veces (${donde(usadas.get(l.n))} y ${donde(x)})`); else usadas.set(l.n, x); }
     };
-    if (!pdf) { for (const x of todas) { mirar(x, x.lic1, 'jugador 1'); mirar(x, x.lic2, 'jugador 2'); } }
+    if (!delPdf) { for (const x of todas) { mirar(x, x.lic1, 'jugador 1'); mirar(x, x.lic2, 'jugador 2'); } }
     for (const x of r.sust) mirar(x, x.lic, 'sustituto');
     if (raras.length) add('R07', 'bloquea', rango(raras) + '.');
     if (faltan.length) add('R07', 'avisa', 'Falta una licencia (escribe NO si no tiene): ' + rango(faltan) + '.');

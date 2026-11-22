@@ -1033,7 +1033,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert(txt.includes('Torneo de Ejemplo - Villa Inventada') && txt.includes('Con grupo B') && txt.includes('parejas'), txt);
     assert(txt.includes('P02') && txt.includes('P03') && txt.includes('Ana Roig Mas - Pau Vidal Soler'), txt);
     assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
-    assert(!txt.includes('Para el ranking'), 'el PDF no trae licencias: no hay bloque');
+    assert.strictEqual(await pg.locator('h3:has-text("Para el ranking")').count(), 0, 'el PDF no trae licencias: no hay bloque');
     assert.strictEqual(await pg.locator('#revision li.bloquea').count(), 0);
     bien('pdf: se lee un PDF de dos páginas (grupo A partido, relleno, negativa con miles); avisa del relleno y de las partidas del B, enseña la clasificación y no ofrece bloque');
     await pg.check('input[name=destino][value=borr]');
@@ -1067,6 +1067,47 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []);
     assert.deepStrictEqual(errores, []);
     bien('pdf: pdf.js corre con la política de seguridad de la página, sin una sola infracción ni error');
+  }
+
+  /* ============ Excel exportado de Access (hoja PX_05_Clasificacion_Exportar): la entrada principal de los organizadores de Access ============ */
+  {
+    const XLSX = require('../assets/xlsx.mini.min.js');
+    const CAB = ['DET_TORNEO', 'TOR_NOMBRE', 'TOR_LOGO1', 'TOR_LOGO2', 'DET_GRUPO', 'SumaDeDET_GANADAS', 'SumaDeDET_PERDIDAS', 'SumaDeDET_DIFERENCIA', 'SumaDeDET_PUNTOSF', 'SumaDeDET_PUNTOSC', 'PrimeroDeDET_ALEATORIO', 'DET_PAREJA', 'JUGADORES.JUG_LICENCIA', 'PT_JUGADOR1', 'JUGADORES_1.JUG_LICENCIA', 'PT_JUGADOR2'];
+    const f = (g, gan, per, dif, pf, pc, n, l1, n1, l2, n2) => [46348, 'Torneo de Access de Ejemplo', 'EJE', null, g, gan, per, dif, pf, pc, 1712289161, n, l1, n1, l2, n2];   // 46348 = 22/11/2026 (1/1/2026 = 46023, el 22/11 es el día 326)
+    const filas = [f('A', 6, 1, 1500, 2100, 600, 5, '46/0921', 'Ana Roig Mas', '46/0922', 'Pau Vidal Soler'), f('A', 5, 2, -2100, 1994, 4094, 3, '46/0923', 'Marta Puig', '', 'Toni Serra Vila'),
+      f('A', 0, 7, -2100, 0, 2100, 43, '46/xxxx', 'XXX XXX', '46/xxxx', 'ZZZ ZZZ'), f('A', 4, 3, 12, 1200, 1188, 7, '02/xxxx', 'Rosa Mas Gil', '46/0925', 'Vicent Vila Pons'),
+      f('B', 3, 0, 480, 900, 420, 12, '46/0926', 'Nuria Pons', '46/0927', 'Albert Mora')];
+    const excel = (rows, n, cab = CAB) => { const fch = path.join(tmp, n + '.xlsx'); fs.writeFileSync(fch, XLSX.write({ SheetNames: ['PX_05_Clasificacion_Exportar'], Sheets: { PX_05_Clasificacion_Exportar: XLSX.utils.aoa_to_sheet([cab, ...rows]) } }, { type: 'buffer', bookType: 'xlsx' })); return fch; };
+    const ID = 'torneo-de-access-de-ejemplo-2026-11-22';
+    const { ctx, pg, api, errores } = await escenario({ semilla: sembrarWeb });
+    await abrir(pg);
+    await pg.setInputFiles('#archivo', excel(filas, 'access'));
+    await pg.waitForSelector('#revision .resumen');
+    const txt = await pg.textContent('#revision');
+    assert(txt.includes('Torneo de Access de Ejemplo') && txt.includes('Con grupo B') && txt.includes('P05') && txt.includes('P02') && txt.includes('Ana Roig Mas - Pau Vidal Soler') && txt.includes('leer_torneo.html'), txt);
+    assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
+    assert.strictEqual(await pg.locator('#revision li.bloquea').count(), 0);
+    assert((await pg.textContent('#lectura')).includes('Excel de Access'));
+    bien('access: se reconoce el Excel exportado de Access, deduce las 7 partidas, avisa del relleno, enseña la clasificación y no ofrece bloque');
+    await pg.check('input[name=destino][value=borr]');
+    await pg.click('#publicar');
+    await pg.waitForSelector('#registro:has-text("borrador")');
+    const j = api.json('borr', `datos/${ID}/actual.json`);
+    assert.deepStrictEqual([j.torneo.tipo, j.torneo.estado, j.torneo.n_jornadas, j.torneo.fecha, j.torneo.hay_b, j.clasificacion.length], ['parejas', 'terminado', 7, '2026-11-22', true, 4]);
+    assert.deepStrictEqual(j.clasificacion.filter((c) => c.grupo === 'A').map((c) => [c.puesto, c.id, c.dt]), [[1, 5, 1500], [2, 3, -2100], [3, 7, 12]]);
+    assert(!/licencia|"lic|0921|0922/i.test(JSON.stringify(j)), 'licencia en el JSON');
+    assert.deepStrictEqual(api.enClaro, []);
+    bien('access: lo que se guarda es un campeonato de parejas terminado, solo clasificación y sin licencias');
+    const roto = filas.map((x) => x.slice()); roto[1][7] = -2000;
+    await pg.setInputFiles('#archivo', excel(roto, 'access_roto'));
+    await pg.waitForSelector('#revision li.bloquea:has-text("R06")');
+    assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    bien('access: con Dif. ≠ P.F. − P.C. no se puede publicar');
+    await pg.setInputFiles('#archivo', excel(filas.map((x) => x.filter((_, i) => CAB[i] !== 'DET_GRUPO')), 'access_sin_columna', CAB.filter((c) => c !== 'DET_GRUPO')));
+    await pg.waitForSelector('#revision li.bloquea:has-text("DET_GRUPO")');
+    assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    bien('access: si falta una columna, dice cuál (por su nombre) y no deja publicar');
+    assert.deepStrictEqual(errores, []);
   }
 
   assert.deepStrictEqual(apis.flatMap((a) => a.enClaro), [], 'algún PUT a la web iba sin cifrar');
