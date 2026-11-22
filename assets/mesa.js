@@ -9,8 +9,8 @@
   const REPOS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores' };
   const RAMA = 'main';
   const CLAVE = 'tumesa.token';
-  // Correo noreply de la cuenta (id de /users/ELIAN1603): así los commits no enseñan el correo real.
-  const AUTOR = { name: 'Mesa de control', email: '356692983+ELIAN1603@users.noreply.github.com' };
+  // Correo noreply de la cuenta (id de /users/JUGUEMOSDOMINO): así los commits no enseñan el correo real.
+  const AUTOR = { name: 'Mesa de control', email: '356692983+JUGUEMOSDOMINO@users.noreply.github.com' };
   const ID = '[a-z0-9][a-z0-9-]{2,59}';
   const ID_OK = new RegExp('^' + ID + '$');
   const RUTA_OK = new RegExp('^datos/(indice\\.json|clave\\.json|' + ID + '/((jornada_\\d{2}|actual)\\.json|normativa\\.pdf\\.cifrado))$');

@@ -8,6 +8,8 @@ const base = process.argv[2] || 'http://localhost:8765';
 const raiz = path.join(__dirname, '..');
 const PAGINAS = ['index.html', 'torneo.html', 'publicar.html'];
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'";
+// La portada lleva además el chat de jugadores (un iframe de cbox.ws que solo se carga al abrir la ventana). Es la única página con frame-src.
+const CSP_DE = (f) => (f === 'index.html' ? CSP.replace("object-src", "frame-src https://www5.cbox.ws; object-src") : CSP);
 let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
 
 (async () => {
@@ -15,7 +17,7 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
   for (const f of PAGINAS) {
     const h = fs.readFileSync(path.join(raiz, f), 'utf8');
     const meta = (n, v) => assert(new RegExp(`<meta ${n} content="${v}">`).test(h), `${f}: falta <meta ${n} content="${v}">`);
-    meta('http-equiv="Content-Security-Policy"', CSP.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    meta('http-equiv="Content-Security-Policy"', CSP_DE(f).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     meta('name="referrer"', 'no-referrer');
     meta('name="robots"', 'noindex, nofollow');
     meta('name="googlebot"', 'noarchive, nosnippet');

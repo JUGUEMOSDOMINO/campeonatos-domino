@@ -14,7 +14,7 @@ const leerJson = (r) => JSON.parse(fs.readFileSync(path.join(__dirname, 'datos',
 const sinPub = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.publicado; return c; };
 
 
-const NOREPLY = { name: 'Mesa de control', email: '356692983+ELIAN1603@users.noreply.github.com' };
+const NOREPLY = { name: 'Mesa de control', email: '356692983+JUGUEMOSDOMINO@users.noreply.github.com' };
 const vacio = () => JSON.stringify({ version: '1.0', publicado: '2026-01-01T00:00:00Z', torneos: [] }, null, 1) + '\n';
 const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(iso)).replace(',', '');
 
