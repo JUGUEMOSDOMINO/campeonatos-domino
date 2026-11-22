@@ -79,6 +79,14 @@ const D = 'd=datos/_prueba';
       await sinDesborde('clasificación ' + t);
     }
     bien('clasificación de parejas e individual: columnas, orden y nombres del Excel (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif., Desempate)');
+    // la lista de jugadores del individual concuerda en género
+    await pg.goto(`${base}/torneo.html?t=individual-ejemplo-2026-11-14&ver=parejas&${D}`);
+    await pg.waitForSelector('.lista-parejas');
+    assert.strictEqual((await pg.locator('.lista-parejas caption').textContent()).trim(), 'Jugadores inscritos');
+    await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&ver=parejas&${D}`);
+    await pg.waitForSelector('.lista-parejas');
+    assert.strictEqual((await pg.locator('.lista-parejas caption').textContent()).trim(), 'Parejas inscritas');
+    bien('pestaña de participantes: «Jugadores inscritos» y «Parejas inscritas»');
     await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi tbody tr');
     // calendario de un campeonato de un día: el día del campeonato (fecha) y el lugar; sin fecha, avisa de dónde ponerla

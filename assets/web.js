@@ -685,7 +685,7 @@
     if (!ps.length) { cont.replaceChildren(el('p', { class: 'vacio' }, `Todavía no hay ${tp.unidades} publicadas.`)); return; }
     const hayB = ps.some((p) => p.grupo === 'B');
     cont.replaceChildren(el('div', { class: 'tabla-caja' }, el('table', { class: 'lista-parejas' },
-      el('caption', { class: 'solo-lector' }, `${tp.unidades[0].toUpperCase() + tp.unidades.slice(1)} inscritas`),
+      el('caption', { class: 'solo-lector' }, `${tp.unidades[0].toUpperCase() + tp.unidades.slice(1)} ${tp.unidades === 'jugadores' ? 'inscritos' : 'inscritas'}`),
       el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Nº'), el('th', { scope: 'col' }, tp.unidades === 'jugadores' ? 'Jugador' : 'Jugadores'), el('th', { scope: 'col' }, 'Zona'))),
       el('tbody', null, ps.map((p) => el('tr', { class: p.ret ? 'ret' : null },
         el('td', { class: 'n' }, p.id),
