@@ -729,9 +729,20 @@
     } catch (e) { aviso.textContent = 'No se ha podido descargar la normativa. Prueba otra vez dentro de un minuto.'; }
     boton.disabled = false;
   }
+  const DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+  // Parejas e individual se juegan en un día: su calendario es la fecha del campeonato (torneo.fecha) y el lugar. Sin fecha, avisa de dónde ponerla.
+  function calDia(t) {
+    const f = partesFecha(t.fecha);
+    if (!f) return el('p', { class: 'aviso' }, 'Este campeonato no tiene fecha. Quien lleve la mesa de control debe escribirla en la hoja INICIO del Excel, en la celda C37 («Web: fecha del campeonato»), y publicar otra vez.');
+    const dia = DIAS[new Date(Date.UTC(f.a, f.m - 1, f.d)).getUTCDay()];
+    return el('section', { class: 'calendario' }, el('h2', null, 'Calendario'),
+      el('p', { class: 'dia-unico' }, el('b', null, `${cap(dia)} ${fechaLarga(t.fecha)}`), t.lugar ? el('span', null, t.lugar) : null));
+  }
   function pintarFolleto(cont) {
-    const filas = filasCalendario(E.actual);
-    poner(cont, !filas.length ? el('p', { class: 'vacio' }, 'Este campeonato no tiene calendario publicado.') : calLista(E.actual, filas));
+    const a = E.actual, filas = filasCalendario(a);
+    if (filas.length) poner(cont, calLista(a, filas));
+    else if (a.torneo.tipo !== 'sp') poner(cont, calDia(a.torneo));
+    else poner(cont, el('p', { class: 'vacio' }, 'Este campeonato no tiene calendario publicado.'));
   }
 
   /* ----- normativa y anuncio del libro ----- */

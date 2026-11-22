@@ -105,10 +105,10 @@ function llegaAPuntC() {
     await mira('portada · buscador');
     await pg.fill('#buscar', 'zzzz'); await pg.waitForSelector('text=No hay nadie'); await mira('portada · sin resultados');
 
-    for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&'], ['parejas-ejemplo-2026-11-14', D + '&'], ['individual-ejemplo-2026-11-14', D + '&'], ['parejas-largos', D + '&']]) {
+    for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&'], ['parejas-ejemplo-2026-11-14', D + '&'], ['individual-ejemplo-2026-11-14', D + '&'], ['parejas-largos', D + '&'], ['parejas-sin-fecha', D + '&']]) {
       for (const ver of PESTANAS) {
         await pg.goto(`${base}/torneo.html?${q}t=${t}${ver ? '&ver=' + ver : ''}`);
-        await pg.waitForSelector(!ver ? '.podio' : ver === 'normativa' ? '.normativa button, .vacio' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
+        await pg.waitForSelector(!ver ? '.podio' : ver === 'normativa' ? '.normativa button, .vacio' : ver === 'folleto' ? '.calendario, .vacio, .aviso' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
         await mira(`${t} · ${ver || 'resumen'}`, ver === 'clasificacion' ? llegaAPuntC : null);
         if (!ver) { await pg.fill('#quien', 'a'); await mira(`${t} · resumen · una letra`); await pg.fill('#quien', '1'); await pg.waitForSelector('.ficha'); await mira(`${t} · resumen · ficha`); }
         if (capt && t === 'sp-grande' && ver === 'clasificacion' && (w === 360 || w === 390)) {

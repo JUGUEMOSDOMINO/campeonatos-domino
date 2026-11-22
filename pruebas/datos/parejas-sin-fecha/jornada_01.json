@@ -1,0 +1,231 @@
+{
+ "version": "1.0",
+ "publicado": "2026-11-14T16:05:00Z",
+ "torneo": {
+  "id": "parejas-sin-fecha",
+  "nombre": "CAMPEONATO DE PAREJAS SIN FECHA (DATOS INVENTADOS)",
+  "organizador": "Asociación de ejemplo",
+  "tipo": "parejas",
+  "temporada": null,
+  "fecha": null,
+  "lugar": "Sala de ejemplo",
+  "n_jornadas": 7,
+  "tantos_meta": 300,
+  "puntos_ausencia": 150,
+  "n_participantes": 5,
+  "hay_b": false,
+  "jornada_b": null,
+  "n_b": null,
+  "estado": "en_juego",
+  "contacto": "Jesús Eduardo Elián C.",
+  "normativa_url": null,
+  "criterios": [
+   "Partidas ganadas",
+   "Diferencia de tantos",
+   "Tantos a favor",
+   "Enfrentamiento directo",
+   "Criterio informático"
+  ]
+ },
+ "jornada": {
+  "numero": 1,
+  "completa": true,
+  "mesas_pendientes": 0,
+  "sorteo": "A",
+  "sin_sortear": false,
+  "emparejamiento": "fijado",
+  "plazo_desde": null,
+  "plazo_hasta": null
+ },
+ "participantes": [
+  {
+   "id": 1,
+   "j1_nombre": "Gemma",
+   "j1_apellido1": "Orts",
+   "j2_nombre": "Toni",
+   "j2_apellido1": "Ballester",
+   "corto": "Orts-Ballester",
+   "zona": "Norte",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 2,
+   "j1_nombre": "Inés",
+   "j1_apellido1": "Villar",
+   "j2_nombre": "Joan",
+   "j2_apellido1": "Cuesta",
+   "corto": "Villar-Cuesta",
+   "zona": "Sur",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 3,
+   "j1_nombre": "Mireia",
+   "j1_apellido1": "Llopis",
+   "j2_nombre": "Quique",
+   "j2_apellido1": "Marín",
+   "corto": "Llopis-Marín",
+   "zona": "Norte",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 4,
+   "j1_nombre": "Salva",
+   "j1_apellido1": "Arnau",
+   "j2_nombre": "Rosa",
+   "j2_apellido1": "Beltrán",
+   "corto": "Arnau-Beltrán",
+   "zona": "Ribera",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 5,
+   "j1_nombre": "Òscar",
+   "j1_apellido1": "Domingo",
+   "j2_nombre": "Clara",
+   "j2_apellido1": "Navarro",
+   "corto": "Domingo-Navarro",
+   "zona": "MIX",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  }
+ ],
+ "sustituciones": [],
+ "clasificacion": [
+  {
+   "grupo": "A",
+   "puesto": 1,
+   "id": 5,
+   "jug": 1,
+   "gan": 1,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 150,
+   "tc": 0,
+   "dt": 150,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 2,
+   "id": 1,
+   "jug": 1,
+   "gan": 1,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 300,
+   "tc": 250,
+   "dt": 50,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 3,
+   "id": 4,
+   "jug": 1,
+   "gan": 1,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 300,
+   "tc": 280,
+   "dt": 20,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 4,
+   "id": 3,
+   "jug": 1,
+   "gan": 0,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 280,
+   "tc": 300,
+   "dt": -20,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 5,
+   "id": 2,
+   "jug": 1,
+   "gan": 0,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 250,
+   "tc": 300,
+   "dt": -50,
+   "pendiente": false,
+   "desempate": null
+  }
+ ],
+ "emparejamientos": [
+  {
+   "grupo": "A",
+   "mesa": 1,
+   "mesa_grupo": 1,
+   "izq": [
+    1
+   ],
+   "dcha": [
+    2
+   ],
+   "estado": "jugada",
+   "ausentes": [],
+   "p_izq": 1,
+   "p_dcha": 0,
+   "t_izq": 300,
+   "t_dcha": 250
+  },
+  {
+   "grupo": "A",
+   "mesa": 2,
+   "mesa_grupo": 2,
+   "izq": [
+    4
+   ],
+   "dcha": [
+    3
+   ],
+   "estado": "jugada",
+   "ausentes": [],
+   "p_izq": 1,
+   "p_dcha": 0,
+   "t_izq": 300,
+   "t_dcha": 280
+  },
+  {
+   "grupo": "A",
+   "mesa": null,
+   "mesa_grupo": null,
+   "izq": [
+    5
+   ],
+   "dcha": [],
+   "estado": "descanso",
+   "ausentes": [],
+   "p_izq": 1,
+   "p_dcha": 0,
+   "t_izq": 150,
+   "t_dcha": 0
+  }
+ ]
+}
