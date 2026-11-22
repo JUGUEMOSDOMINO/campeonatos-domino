@@ -1454,7 +1454,10 @@ function startNewHand() {
 
         if (ranking.length === 0) {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td colspan="4" style="text-align:center; opacity:0.8;">Aún no hay partidas terminadas. ¡Sé el primero en puntuar!</td>`;
+            const td = document.createElement('td'); // sin estilos en línea: la CSP no los admite
+            td.colSpan = 4; td.style.textAlign = 'center'; td.style.opacity = '0.8';
+            td.textContent = 'Aún no hay partidas terminadas. ¡Sé el primero en puntuar!';
+            tr.appendChild(td);
             dom.rankingBody.appendChild(tr);
             return;
         }

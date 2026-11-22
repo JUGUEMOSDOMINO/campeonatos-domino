@@ -13,8 +13,11 @@ const D = 'd=datos/_prueba';
 const PESTANAS = ['', 'clasificacion', 'mesas', 'parejas', 'folleto', 'normativa'];
 
 // Se ejecuta en la página. Devuelve la lista de fallos (texto).
+// Lo que se abre a petición no es información oculta. En las páginas de la web, solo [hidden]. En las páginas sueltas del árbitro (jugar, retos, federación y casos del libro)
+// también las ventanas del juego (.hidden) y el aviso de «escribe tu razonamiento» de los casos (.aviso-escribir).
 function revisar() {
   const fallos = [];
+  const A_PETICION = ['portada', 'torneo', 'publicar'].includes(document.body.dataset.pagina) ? '[hidden]' : '[hidden], .hidden, .aviso-escribir';
   const nombre = (e) => e.tagName.toLowerCase() + (e.id ? '#' + e.id : '') + (e.className && typeof e.className === 'string' ? '.' + e.className.trim().split(/\s+/).join('.') : '') + ' «' + (e.textContent || '').trim().slice(0, 40) + '»';
   const iw = document.documentElement.clientWidth;
   // (a) la página no se desplaza en horizontal
@@ -25,7 +28,7 @@ function revisar() {
     const s = getComputedStyle(e);
     const conTexto = (e.textContent || '').trim() !== '';
     // (b) datos ocultos
-    if (conTexto && (s.display === 'none' || s.visibility === 'hidden') && !e.closest('[hidden]')) fallos.push('(b) oculto con datos: ' + nombre(e).replace(/ «.*»$/, ''));
+    if (conTexto && (s.display === 'none' || s.visibility === 'hidden') && !e.closest(A_PETICION)) fallos.push('(b) oculto con datos: ' + nombre(e).replace(/ «.*»$/, ''));
     if (s.display === 'none') continue;
     // (c) overflow hidden/clip que recorta. Un campo de contraseña no enseña datos (son puntos): lo largo se desplaza dentro, como en cualquier campo.
     if (/hidden|clip/.test(s.overflowX + s.overflowY) && !(e.tagName === 'INPUT' && e.type === 'password') && (e.scrollWidth > e.clientWidth + 1 || e.scrollHeight > e.clientHeight + 1))
@@ -104,6 +107,14 @@ function llegaAPuntC() {
     await pg.fill('#buscar', 'pons'); await pg.waitForSelector('.persona .puesto:not(:text("…"))'); await pg.waitForTimeout(200);
     await mira('portada · buscador');
     await pg.fill('#buscar', 'zzzz'); await pg.waitForSelector('text=No hay nadie'); await mira('portada · sin resultados');
+
+    // páginas sueltas del árbitro: federación, casos del libro, retos y plataforma de juego
+    for (const f of ['federacion-jaume-i', 'ejemplos-libro', 'retos', 'jugar']) {
+      await pg.goto(`${base}/${f}.html`); await pg.waitForTimeout(400);
+      await mira(f);
+    }
+    await pg.goto(`${base}/retos.html`); await pg.click('#btn-siguiente'); await pg.click('#btn-siguiente'); await pg.waitForSelector('.carro-continuo .ficha'); await mira('retos · paso 3');
+    await pg.goto(`${base}/jugar.html`); await pg.fill('#player-alias', 'Prueba'); await pg.click('#btn-start-game'); await pg.waitForTimeout(800); await mira('jugar · mesa');
 
     for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&'], ['parejas-ejemplo-2026-11-14', D + '&'], ['individual-ejemplo-2026-11-14', D + '&'], ['parejas-largos', D + '&'], ['parejas-sin-fecha', D + '&']]) {
       for (const ver of PESTANAS) {

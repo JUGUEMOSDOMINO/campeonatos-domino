@@ -7,6 +7,7 @@ const { recordarPrueba } = require('./cripto_prueba.cjs');
 const base = process.argv[2] || 'http://localhost:8765';
 const raiz = path.join(__dirname, '..');
 const PAGINAS = ['index.html', 'torneo.html', 'publicar.html'];
+const SUELTAS = ['federacion-jaume-i.html', 'jugar.html', 'retos.html', 'ejemplos-libro.html'];
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'";
 // La portada lleva además el chat de jugadores (un iframe de cbox.ws que solo se carga al abrir la ventana). Es la única página con frame-src.
 const CSP_DE = (f) => (f === 'index.html' ? CSP.replace("object-src", "frame-src https://www5.cbox.ws; object-src") : CSP);
@@ -27,7 +28,31 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
     assert(!/\son[a-z]+\s*=/i.test(h), f + ': atributo on*');
     assert(!/(src|href)="(?!https:\/\/)[a-z][a-z0-9+.-]*:(?!image)/i.test(h.replace(/href="data:image[^"]*"/g, '')), f + ': enlace con esquema raro');
   }
+  // ningún Excel versionado (SECURITY.md: nunca entra un Excel). Solo mira lo que git sigue en este momento; el historial no se puede comprobar desde aquí.
+  const sigue = require('child_process').execFileSync('git', ['ls-files', '-z'], { cwd: raiz }).toString().split('\0').filter(Boolean);
+  assert.deepStrictEqual(sigue.filter((f) => /\.(xlsx|xlsm|xls)$/i.test(f)), [], 'hay un Excel en el repositorio');
+  bien('ningún .xlsx, .xlsm ni .xls versionado');
   bien('las 3 páginas: CSP exacta, referrer, robots noindex/nofollow, googlebot noarchive/nosnippet, sin estilos/scripts/on* en línea ni frame-ancestors');
+  // Las páginas sueltas (juego, retos, casos del libro y federación): sin conexión a GitHub, así que connect-src solo 'self'.
+  const CSP_SUELTAS = CSP.replace(' https://api.github.com', '');
+  for (const f of SUELTAS) {
+    const h = fs.readFileSync(path.join(raiz, f), 'utf8');
+    const meta = (n, v) => assert(new RegExp(`<meta ${n} content="${v}">`).test(h), `${f}: falta <meta ${n} content="${v}">`);
+    meta('http-equiv="Content-Security-Policy"', CSP_SUELTAS.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    meta('name="referrer"', 'no-referrer');
+    meta('name="robots"', 'noindex, nofollow');
+    meta('name="googlebot"', 'noarchive, nosnippet');
+    assert(!/<style|\sstyle\s*=/i.test(h), f + ': estilo en línea');
+    assert(!/<script(?![^>]*\ssrc=)/i.test(h), f + ': script en línea');
+    assert(!/\son[a-z]+\s*=/i.test(h), f + ': atributo on*');
+    assert(!/(src|href)="(?!https:\/\/)[a-z][a-z0-9+.-]*:(?!image)/i.test(h.replace(/href="data:image[^"]*"/g, '')), f + ': enlace con esquema raro');
+  }
+  bien('las 4 páginas sueltas: CSP exacta, referrer, robots, googlebot y sin estilos, scripts ni on* en línea');
+  for (const f of ['mesa-domino.js', 'assets/retos.js', 'assets/federacion-jaume-i.js', 'assets/ejemplos-libro.js']) {
+    const t = fs.readFileSync(path.join(raiz, f), 'utf8');
+    assert(!/style\s*=\s*\\?["']|setAttribute\(\s*['"]style/.test(t), f + ': estilo en línea desde JS (la CSP lo bloquea)');
+  }
+  bien('JS de las páginas sueltas: sin style="" en el HTML que generan');
   for (const f of ['assets/web.js', 'assets/publicar.js', 'assets/contrato.js', 'assets/mesa.js', 'assets/cifra.js', 'assets/palabras.js']) {
     const s = fs.readFileSync(path.join(raiz, f), 'utf8');
     assert(!/innerHTML|outerHTML|insertAdjacentHTML|document\.write|\beval\(|new Function/.test(s), f + ': HTML o código dinámico');
@@ -84,6 +109,26 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
       assert.deepStrictEqual(await pg.evaluate(() => window.__csp), [], 'descarga de la normativa');
     }
     bien(`${url}: carga sin violaciones de CSP, sin errores en consola y sin pedir nada fuera del sitio`);
+    await pg.close();
+  }
+  // páginas sueltas: cargan y se usan sin violaciones de CSP, sin errores y sin pedir nada fuera del sitio
+  for (const [url, uso] of [
+    ['federacion-jaume-i.html', async (p) => { await p.click('.logo-box >> nth=0'); await p.waitForSelector('#lightbox.open'); await p.click('#lightbox'); await p.waitForSelector('#lightbox:not(.open)', { state: 'attached' }); }],
+    ['ejemplos-libro.html', async (p) => { await p.click('.caso-item summary >> nth=0'); await p.waitForSelector('.aviso-escribir >> nth=0'); assert(await p.locator('.aviso-escribir').first().isVisible()); await p.fill('.caso-item textarea >> nth=0', 'mi razonamiento'); await p.click('.caso-item summary >> nth=0'); assert(await p.locator('.caso-item details').first().evaluate((d) => d.open)); }],
+    ['retos.html', async (p) => { await p.click('#btn-siguiente'); await p.waitForSelector('.carro-continuo .ficha'); assert((await p.locator('.carro-continuo').first().evaluate((e) => e.style.width)).endsWith('px')); await p.click('#tab-1'); await p.click('#btn-distribucion'); await p.click('#btn-siguiente'); await p.click('#btn-anterior'); }],
+    ['jugar.html', async (p) => { await p.fill('#player-alias', 'Prueba'); await p.click('#btn-start-game'); await p.waitForTimeout(800); await p.click('#btn-show-ranking'); await p.waitForSelector('#ranking-modal:not(.hidden)'); assert(await p.locator('#ranking-body td').first().evaluate((e) => e.colSpan === 4 || e.textContent.length > 0)); }],
+  ]) {
+    const pg = await ctx.newPage();
+    const malos = [], externas = [];
+    pg.on('console', (m) => /Content Security Policy|Refused to/i.test(m.text()) && malos.push(m.text()));
+    pg.on('pageerror', (e) => malos.push(e.message));
+    pg.on('request', (r) => { const u = new URL(r.url()); if (!['data:', 'blob:'].includes(u.protocol) && u.origin !== new URL(base).origin) externas.push(r.url()); });
+    await pg.addInitScript(() => { window.__csp = []; document.addEventListener('securitypolicyviolation', (e) => window.__csp.push(e.violatedDirective + ' ' + e.blockedURI)); });
+    await pg.goto(`${base}/${url}`); await pg.waitForTimeout(400);
+    await uso(pg); await pg.waitForTimeout(300);
+    assert.deepStrictEqual([await pg.evaluate(() => window.__csp), malos, externas], [[], [], []], url);
+    assert.strictEqual(await pg.evaluate(() => document.querySelector('meta[name=robots]').content), 'noindex, nofollow');
+    bien(`${url}: se usa sin violaciones de CSP, sin errores y sin pedir nada fuera del sitio`);
     await pg.close();
   }
   // la CSP está activa de verdad: un estilo en línea y un script en línea tienen que bloquearse
