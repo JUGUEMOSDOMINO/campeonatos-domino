@@ -551,31 +551,37 @@
     const filas = jd.clasificacion.filter((r) => r.grupo === g);
     const subs = (jd.sustituciones || []);
 
-    // Como en el Excel: CLAS., PAREJA (nº), NOMBRE y después las cifras en este orden. Las tres primeras quedan fijas al desplazar.
+    // Como en el Excel de cada programa. SP: CLAS., PAREJA, NOMBRE y las cifras. Parejas e individual: Puesto, Nº, Pareja o Jugador, Zona, P.G., P.F., P.C., Dif. y Desempate.
+    // Las tres primeras columnas quedan fijas al desplazar. Cada columna: [clave, rótulo, significado].
     const cols = sp
       ? [['jug', 'ENC.J', 'Encuentros jugados'], ['gan', 'ENC.G', tp.gan], ['dp', 'DIF. P.', 'Diferencia de partidas'], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['pg', 'P. G.', 'Partidas ganadas'], ['pp', 'P. P.', 'Partidas perdidas'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['tc', 'PUNT. C.', 'Puntos en contra']]
-      : [['gan', 'P. G.', tp.gan], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['jug', 'P. J.', 'Partidas jugadas'], ['tc', 'PUNT. C.', 'Puntos en contra']];
+      : [['zona', 'Zona', 'Zona'], ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos'], ['desempate', 'Desempate', 'Desempate']];
+    const TEXTO = new Set(['zona', 'desempate']);
+    const cabeceras = sp ? ['CLAS.', tp.unidad.toUpperCase(), 'NOMBRE'] : ['Puesto', 'Nº', cap(tp.unidad)];
 
     const cuerpo = filas.map((r) => {
       const p = byId.get(r.id) || { corto: '#' + r.id };
       const sub = subs.find((s) => s.id === r.id);
-      const sub2 = [p.zona, p.j1_nombre && nombreLargo(p)].filter(Boolean).join(' · ');
+      const sub2 = sp ? [p.zona, p.j1_nombre && nombreLargo(p)].filter(Boolean).join(' · ') : '';
+      const nombre = sp || !p.j1_nombre ? p.corto : nombresDe(p).join(' - ');
       return el('tr', { class: (p.ret ? 'ret ' : '') + (E.p === r.id ? 'resalte' : ''), id: 'fila-' + r.id },
         el('td', null, el('span', { class: 'puesto' + (r.puesto <= 3 ? ' p' + r.puesto : '') }, r.puesto)),
         el('td', { class: 'num-par' }, r.id),
         el('td', { class: 'pareja' },
-          el('span', { class: 'nom' }, p.corto, p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null,
+          el('span', { class: 'nom' }, nombre, p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null,
             r.pendiente && !jd.jornada.completa ? el('span', { class: 'etq pend', title: `Todavía no ha jugado la ${tp.jornada.toLowerCase()} ${n}` }, '⏳') : null),
           sub2 ? el('span', { class: 'sub' }, sub2) : null,
           sub ? el('span', { class: 'sub' }, `Cambio en la ${tp.jornada.toLowerCase()} ${sub.desde}: entra ${sub.entra_nombre} ${sub.entra_apellido1} por ${sub.sale_nombre} ${sub.sale_apellido1}`) : null),
-        cols.map(([k]) => el('td', { class: k === 'gan' ? 'gan' : null }, k === 'dp' || k === 'dt' ? signo(r[k]) : r[k])));
+        cols.map(([k]) => el('td', { class: k === 'gan' ? 'gan' : TEXTO.has(k) ? 'txt' : null }, k === 'zona' ? p.zona : k === 'dp' || k === 'dt' ? signo(r[k]) : r[k])));
     });
-    const tabla = el('table', { class: 'clasi' },
+    const tabla = el('table', { class: sp ? 'clasi' : 'clasi clasi-x' },
       el('caption', { class: 'solo-lector' }, `Clasificación del grupo ${g} tras la ${tp.jornada.toLowerCase()} ${n}`),
-      el('thead', null, el('tr', null, el('th', { scope: 'col' }, el('abbr', { title: 'Clasificación' }, 'CLAS.')), el('th', { scope: 'col' }, el('abbr', { title: 'Número de ' + tp.unidad }, tp.unidad.toUpperCase())), el('th', { scope: 'col', class: 'izq' }, 'NOMBRE'),
-        cols.map(([, t, ab]) => el('th', { scope: 'col' }, el('abbr', { title: ab }, t))))),
+      el('thead', null, el('tr', null, el('th', { scope: 'col' }, el('abbr', { title: 'Clasificación' }, cabeceras[0])), el('th', { scope: 'col' }, el('abbr', { title: 'Número de ' + tp.unidad }, cabeceras[1])), el('th', { scope: 'col', class: 'izq' }, cabeceras[2]),
+        cols.map(([k, t, ab]) => el('th', { scope: 'col', class: TEXTO.has(k) ? 'txt' : null }, el('abbr', { title: ab }, t))))),
       el('tbody', null, cuerpo));
-    const leyenda = cols.map(([, t, ab]) => `${t}: ${ab.toLowerCase()}`).join(' · ');
+    // Leyenda: en el SP, una por columna; en parejas e individual, la del Excel.
+    const leyenda = sp ? cols.map(([, t, ab]) => `${t}: ${ab.toLowerCase()}`).join(' · ')
+      : 'P.G. partidas ganadas · P.F./P.C. tantos a favor/en contra · Dif. diferencia de tantos · Desempate: E.D. = enfrentamiento directo, C.I. = criterio informático';
 
     poner(cont,
       selectorJornada(completas, n, tp, (x) => irA({ j: x }, false)),

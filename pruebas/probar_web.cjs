@@ -63,6 +63,24 @@ const D = 'd=datos/_prueba';
     const ley = await pg.locator('.leyenda').innerText();
     assert.deepStrictEqual(COLS.slice(3).map((c) => ley.indexOf(c + ':')).every((x, i, v) => x >= 0 && (i === 0 || x > v[i - 1])), true, 'leyenda en el orden de las columnas: ' + ley);
     bien('clasificación: columnas CLAS., PAREJA, NOMBRE, ENC.J … PUNT. C. y leyenda en el mismo orden');
+    // parejas e individual: las columnas de la clasificación del Excel (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif., Desempate)
+    for (const [t, unidad, nombre, zona, cifras] of [['parejas-ejemplo-2026-11-14', 'Pareja', 'Gemma Orts - Toni Ballester', 'Norte', ['2', '600', '512', '+88']], ['individual-ejemplo-2026-11-14', 'Jugador', 'Aitana Cebrián', 'Norte', ['2', '600', '505', '+95']]]) {
+      await pg.goto(`${base}/torneo.html?t=${t}&ver=clasificacion&${D}`);
+      await pg.waitForSelector('table.clasi tbody tr');
+      assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', unidad, 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.', 'Desempate'], t);
+      const celdas = await pg.locator('table.clasi tbody tr').first().locator('td').allInnerTexts();
+      assert.strictEqual(celdas[1], t.startsWith('parejas') ? '1' : '6', t);
+      assert(celdas[2].startsWith(nombre), `${t}: «${celdas[2]}»`);
+      assert.deepStrictEqual(celdas.slice(3, 8), [zona, ...cifras], t);
+      assert.strictEqual(celdas.length, 9, t);
+      if (t.startsWith('individual')) assert((await pg.locator('table.clasi tbody tr').nth(4).locator('td').last().innerText()).includes('C.I. con 4'));
+      const ley = await pg.locator('.leyenda').innerText();
+      assert(['P.G.', 'P.F./P.C.', 'Dif.', 'Desempate'].map((c) => ley.indexOf(c)).every((x, i, v) => x >= 0 && (i === 0 || x > v[i - 1])), 'leyenda: ' + ley);
+      await sinDesborde('clasificación ' + t);
+    }
+    bien('clasificación de parejas e individual: columnas, orden y nombres del Excel (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif., Desempate)');
+    await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=clasificacion&${D}`);
+    await pg.waitForSelector('table.clasi tbody tr');
     const pendJ3 = JSON.parse(fs.readFileSync('pruebas/datos/sp-ejemplo/actual.json', 'utf8')).clasificacion.filter((r) => r.grupo === 'A' && r.pendiente).length;
     assert.strictEqual(await pg.locator('table.clasi .etq.pend').count(), pendJ3); // ⏳ = pendiente del JSON
     assert.strictEqual(await pg.locator('.jornadas button').count(), 3); // las completas y la que está en juego

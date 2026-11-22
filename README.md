@@ -21,7 +21,7 @@ Todo lo publicado en `datos/` va cifrado con la contraseña de la web: sin ella 
 | `datos/indice.json` | Cifrado. Lista de campeonatos que ve la portada, en el orden en que se enseñan dentro de cada estado. Lo escribe `publicar.html` |
 | `datos/<id>/` | Cifrados: `jornada_NN.json` (una foto por jornada), `actual.json` y, si la hay, `normativa.pdf.cifrado` |
 | `datos/_prueba/` | Datos inventados para probar, cifrados con la contraseña de prueba `datos de prueba de la mesa` (pública a propósito). No salen en `indice.json` de la web real |
-| `pruebas/datos/` | Los mismos datos inventados, en claro. `sp-calendario` es un SP con calendario y grupo B firme desde la jornada 12; `nombres-largos` lleva nombres, zonas y título muy largos; `sp-grande` es una copia del 24º con todos los nombres inventados; `sp-ejemplo` tiene una normativa de ejemplo; `sp-sin-resultados` es una jornada 1 sin ningún resultado (Resumen sin podio). Tras cambiarlos, `node pruebas/cifrar_prueba.cjs` rehace `datos/_prueba` |
+| `pruebas/datos/` | Los mismos datos inventados, en claro. `sp-calendario` es un SP con calendario y grupo B firme desde la jornada 12; `nombres-largos` lleva nombres, zonas y título muy largos; `parejas-largos` es `nombres-largos` como campeonato de parejas; `sp-grande` es una copia del 24º con todos los nombres inventados; `sp-ejemplo` tiene una normativa de ejemplo; `sp-sin-resultados` es una jornada 1 sin ningún resultado (Resumen sin podio). Tras cambiarlos, `node pruebas/cifrar_prueba.cjs` rehace `datos/_prueba` |
 | `pruebas/` | Pruebas automáticas |
 
 El formato de los JSON y de la hoja WEB está en `docs/W2_contrato_datos.md` del repositorio `programas-domino`.

@@ -1,0 +1,346 @@
+{
+ "version": "1.0",
+ "publicado": "2026-10-26T20:14:03Z",
+ "torneo": {
+  "id": "parejas-largos",
+  "nombre": "CAMPEONATO DE PAREJAS CON NOMBRES MUY LARGOS (DATOS INVENTADOS)",
+  "organizador": "Federación Valenciana de Dominó, delegación de la provincia de Castellón de la Plana",
+  "tipo": "parejas",
+  "temporada": null,
+  "fecha": "2026-10-13",
+  "lugar": "Casa de la Cultura Doctor Fernández-Villaverde de Villafranca del Cid",
+  "n_jornadas": 7,
+  "tantos_meta": 300,
+  "puntos_ausencia": 150,
+  "n_participantes": 6,
+  "hay_b": false,
+  "jornada_b": null,
+  "n_b": null,
+  "estado": "en_juego",
+  "contacto": "Jesús Eduardo Elián C.",
+  "normativa_url": null,
+  "criterios": [
+   "Partidas ganadas",
+   "Diferencia de tantos",
+   "Tantos a favor",
+   "Enfrentamiento directo",
+   "Criterio informático"
+  ]
+ },
+ "jornada": {
+  "numero": 1,
+  "completa": true,
+  "mesas_pendientes": 0,
+  "sorteo": "A",
+  "sin_sortear": false,
+  "emparejamiento": "fijado",
+  "plazo_desde": "2026-10-13",
+  "plazo_hasta": "2026-10-26"
+ },
+ "participantes": [
+  {
+   "id": 1,
+   "j1_nombre": "María de los Ángeles",
+   "j1_apellido1": "Fernández-Villaverde",
+   "j2_nombre": "José Francisco",
+   "j2_apellido1": "Rodríguez-Bermúdez",
+   "corto": "Fernández-Villaverde-Rodríguez-Bermúdez",
+   "zona": "Zona Norte-Interior y Comarcas del Alto Maestrazgo",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 2,
+   "j1_nombre": "Juan Bautista",
+   "j1_apellido1": "Hernández-Echeverría",
+   "j2_nombre": "Ana Belén",
+   "j2_apellido1": "Domínguez-Castellanos",
+   "corto": "Hernández-Echeverría-Domínguez",
+   "zona": "Zona Sur",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 3,
+   "j1_nombre": "Maximiliano",
+   "j1_apellido1": "Santamaría-Altolaguirre",
+   "j2_nombre": "Guadalupe",
+   "j2_apellido1": "Villanueva-Montesinos",
+   "corto": "Santamaría-Altolaguirre-Villanueva",
+   "zona": "Zona Este",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 4,
+   "j1_nombre": "Cristóbal",
+   "j1_apellido1": "Fernández de Córdoba",
+   "j2_nombre": "Inmaculada",
+   "j2_apellido1": "Gómez-Trigueros",
+   "corto": "Fernández de Córdoba-Gómez-Trigueros",
+   "zona": "Zona Oeste",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 5,
+   "j1_nombre": "Eustaquio",
+   "j1_apellido1": "Pérez-Cienfuegos",
+   "j2_nombre": "Remedios",
+   "j2_apellido1": "Martínez-Sacristán",
+   "corto": "Pérez-Cienfuegos-Martínez-Sacristán",
+   "zona": "Zona Centro",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  },
+  {
+   "id": 6,
+   "j1_nombre": "Wolfgang",
+   "j1_apellido1": "Schwarzenberger-Ruiz",
+   "j2_nombre": "Covadonga",
+   "j2_apellido1": "Menéndez-Valdés",
+   "corto": "Schwarzenberger-Menéndez-Valdés",
+   "zona": "Zona Norte",
+   "grupo": "A",
+   "ret": false,
+   "ret_desde": null
+  }
+ ],
+ "sustituciones": [],
+ "clasificacion": [
+  {
+   "grupo": "A",
+   "puesto": 1,
+   "id": 3,
+   "jug": 1,
+   "gan": 1,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 620,
+   "tc": 380,
+   "dt": 240,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 2,
+   "id": 1,
+   "jug": 1,
+   "gan": 1,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 640,
+   "tc": 410,
+   "dt": 230,
+   "pendiente": false,
+   "desempate": "E.D. con 4"
+  },
+  {
+   "grupo": "A",
+   "puesto": 3,
+   "id": 4,
+   "jug": 1,
+   "gan": 1,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 850,
+   "tc": 700,
+   "dt": 150,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 4,
+   "id": 6,
+   "jug": 1,
+   "gan": 0,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 700,
+   "tc": 850,
+   "dt": -150,
+   "pendiente": false,
+   "desempate": "E.D. con 4"
+  },
+  {
+   "grupo": "A",
+   "puesto": 5,
+   "id": 5,
+   "jug": 1,
+   "gan": 0,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 410,
+   "tc": 640,
+   "dt": -230,
+   "pendiente": false,
+   "desempate": null
+  },
+  {
+   "grupo": "A",
+   "puesto": 6,
+   "id": 2,
+   "jug": 1,
+   "gan": 0,
+   "pg": null,
+   "pp": null,
+   "dp": null,
+   "tf": 380,
+   "tc": 620,
+   "dt": -240,
+   "pendiente": false,
+   "desempate": "E.D. con 4"
+  }
+ ],
+ "emparejamientos": [
+  {
+   "grupo": "A",
+   "mesa": 1,
+   "mesa_grupo": 1,
+   "izq": [
+    1
+   ],
+   "dcha": [
+    5
+   ],
+   "estado": "jugada",
+   "ausentes": [],
+   "p_izq": 1,
+   "p_dcha": 0,
+   "t_izq": 640,
+   "t_dcha": 410
+  },
+  {
+   "grupo": "A",
+   "mesa": 2,
+   "mesa_grupo": 2,
+   "izq": [
+    3
+   ],
+   "dcha": [
+    2
+   ],
+   "estado": "jugada",
+   "ausentes": [],
+   "p_izq": 1,
+   "p_dcha": 0,
+   "t_izq": 620,
+   "t_dcha": 380
+  },
+  {
+   "grupo": "A",
+   "mesa": 3,
+   "mesa_grupo": 3,
+   "izq": [
+    4
+   ],
+   "dcha": [
+    6
+   ],
+   "estado": "jugada",
+   "ausentes": [],
+   "p_izq": 1,
+   "p_dcha": 0,
+   "t_izq": 850,
+   "t_dcha": 700
+  }
+ ],
+ "calendario": [
+  {
+   "jornada": 1,
+   "jornada_b": null,
+   "desde": "2026-10-13",
+   "hasta": "2026-10-26"
+  },
+  {
+   "jornada": 2,
+   "jornada_b": null,
+   "desde": "2026-10-27",
+   "hasta": "2026-11-09"
+  },
+  {
+   "jornada": 3,
+   "jornada_b": null,
+   "desde": "2026-11-10",
+   "hasta": "2026-11-23"
+  },
+  {
+   "jornada": 4,
+   "jornada_b": null,
+   "desde": "2026-11-24",
+   "hasta": "2026-12-07"
+  },
+  {
+   "jornada": 5,
+   "jornada_b": null,
+   "desde": "2026-12-08",
+   "hasta": "2026-12-21"
+  },
+  {
+   "jornada": 6,
+   "jornada_b": null,
+   "desde": "2026-12-22",
+   "hasta": "2027-01-04"
+  },
+  {
+   "jornada": 7,
+   "jornada_b": null,
+   "desde": "2027-01-05",
+   "hasta": "2027-01-18"
+  },
+  {
+   "jornada": 8,
+   "jornada_b": null,
+   "desde": "2027-01-19",
+   "hasta": "2027-02-01"
+  },
+  {
+   "jornada": 9,
+   "jornada_b": null,
+   "desde": "2027-02-02",
+   "hasta": "2027-02-15"
+  },
+  {
+   "jornada": 10,
+   "jornada_b": null,
+   "desde": "2027-02-16",
+   "hasta": "2027-03-01"
+  },
+  {
+   "jornada": 11,
+   "jornada_b": null,
+   "desde": "2027-03-02",
+   "hasta": "2027-03-15"
+  },
+  {
+   "jornada": 12,
+   "jornada_b": 1,
+   "desde": "2027-03-16",
+   "hasta": "2027-03-29"
+  },
+  {
+   "jornada": 13,
+   "jornada_b": 2,
+   "desde": "2027-03-30",
+   "hasta": "2027-04-12"
+  },
+  {
+   "jornada": 14,
+   "jornada_b": 3,
+   "desde": "2027-04-13",
+   "hasta": "2027-04-26"
+  }
+ ]
+}

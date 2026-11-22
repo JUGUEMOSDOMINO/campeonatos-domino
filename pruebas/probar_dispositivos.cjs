@@ -50,19 +50,22 @@ function revisar() {
   return fallos;
 }
 
-// (d) en la clasificación se llega hasta PUNT. C.
+// (d) en la clasificación se llega hasta la última columna (SP: PUNT. C.; parejas e individual: Desempate)
 function llegaAPuntC() {
   const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.clasi');
   if (!tabla) return ['(d) no hay tabla de clasificación'];
   const f = [];
   const cab = [...tabla.querySelectorAll('thead th')].map((t) => t.textContent.trim());
-  for (const c of ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.']) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
+  const sp = cab.includes('ENC.J');
+  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.', 'Desempate'];
+  for (const c of esperadas) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
+  const ultima = sp ? 'PUNT. C.' : 'Desempate';
   caja.scrollLeft = 1e6;
-  const tc = [...tabla.querySelectorAll('thead th')].find((t) => t.textContent.trim() === 'PUNT. C.');
+  const tc = [...tabla.querySelectorAll('thead th')].find((t) => t.textContent.trim() === ultima);
   if (!tc) return f;
   const a = tc.getBoundingClientRect(), b = caja.getBoundingClientRect();
-  if (getComputedStyle(tc).display === 'none' || a.width === 0) f.push('(d) TC oculta');
-  else if (a.right > b.right + 1 || a.left < b.left - 1) f.push(`(d) no se llega a PUNT. C.: ${Math.round(a.left)}–${Math.round(a.right)} fuera de ${Math.round(b.left)}–${Math.round(b.right)}`);
+  if (getComputedStyle(tc).display === 'none' || a.width === 0) f.push(`(d) ${ultima} oculta`);
+  else if (a.right > b.right + 1 || a.left < b.left - 1) f.push(`(d) no se llega a ${ultima}: ${Math.round(a.left)}–${Math.round(a.right)} fuera de ${Math.round(b.left)}–${Math.round(b.right)}`);
   caja.scrollLeft = 0;
   return f;
 }
@@ -102,7 +105,7 @@ function llegaAPuntC() {
     await mira('portada · buscador');
     await pg.fill('#buscar', 'zzzz'); await pg.waitForSelector('text=No hay nadie'); await mira('portada · sin resultados');
 
-    for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&']]) {
+    for (const [t, q] of [['sp-grande', D + '&'], ['nombres-largos', D + '&'], ['sp-ejemplo', D + '&'], ['parejas-ejemplo-2026-11-14', D + '&'], ['individual-ejemplo-2026-11-14', D + '&'], ['parejas-largos', D + '&']]) {
       for (const ver of PESTANAS) {
         await pg.goto(`${base}/torneo.html?${q}t=${t}${ver ? '&ver=' + ver : ''}`);
         await pg.waitForSelector(!ver ? '.podio' : ver === 'normativa' ? '.normativa button, .vacio' : ver === 'folleto' ? '.calendario, .vacio' : ver === 'parejas' ? '.lista-parejas' : ver === 'mesas' ? '.mesa' : 'table.clasi');
