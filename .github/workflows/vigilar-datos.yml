@@ -1,0 +1,26 @@
+name: Vigilar datos personales
+on: [push]
+jobs:
+  vigilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ningún Excel ni documento, y todo datos/ cifrado
+        run: |
+          mal=0
+          prohibidos=$(git ls-files | grep -iE '\.(xlsx|xlsm|xls|ods|csv|docx|doc)$' || true)
+          if [ -n "$prohibidos" ]; then
+            echo "::error::Hay archivos prohibidos en el repositorio público:"; echo "$prohibidos"; mal=1
+          fi
+          for f in $(git ls-files datos); do
+            case "$f" in
+              datos/clave.json|*/.gitkeep|*.cifrado) ;;
+              *.json) head -c 400 "$f" | grep -q '"ct"' || { echo "::error::Sin cifrar: $f"; mal=1; } ;;
+              *) echo "::error::Archivo no permitido en datos/: $f"; mal=1 ;;
+            esac
+          done
+          if [ $mal = 1 ]; then
+            echo "::error::PARA: no publiques nada más y avisa a Jeel. Borrar el archivo no basta, hay que limpiar el historial."
+            exit 1
+          fi
+          echo "Todo bien: ningún dato personal a la vista."
