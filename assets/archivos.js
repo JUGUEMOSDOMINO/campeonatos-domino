@@ -1,8 +1,8 @@
-/* Sección «Archivos» de la mesa de control: el árbitro descarga lo que hay en programas-domino/entregables/ sin entrar en GitHub y sube sus propios archivos.
+/* Sección «Archivos» de la mesa de control: el árbitro descarga lo que hay en programas-domino/entregables/ sin entrar en GitHub.
    - La lista sale de entregables/DESCARGAS.md (una fila por archivo: ruta, frase y fecha); solo se enseñan los archivos que tienen línea y existen.
    - Se agrupan por categoría (la sección de DESCARGAS.md donde está cada fila), lo más reciente primero.
-   - Subir: siempre a programas-domino (privado), en entregables/del_arbitro/<categoría>/, con descripción y categoría obligatorias; la línea se añade a DESCARGAS.md, en su categoría. Nunca a campeonatos-domino.
-   - Todo pasa por Mesa.llamar (assets/mesa.js), que es lo único que manda el token y solo deja leer entregables/ y escribir del_arbitro/ y DESCARGAS.md.
+   - Subir va por «Subir archivo» (paso 4, assets/publicar.js): lo que el árbitro sube se guarda siempre en programas-domino (privado), en entregables/del_arbitro/<categoría>/, con su línea en DESCARGAS.md. Nunca en campeonatos-domino.
+   - Todo pasa por Mesa.llamar (assets/mesa.js), que es lo único que manda el token y solo deja leer entregables/ y escribir del_arbitro/<categoría>/ y DESCARGAS.md.
    La parte sin navegador (leer y escribir DESCARGAS.md, validar nombre y descripción) se prueba en Node con pruebas/probar_archivos.cjs. */
 (function (raiz) {
   'use strict';
@@ -72,15 +72,11 @@
   document.addEventListener('DOMContentLoaded', () => {
     if (document.body.dataset.pagina !== 'publicar' || !document.getElementById('paso-archivos')) return;
     const M = raiz.Mesa, $ = (id) => document.getElementById(id);
-    const E = { listo: false, archivos: new Map(), push: false, linea: null, abiertas: new Map() };
-    const rutaDe = (nombre, cat) => `del_arbitro/${carpetaDe(cat)}/${nombre}`;
-    const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+    const E = { listo: false, archivos: new Map(), abiertas: new Map() };
     const nodo = (tag, txt, clase) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (clase) e.className = clase; return e; };
     const decir = (t) => { $('archivos-estado').textContent = t || ''; };
-    const rutaUrl = (r) => r.split('/').map(encodeURIComponent).join('/');
     const tam = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
     const bytesDe = (b64) => { const bin = atob(b64.replace(/\s/g, '')); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
-    const aBase64 = (u) => { let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(bin); };
     const fecha = (iso) => iso.split('-').reverse().join('/');
 
     async function leerDescargasRepo() {
@@ -95,8 +91,7 @@
       decir('Leyendo los archivos…'); $('archivos-ver').disabled = true;
       try {
         const ac = await M.acceso('prog');
-        if (!ac.ok) { $('archivos-lista').replaceChildren(); E.listo = false; E.push = false; decir(ac.msg); actualizarSubida(); return false; }
-        E.push = ac.push;
+        if (!ac.ok) { $('archivos-lista').replaceChildren(); E.listo = false; decir(ac.msg); return false; }
         const arbol = await M.llamar('prog', '/git/trees/main?recursive=1');
         E.archivos = new Map((arbol.tree || []).filter((t) => t.type === 'blob' && t.path.startsWith('entregables/')).map((t) => [t.path.slice('entregables/'.length), { size: t.size || 0, sha: t.sha }]));
         const d = await leerDescargasRepo();
@@ -105,7 +100,7 @@
         const descritos = new Set(filas.map((f) => f.ruta));
         const sinLinea = [...E.archivos.keys()].filter((r) => !descritos.has(r) && !r.endsWith('.gitkeep') && r !== 'DESCARGAS.md' && !carpetas.some((c) => r.startsWith(c)));
         pintar(filas, sinLinea.length, !!arbol.truncated);
-        E.listo = true; actualizarSubida();
+        E.listo = true;
         return true;
       } catch (e) {
         decir(e instanceof M.ErrorGH ? e.message : 'No se han podido leer los archivos. Prueba otra vez dentro de un minuto.');
@@ -162,77 +157,8 @@
       } catch (e) { decir(e instanceof M.ErrorGH ? e.message : `No se ha podido descargar ${nombre}. Prueba otra vez.`); } finally { bt.disabled = false; }
     }
 
-    /* ---------- subir ---------- */
-    const archivoElegido = () => $('subir-archivo').files[0] || null;
-    function actualizarSubida() {
-      const f = archivoElegido(), nota = $('subir-nota'), pisar = $('subir-pisar-caja'), cat = $('subir-cat').value;
-      const existe = !!f && !!cat && E.archivos.has(rutaDe(f.name, cat));
-      pisar.hidden = !existe;
-      let msg = '';
-      if (!E.push && E.listo) msg = 'Este token solo puede leer programas-domino. Para subir archivos hace falta el permiso «Contents: Read and write» en ese repositorio.';
-      else if (f && !nombreValido(f.name)) msg = 'El nombre del archivo no vale: sin barras, dos puntos, comillas, «?», «#» ni «%», y sin empezar por un punto. Cámbiale el nombre y vuelve a elegirlo.';
-      else if (f && f.size === 0) msg = 'Ese archivo está vacío.';
-      else if (f && f.size > MAX_SUBIDA) msg = `Ese archivo pesa ${tam(f.size)} y es demasiado grande (el máximo son ${MAX_SUBIDA / 1048576} MB).`;
-      else if (f && !descripcionValida($('subir-desc').value)) msg = 'Escribe qué es el archivo: la descripción es obligatoria.';
-      else if (f && !CATEGORIAS_SUBIR.includes(cat)) msg = 'Elige la categoría del archivo: es obligatoria.';
-      else if (existe && !$('subir-pisar').checked) msg = 'Ya hay un archivo con ese nombre en esa categoría. Marca la casilla si quieres sustituirlo.';
-      nota.textContent = msg;
-      const bueno = !!f && !msg && (E.push || !E.listo);
-      $('subir-boton').disabled = !(bueno || E.linea);
-      $('subir-boton').textContent = E.linea ? 'Añadir la línea a DESCARGAS' : 'Subir a programas-domino';
-    }
-
-    async function ponerArchivo(ruta, contenido, sha, mensaje) {
-      const cuerpo = { message: mensaje, content: contenido, branch: 'main', author: M.AUTOR, committer: M.AUTOR };
-      if (sha) cuerpo.sha = sha;
-      return M.llamar('prog', `/contents/${rutaUrl(ruta)}`, { method: 'PUT', body: JSON.stringify(cuerpo) });
-    }
-    // Un fallo de conexión o de GitHub no deja nada a medias: la línea se intenta tres veces sola. El permiso o el token no se arreglan repitiendo.
-    const pasajero = (e) => e.estado === 0 || e.estado === 409 || e.estado === 422 || e.estado >= 500;
-    async function anotarLinea(l) {
-      for (let intento = 0; ; intento++) {
-        const d = await leerDescargasRepo();
-        try { return await ponerArchivo('entregables/DESCARGAS.md', aBase64(new TextEncoder().encode(conLinea(d && d.texto, l.ruta, l.descripcion, l.fecha, l.categoria))), d && d.sha, `Descargas: línea de ${l.ruta}`); }
-        catch (e) { if (!(e.estado === 409 || e.estado === 422) || intento) throw e; }
-      }
-    }
-    async function anotarSola(l) {
-      for (let i = 0; ; i++) {
-        try { return await anotarLinea(l); } catch (e) { if (!pasajero(e) || i >= 2) throw e; await espera(400 * (i + 1)); }
-      }
-    }
-    async function subir() {
-      const boton = $('subir-boton');
-      boton.disabled = true;
-      try {
-        if (!E.linea) {
-          const f = archivoElegido();
-          if (!f) return;
-          if (!E.listo && !(await cargar())) return;
-          const nombre = f.name, categoria = $('subir-cat').value, ruta = rutaDe(nombre, categoria), previo = E.archivos.get(ruta);
-          decir(`Subiendo ${nombre}…`);
-          const contenido = aBase64(new Uint8Array(await f.arrayBuffer()));
-          await ponerArchivo('entregables/' + ruta, contenido, previo && previo.sha, `Subir ${nombre} (del árbitro)`);
-          E.linea = { ruta, descripcion: $('subir-desc').value, fecha: fechaHoy(), categoria };
-        }
-        decir('Añadiendo su línea a DESCARGAS…');
-        await anotarSola(E.linea);
-        const ruta = E.linea.ruta; E.linea = null;
-        $('subir-archivo').value = ''; $('subir-desc').value = ''; $('subir-cat').value = ''; $('subir-pisar').checked = false;
-        await cargar();
-        decir(`Subido a programas-domino (privado), en entregables/${ruta}. Ya sale en la lista.`);
-      } catch (e) {
-        decir((E.linea ? 'El archivo se ha subido, pero no se ha podido añadir su línea a DESCARGAS. Pulsa el botón para repetirlo. ' : '') + (e instanceof M.ErrorGH ? e.message : 'No se ha podido terminar. Prueba otra vez dentro de un minuto.'));
-      } finally { actualizarSubida(); }
-    }
-
     $('archivos-ver').addEventListener('click', cargar);
-    $('subir-boton').addEventListener('click', subir);
-    $('subir-cat').append(nodo('option', 'Elige una categoría', null), ...CATEGORIAS_SUBIR.map((c) => nodo('option', c, null)));
-    for (const o of $('subir-cat').options) o.value = o.index ? o.textContent : '';
-    for (const id of ['subir-archivo', 'subir-desc', 'subir-cat', 'subir-pisar']) $(id).addEventListener('input', actualizarSubida);
-    $('subir-cat').addEventListener('change', actualizarSubida);
-    $('subir-archivo').addEventListener('change', actualizarSubida);
-    actualizarSubida();
+    // Lo que se guarda desde «Subir archivo» sale aquí en cuanto se guarda, si la lista ya estaba a la vista.
+    API.refrescar = () => (E.listo ? cargar() : null);
   });
 })(typeof window !== 'undefined' ? window : globalThis);

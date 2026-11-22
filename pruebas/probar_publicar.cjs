@@ -211,12 +211,13 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     const sinWeb = path.join(tmp, 'sin.xlsx');
     execFileSync('python3', ['-c', `import openpyxl;w=openpyxl.Workbook();w.active.title='INICIO';w.save(r'${sinWeb}')`]);
     await pg.setInputFiles('#archivo', sinWeb);
-    await pg.waitForSelector('text=no tiene la hoja WEB');
-    bien('V01: Excel sin hoja WEB');
+    await pg.waitForSelector('#lectura :text("No es un archivo que la mesa publique")');
+    assert.strictEqual(await pg.textContent('#publicar'), 'Guardar en programas-domino'); assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    bien('V01: un Excel sin hoja WEB no es de ningún tipo que se publique: no se publica nada y solo se ofrece guardarlo');
     const txt = path.join(tmp, 'a.txt'); fs.writeFileSync(txt, 'hola');
     await pg.setInputFiles('#archivo', txt);
-    await pg.waitForSelector('text=termina en .xlsx');
-    bien('archivo que no es Excel');
+    await pg.waitForFunction(() => document.querySelector('#lectura').textContent.includes('No es un archivo que la mesa publique') && document.querySelector('#lectura').textContent.includes('Mirando') === false);
+    bien('archivo que no es Excel: lo mismo, sin publicar');
     await pg.setInputFiles('#archivo', { name: 'enorme.xlsx', mimeType: 'application/octet-stream', buffer: Buffer.alloc(26 * 1024 * 1024) });
     await pg.waitForSelector('text=demasiado grande');
     bien('límite de tamaño: un archivo de 26 MB se rechaza');
@@ -232,7 +233,8 @@ exec(src)`]);
     await pg.waitForSelector('.vals li.bloquea');
     assert.strictEqual(await pg.isDisabled('#publicar'), true);
     assert((await pg.textContent('.vals li.bloquea')).includes('J5'));
-    bien('V06: teléfono bloquea y el botón queda desactivado');
+    assert.strictEqual(await pg.isVisible('#guardar-solo'), true);
+    bien('V06: teléfono bloquea, el botón queda desactivado y se ofrece guardar solo el archivo');
 
     // Publicar el SP de ejemplo (jornada 3): torneo nuevo → el destino por defecto es Borrador; se elige Web
     await pg.setInputFiles('#archivo', xlsx('sp-ejemplo'));
@@ -1063,7 +1065,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert(txt.includes('Torneo de Ejemplo - Villa Inventada') && txt.includes('Con grupo B') && txt.includes('parejas'), txt);
     assert(txt.includes('P02') && txt.includes('P03') && txt.includes('Ana Roig Mas - Pau Vidal Soler'), txt);
     assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
-    assert.strictEqual(await pg.locator('h3:has-text("Para el ranking")').count(), 0, 'el PDF no trae licencias: no hay bloque');
+    assert((await pg.textContent('#fuente-ranking')).includes('No hay ningún Excel del ranking'), 'sin el Excel del ranking no se puede buscar a los jugadores del PDF: lo pide');
     assert.strictEqual(await pg.locator('#revision li.bloquea').count(), 0);
     bien('pdf: se lee un PDF de dos páginas (grupo A partido, relleno, negativa con miles); avisa del relleno y de las partidas del B, enseña la clasificación y no ofrece bloque');
     await pg.check('input[name=destino][value=borr]');
@@ -1091,9 +1093,9 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     // algo que no es una clasificación
     const nada = path.join(tmp, 'nada.pdf'); fs.writeFileSync(nada, 'esto no es un pdf');
     await pg.setInputFiles('#archivo', nada);
-    await pg.waitForSelector('#lectura :text("PDF")');
-    assert.strictEqual(await pg.locator('#paso-publicar:visible').count(), 0);
-    bien('pdf: un archivo que no es PDF da un mensaje claro y no deja publicar');
+    await pg.waitForSelector('#lectura :text("No es un archivo que la mesa publique")');
+    assert.strictEqual(await pg.textContent('#publicar'), 'Guardar en programas-domino');
+    bien('pdf: un archivo que no es PDF no se reconoce, no se publica y solo se ofrece guardarlo');
     assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []);
     assert.deepStrictEqual(errores, []);
     bien('pdf: pdf.js corre con la política de seguridad de la página, sin una sola infracción ni error');
@@ -1114,11 +1116,12 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     await pg.setInputFiles('#archivo', excel(filas, 'access'));
     await pg.waitForSelector('#revision .resumen');
     const txt = await pg.textContent('#revision');
-    assert(txt.includes('Torneo de Access de Ejemplo') && txt.includes('Con grupo B') && txt.includes('P05') && txt.includes('P02') && txt.includes('Ana Roig Mas - Pau Vidal Soler') && txt.includes('leer_torneo.html'), txt);
-    assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
+    assert(txt.includes('Torneo de Access de Ejemplo') && txt.includes('Con grupo B') && txt.includes('P05') && txt.includes('P02') && txt.includes('Ana Roig Mas - Pau Vidal Soler'), txt);
+    assert.strictEqual(await pg.locator('#copiar-bloque').count(), 1);
+    assert(txt.includes('No se han comprobado') && !txt.includes('paso 1b'), 'sin el Excel del ranking, el bloque sale con el aviso de que las licencias no se han comprobado');
     assert.strictEqual(await pg.locator('#revision li.bloquea').count(), 0);
     assert((await pg.textContent('#lectura')).includes('Excel de Access'));
-    bien('access: se reconoce el Excel exportado de Access, deduce las 7 partidas, avisa del relleno, enseña la clasificación y no ofrece bloque');
+    bien('access: se reconoce el Excel exportado de Access, deduce las 7 partidas, avisa del relleno, enseña la clasificación y deja el bloque para el ranking (sin comprobar las licencias, que no hay Excel del ranking)');
     await pg.check('input[name=destino][value=borr]');
     await pg.click('#publicar');
     await pg.waitForSelector('#registro:has-text("borrador")');
@@ -1199,81 +1202,8 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     bien('archivos: «Descargar» baja el archivo tal cual (también el de más de 1 MB) con la API de GitHub y el token del panel');
     const [d2] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("leer_torneo.html") button')]);
     assert.strictEqual(fs.readFileSync(await d2.path(), 'utf8'), '<html>hola</html>');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
-    // subir
-    const datosXl = crypto.randomBytes(300000);
-    assert.deepStrictEqual(await pg.$$eval('#subir-cat option', (l) => l.map((o) => o.value)), ['', 'Programas de campeonato', 'Ranking FVD', 'Rankings publicados', 'Torneos', 'Manuales y guías', 'Otros']);
-    bien('archivos: la categoría al subir es una lista cerrada, sin Mantenimiento y sin ninguna elegida de entrada');
-    await pg.setInputFiles('#subir-archivo', subida('Lista de jugadores.xlsx', datosXl));
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
-    assert((await pg.textContent('#subir-nota')).includes('obligatoria'));
-    await pg.fill('#subir-desc', '  ');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
-    await pg.fill('#subir-desc', 'Lista de jugadores | de 2026');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
-    assert((await pg.textContent('#subir-nota')).includes('categoría'));
-    await pg.selectOption('#subir-cat', 'Torneos');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
-    await pg.click('#subir-boton');
-    await pg.waitForSelector('#archivos-lista li:has-text("Lista de jugadores.xlsx")');
-    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    assert(api.bytes('prog', 'entregables/del_arbitro/torneos/Lista de jugadores.xlsx').equals(datosXl));
-    assert(/## Torneos\n\n\| Archivo \| Qué es \| Fecha \|\n\|---\|---\|---\|\n\| `del_arbitro\/torneos\/Lista de jugadores\.xlsx` \| Lista de jugadores \/ de 2026 \| /.test(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString()));
-    assert.deepStrictEqual(api.puts.map((x) => x.clave + ' ' + x.ruta), ['prog entregables/del_arbitro/torneos/Lista de jugadores.xlsx', 'prog entregables/DESCARGAS.md']);
-    assert(api.puts.every((x) => x.rama === 'main' && x.author.name === 'Mesa de control' && !/@(?!users\.noreply)/.test(x.author.email)));
-    assert.deepStrictEqual(await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => d.querySelector('.cat-nombre').textContent)), ['Programas de campeonato', 'Ranking FVD', 'Torneos', 'Mantenimiento']);
-    assert.deepStrictEqual(await pg.$$eval('#archivos-lista details.categoria:nth-of-type(3) li .archivo-nombre', (l) => l.map((x) => x.textContent)), ['Lista de jugadores.xlsx']);
-    assert.strictEqual(await pg.inputValue('#subir-desc'), ''); assert.strictEqual(await pg.inputValue('#subir-cat'), '');
-    bien('archivos: «Subir» pone el archivo en entregables/del_arbitro/<categoría>/ de programas-domino, añade su línea a DESCARGAS.md en su categoría (descripción y categoría son obligatorias) y sale en la lista');
-    assert.deepStrictEqual(api.log.filter((x) => !/ prog /.test(x)), []);
-    assert.deepStrictEqual(api.enClaro, []);
-    bien('archivos: no se escribe nada en campeonatos-domino ni en borradores');
-    // sustituir
-    await pg.setInputFiles('#subir-archivo', subida('Lista de jugadores.xlsx', Buffer.from('nuevo')));
-    await pg.fill('#subir-desc', 'Versión nueva'); await pg.selectOption('#subir-cat', 'Otros');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
-    assert.strictEqual(await pg.isVisible('#subir-pisar'), false);
-    bien('archivos: el mismo nombre en otra categoría es otro archivo y no pide sustituir');
-    await pg.selectOption('#subir-cat', 'Torneos');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
-    assert.strictEqual(await pg.isVisible('#subir-pisar'), true);
-    await pg.check('#subir-pisar');
-    await pg.click('#subir-boton');
-    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    assert.strictEqual(api.bytes('prog', 'entregables/del_arbitro/torneos/Lista de jugadores.xlsx').toString(), 'nuevo');
-    assert.strictEqual((api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().match(/del_arbitro\/torneos\/Lista de jugadores\.xlsx/g) || []).length, 1);
-    bien('archivos: con el mismo nombre pide confirmar y sustituye el archivo y su línea (no la duplica)');
-    // nombre raro
-    await pg.setInputFiles('#subir-archivo', subida('100%.xlsx', Buffer.from('x'))); await pg.fill('#subir-desc', 'algo'); await pg.selectOption('#subir-cat', 'Otros');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
-    assert((await pg.textContent('#subir-nota')).includes('nombre del archivo no vale'));
-    bien('archivos: un nombre con caracteres no permitidos no se sube');
-    // fallo al anotar la línea: el archivo está subido y se puede repetir solo la línea
-    await pg.setInputFiles('#subir-archivo', subida('Otro.pdf', Buffer.from('%PDF-1.4'))); await pg.fill('#subir-desc', 'Un PDF'); await pg.selectOption('#subir-cat', 'Manuales y guías');
-    let intentosLinea = 0;
-    api.fallar = (m, c, ruta) => { if (m === 'PUT' && c === 'prog' && ruta === 'entregables/DESCARGAS.md') { intentosLinea++; return 500; } return null; };
-    await pg.click('#subir-boton');
-    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('se ha subido, pero no se ha podido añadir su línea'));
-    assert.strictEqual(intentosLinea, 3, 'la línea se intenta sola tres veces antes de rendirse');
-    assert(api.repos.prog.has('entregables/del_arbitro/manuales-y-guias/Otro.pdf'));
-    assert.strictEqual(await pg.textContent('#subir-boton'), 'Añadir la línea a DESCARGAS');
-    assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
-    api.fallar = null;
-    await pg.click('#subir-boton');
-    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    assert(/## Manuales y guías\n[^#]*`del_arbitro\/manuales-y-guias\/Otro\.pdf` \| Un PDF \|/.test(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString()));
-    bien('archivos: la línea de DESCARGAS se intenta sola tres veces; si sigue fallando lo dice, y el botón repite solo la línea (sin volver a subir el archivo)');
-    // un fallo suelto no llega a verse: la segunda vez entra sola
-    await pg.setInputFiles('#subir-archivo', subida('Suelto.pdf', Buffer.from('%PDF-1.4'))); await pg.fill('#subir-desc', 'Otro PDF'); await pg.selectOption('#subir-cat', 'Otros');
-    let una = 0;
-    api.fallar = (m, c, ruta) => (m === 'PUT' && c === 'prog' && ruta === 'entregables/DESCARGAS.md' && !una++ ? 500 : null);
-    await pg.click('#subir-boton');
-    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    api.fallar = null;
-    assert(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().includes('`del_arbitro/otros/Suelto.pdf` | Otro PDF |'));
-    assert.strictEqual(await pg.textContent('#subir-boton'), 'Subir a programas-domino');
-    bien('archivos: si anotar la línea falla una vez, se repite solo y el árbitro no tiene que pulsar nada más');
-    assert.deepStrictEqual(api.log.filter((x) => !/ prog /.test(x)), []);
+    assert.strictEqual(await pg.locator('#subir-boton, #subir-archivo').count(), 0);
+    bien('archivos: la sección solo lista y descarga; subir se hace con «Subir archivo» (paso 4)');
     assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []);
     assert.deepStrictEqual(errores, []);
     bien('archivos: con la política de seguridad de la página no hay una sola infracción ni error');
@@ -1287,22 +1217,312 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       const t = await sin.pg.textContent('#archivos-estado');
       assert(t.includes('Repository access') && t.includes('Contents: Read and write') && t.includes('ningún otro token'), t);
       assert.strictEqual(await sin.pg.locator('#archivos-lista li').count(), 0);
-      assert.strictEqual(await sin.pg.isDisabled('#subir-boton'), true);
       bien('archivos: con un token sin programas-domino lo dice y explica cómo añadirlo (Contents: Read and write), y el resto de la página sigue');
       await sin.ctx.close();
-      // token de solo lectura
+      // token de solo lectura: se puede descargar
       const lec = await escenario({ semilla });
       lec.api.soloLectura.prog = true;
       await abrir(lec.pg);
       await lec.pg.click('#archivos-ver');
       await lec.pg.waitForSelector('#archivos-lista li.archivo');
-      await lec.pg.setInputFiles('#subir-archivo', subida('X.xlsx', Buffer.from('x'))); await lec.pg.fill('#subir-desc', 'algo'); await lec.pg.selectOption('#subir-cat', 'Otros');
-      assert.strictEqual(await lec.pg.isDisabled('#subir-boton'), true);
-      assert((await lec.pg.textContent('#subir-nota')).includes('solo puede leer'));
       assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);
-      bien('archivos: con un token de solo lectura se puede descargar pero no subir, y lo dice');
+      bien('archivos: con un token de solo lectura se puede descargar');
       await lec.ctx.close();
     }
+  }
+
+
+  /* ============ «Subir archivo»: un solo botón; reconoce el archivo por su contenido, dice qué va a hacer, pide confirmar y guarda copia del original en programas-domino ============ */
+  {
+    const XLSX = require('../assets/xlsx.mini.min.js');
+    const DESCARGAS = ['# Descargas', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `sp/24_SP_sin_macros.xlsx` | El programa del 24º Súper Prestigio. | 2026-11-15 |', ''].join('\n');
+    // Excel del ranking inventado: hojas Jugadores y Licencias como las del programa del ranking
+    const JUG = [['J0001', 'Ana', 'Roig', 'Mas', '921'], ['J0002', 'Pau', 'Vidal', 'Soler', '922'], ['J0003', 'Marta', 'Puig', 'Sanz', '923'], ['J0004', 'Toni', 'Serra', 'Vila', '5551'],
+      ['J0005', 'Rosa', 'Mas', 'Gil', '5552'], ['J0006', 'Rosa', 'Mas', 'Gil', '5553'], ['J0007', 'Vicent', 'Vila', 'Pons', '925'], ['J0008', 'Nuria', 'Pons', 'Gil', '926'],
+      ['J0009', 'Albert', 'Mora', 'Roca', '927'], ['J0010', 'Lola', 'Soler', 'Gil', '9001'], ['J0011', 'Joan', 'Ferrer', 'Pla', '7001']];
+    const LIC = [[921, 'J0001', 2020, null], [922, 'J0002', 2020, null], [923, 'J0003', 2020, null], [5551, 'J0004', 2026, null], [5552, 'J0005', 2026, null], [5553, 'J0006', 2025, null],
+      [925, 'J0007', 2020, null], [926, 'J0008', 2020, null], [927, 'J0009', 2020, null], [9001, 'J0010', 2020, null], [7001, 'J0011', 2026, null]];
+    const rankingXlsx = () => XLSX.write({ SheetNames: ['Jugadores', 'Licencias'], Sheets: {
+      Jugadores: XLSX.utils.aoa_to_sheet([[], ['Código', 'Nombre', '1er apellido', '2º apellido', 'Licencia vigente'], ...JUG]),
+      Licencias: XLSX.utils.aoa_to_sheet([[], ['Licencia', 'Código de jugador', 'Asociación', 'Año desde', 'Año hasta'], ...LIC.map((l) => [l[0], l[1], 'Asociación de ejemplo', l[2], l[3]])]) } }, { type: 'buffer', bookType: 'xlsx' });
+    const semilla = (conRanking = true) => (a) => {
+      sembrarWeb(a); a.poner('prog', 'entregables/DESCARGAS.md', DESCARGAS); a.poner('prog', 'entregables/sp/24_SP_sin_macros.xlsx', 'x');
+      if (conRanking) { a.poner('prog', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', rankingXlsx()); a.poner('prog', 'entregables/ranking/Ranking_FVD_plantilla.xlsx', 'vacia'); }
+    };
+    const RKJ = path.join(__dirname, 'datos', 'ranking-ejemplo', 'actual.json');
+    const libroRk = () => { const f = path.join(tmp, 'ranking-unico.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), RKJ, f]); return f; };
+    const libroOr = () => { const f = path.join(tmp, 'organizador-unico.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_organizador.py'), f]); return f; };
+    const espec = { titulo: 'Torneo de Ejemplo - Villa Inventada', fecha: '20/02/2027', partidas: 7, filas_por_pagina: 3, grupos: {
+      A: [[1, 5, 'Ana Roig Mas - Pau Vidal Soler', 6, 1, 1500, 2100, 600], [2, 3, 'Marta Puig - Toni Serra Vila', 5, 2, -2100, 1994, 4094],
+        [3, 7, 'Rosa Mas Gil - Vicent Vila Pons', 4, 3, 12, 1200, 1188], [4, 2, 'Lola Soler Ruiz - Joan Ferrer Bosch', 3, 4, -5, 900, 905],
+        [5, 9, 'XXX XXX - ZZZ ZZZ', 0, 7, -2100, 0, 2100]],
+      B: [[1, 12, 'Nuria Pons - Albert Mora', 3, 0, 480, 900, 420], [2, 14, 'Elena Roca - Hugo Sanz Vila', 2, 1, -5, 700, 705]] } };
+    const pdf = (e, n) => { const j = path.join(tmp, n + '.json'), f = path.join(tmp, n + '.pdf'); fs.writeFileSync(j, JSON.stringify(e)); execFileSync('python3', ['-I', path.join(__dirname, 'hacer_pdf.py'), j, f]); return f; };
+    const CAB = ['DET_TORNEO', 'TOR_NOMBRE', 'TOR_LOGO1', 'TOR_LOGO2', 'DET_GRUPO', 'SumaDeDET_GANADAS', 'SumaDeDET_PERDIDAS', 'SumaDeDET_DIFERENCIA', 'SumaDeDET_PUNTOSF', 'SumaDeDET_PUNTOSC', 'PrimeroDeDET_ALEATORIO', 'DET_PAREJA', 'JUGADORES.JUG_LICENCIA', 'PT_JUGADOR1', 'JUGADORES_1.JUG_LICENCIA', 'PT_JUGADOR2'];
+    const f = (g, gan, per, dif, pf, pc, n, l1, n1, l2, n2) => [46348, 'Torneo de Access de Ejemplo', 'EJE', null, g, gan, per, dif, pf, pc, 1712289161, n, l1, n1, l2, n2];   // 46348 = 22/11/2026 (1/1/2026 = 46023, el 22/11 es el día 326)
+    const filas = [f('A', 6, 1, 1500, 2100, 600, 5, '46/0921', 'Ana Roig Mas', '46/0922', 'Pau Vidal Soler'), f('A', 5, 2, -2100, 1994, 4094, 3, '46/0923', 'Marta Puig', '', 'Toni Serra Vila'),
+      f('A', 0, 7, -2100, 0, 2100, 43, '46/xxxx', 'XXX XXX', '46/xxxx', 'ZZZ ZZZ'), f('A', 4, 3, 12, 1200, 1188, 7, '02/xxxx', 'Rosa Mas Gil', '46/0925', 'Vicent Vila Pons'),
+      f('B', 3, 0, 480, 900, 420, 12, '46/0926', 'Nuria Pons', '46/0927', 'Albert Mora')];
+    const excel = (rows, n, cab = CAB) => { const fch = path.join(tmp, n + '.xlsx'); fs.writeFileSync(fch, XLSX.write({ SheetNames: ['PX_05_Clasificacion_Exportar'], Sheets: { PX_05_Clasificacion_Exportar: XLSX.utils.aoa_to_sheet([cab, ...rows]) } }, { type: 'buffer', bookType: 'xlsx' })); return fch; };
+    const accesoXlsx = () => excel(filas, 'access-unico');
+    const copiaDe = (api, r) => api.bytes('prog', 'entregables/' + r);
+    const lineaDe = (api, r) => api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().split('\n').find((l) => l.includes('`' + r + '`'));
+    const seccionDe = (api, r) => { let sec = null; for (const l of api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().split('\n')) { const h = /^## (.*)$/.exec(l); if (h) sec = h[1]; if (l.includes('`' + r + '`')) return sec; } return null; };
+    const soloDatos = (api) => api.puts.every((x) => /^datos\//.test(x.ruta) && !/\.(xlsx|xlsm|pdf|csv)$/.test(x.ruta.replace(/\.cifrado$/, '')) || /normativa\.pdf\.cifrado$/.test(x.ruta));
+    const leerPortapapeles = (pg) => pg.evaluate(() => navigator.clipboard.readText());
+
+    // --- Excel de un campeonato (hoja WEB): reconoce, pide confirmar, se puede cancelar, publica cifrado y guarda copia
+    {
+      const { ctx, pg, api, errores } = await escenario({ semilla: semilla() });
+      await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+      await abrir(pg);
+      assert.strictEqual(await pg.locator('#archivo').getAttribute('accept'), null);
+      assert.strictEqual(await pg.locator('input[type=file]').count(), 1, 'un solo campo para subir archivos en la página');
+      const f = xlsx('sp-ejemplo', 'Mi campeonato de ejemplo.xlsx');
+      await pg.setInputFiles('#archivo', f);
+      await pg.waitForSelector('#revision .resumen');
+      let t = await pg.textContent('#lectura');
+      assert(t.includes('He reconocido un Excel de campeonato del Súper Prestigio') && t.includes('Voy a') && t.includes('copia del original en programas-domino') && t.includes('entregables/del_arbitro/torneos/'), t);
+      assert.strictEqual(await pg.isVisible('#publicar'), true); assert.strictEqual(await pg.isVisible('#cancelar'), true);
+      assert.deepStrictEqual([api.puts.length, api.putsProg.length], [0, 0]);
+      bien('subir: reconoce el Excel de un campeonato por su contenido y dice en una frase qué va a hacer, con botón para confirmar y otro para cancelar; no toca nada todavía');
+      await pg.click('#cancelar');
+      assert((await pg.textContent('#lectura')).includes('Cancelado'));
+      assert.strictEqual(await pg.isVisible('#paso-publicar'), false); assert.strictEqual(await pg.isVisible('#paso-revision'), false);
+      assert.deepStrictEqual([api.puts.length, api.putsProg.length, api.dels.length], [0, 0, 0]);
+      bien('subir: «Cancelar» lo deja todo como estaba y no escribe nada en ningún repositorio');
+      await pg.setInputFiles('#archivo', f);
+      await pg.waitForSelector('#revision .resumen');
+      assert.strictEqual(await pg.inputValue('#subir-desc'), 'Excel del campeonato de «CAMPEONATO SÚPER-PRESTIGIO DE EJEMPLO».');
+      await pg.fill('#subir-desc', 'Jornada 3 del SP de ejemplo | versión del árbitro');
+      await pg.check('input[name=destino][value=web]');
+      assert((await pg.textContent('#lectura')).includes('publicarlo en la web, cifrado'));
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Copia del original guardada")');
+      assert(copiaDe(api, 'del_arbitro/torneos/Mi campeonato de ejemplo.xlsx').equals(fs.readFileSync(f)));
+      assert.strictEqual(seccionDe(api, 'del_arbitro/torneos/Mi campeonato de ejemplo.xlsx'), 'Torneos');
+      assert(lineaDe(api, 'del_arbitro/torneos/Mi campeonato de ejemplo.xlsx').includes('Jornada 3 del SP de ejemplo / versión del árbitro'));
+      assert(api.puts.length >= 3 && soloDatos(api), 'a la web solo van datos cifrados: ' + api.puts.map((x) => x.ruta).join(', '));
+      assert.deepStrictEqual(api.enClaro, []);
+      assert.deepStrictEqual(api.putsProg.map((x) => x.ruta), ['entregables/del_arbitro/torneos/Mi campeonato de ejemplo.xlsx', 'entregables/DESCARGAS.md']);
+      bien('subir: al confirmar publica cifrado como antes y guarda la copia del original en programas-domino/entregables/del_arbitro/torneos/, con su línea en Torneos (descripción propuesta y editable); el Excel no va a la web');
+      await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li:has-text("Mi campeonato de ejemplo.xlsx")');
+      bien('subir: la copia sale en la lista de Archivos sin recargar');
+      assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []); assert.deepStrictEqual(errores, []);
+      await ctx.close();
+    }
+    // --- Excel del ranking: se publica el ranking y la copia va a ranking-fvd/
+    {
+      const { pg, api } = await escenario({ semilla: semilla() });
+      await abrir(pg);
+      const f = libroRk();
+      await pg.setInputFiles('#archivo', f);
+      await pg.waitForSelector('#revision .resumen');
+      const t = await pg.textContent('#lectura');
+      assert(t.includes('He reconocido el Excel del ranking') && t.includes('entregables/del_arbitro/ranking-fvd/'), t);
+      await pg.check('input[name=destino][value=web]');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Ranking publicado")');
+      await pg.waitForSelector('#registro:has-text("Copia del original guardada")');
+      assert(copiaDe(api, 'del_arbitro/ranking-fvd/ranking-unico.xlsx').equals(fs.readFileSync(f)));
+      assert.strictEqual(seccionDe(api, 'del_arbitro/ranking-fvd/ranking-unico.xlsx'), 'Ranking FVD');
+      assert(soloDatos(api)); assert.deepStrictEqual(api.enClaro, []);
+      bien('subir: el Excel del ranking se reconoce, se publica (cifrado, con licencias solo ahí) y su copia va a ranking-fvd/ con su línea en Ranking FVD');
+    }
+    // --- Excel de Access, con el Excel del ranking de entregables/: comprueba licencias, resuelve doble licencia y deja el bloque A:L
+    {
+      const { ctx, pg, api } = await escenario({ semilla: semilla() });
+      await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', accesoXlsx());
+      await pg.waitForSelector('#revision .resumen');
+      assert((await pg.textContent('#lectura')).includes('He reconocido el Excel de Access'));
+      assert((await pg.textContent('#fuente-ranking')).includes('Ranking_FVD_2026-27.xlsx') && (await pg.textContent('#fuente-ranking')).includes('entregables/'));
+      assert(!(await pg.textContent('#fuente-ranking')).includes('plantilla'));
+      assert((await pg.textContent('#revision')).includes('Faltan por identificar 2 jugadores'));
+      assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0, 'con dudas sin resolver no se ofrece el bloque');
+      assert.strictEqual(await pg.isDisabled('#publicar'), false, 'las dudas del bloque no impiden publicar la clasificación');
+      await pg.click('button:text-is("Confirmar la propuesta de un solo candidato (puntúa con su licencia de Valencia)")');
+      await pg.waitForSelector('#revision :text("Falta identificar a 1 jugador")');
+      await pg.selectOption('.pend select', 'J0006');
+      await pg.waitForSelector('#copiar-bloque');
+      await pg.click('#copiar-bloque');
+      await pg.waitForFunction(() => document.querySelector('#revision').textContent.includes('Copiado'));
+      const tsv = await leerPortapapeles(pg), V = '\t\t\t\t\t\t';
+      assert.deepStrictEqual(tsv.split('\n'), ['A\t1\t921\tAna Roig Mas\t922\tPau Vidal Soler' + V, 'A\t2\t923\tMarta Puig\t5551\tToni Serra' + V, 'A\t3\t5553\tRosa Mas\t925\tVicent Vila Pons' + V, 'B\t1\t926\tNuria Pons\t927\tAlbert Mora' + V]);
+      bien('access: con el Excel del ranking de entregables/ comprueba las licencias, propone la doble licencia (confirmar uno, elegir entre dos) y deja el bloque A:L para copiar');
+      await pg.check('input[name=destino][value=borr]');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Copia del original guardada")');
+      assert(copiaDe(api, 'del_arbitro/torneos/access-unico.xlsx').equals(fs.readFileSync(path.join(tmp, 'access-unico.xlsx'))));
+      assert(!JSON.stringify(api.json('borr', 'datos/torneo-de-access-de-ejemplo-2026-11-22/actual.json')).includes('5553'), 'las licencias no van a lo publicado');
+      assert(soloDatos(api));
+      bien('access: publica la clasificación sin licencias y guarda copia del original en torneos/');
+      await ctx.close();
+    }
+    // --- Hoja de resumen: A a F se comprueban contra el ranking; G a L (retiradas y sustituciones) son de la hoja
+    {
+      const { ctx, pg } = await escenario({ semilla: semilla() });
+      await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', libroOr());
+      await pg.waitForSelector('#revision .resumen');
+      assert((await pg.textContent('#lectura')).includes('He reconocido la Hoja de resumen'));
+      await pg.waitForSelector('#revision :text("Faltan por identificar 2 jugadores")');
+      await pg.click('button:text-is("Confirmar las 2 propuestas de un solo candidato (puntúan con su licencia de Valencia)")');
+      await pg.waitForSelector('#copiar-bloque'); await pg.click('#copiar-bloque');
+      await pg.waitForFunction(() => document.querySelector('#revision').textContent.includes('Copiado'));
+      const filas = (await leerPortapapeles(pg)).split('\n');
+      assert(filas.includes('A\t3\t9005\tMarta Puig\t9006\tXavi Bosch\t\t9007\tElena Sala\t2\t3\tE'), filas.join(' // '));
+      assert(filas.includes('A\t4\t9008\tNuria Pons\t9009\tPep Ribes\t6\t\t\t\t\t10'), filas.join(' // '));
+      assert(filas.includes('B\t1\t925\tVicent Vila\t9010\tCarla Camps\t\t\t\t\t\t'), filas.join(' // '));
+      assert(filas.some((x) => x.startsWith('B\t2\t9011\tQuique Torres\t9012\tAlba Llorca') && x.includes('\t9013\tIker Climent\t1\t2\t10')), filas.join(' // '));
+      assert(filas.some((x) => /^A\t2\t9003\tRosa María Mas\t7001\tJoan Ferrer\t/.test(x)), filas.join(' // '));
+      assert.strictEqual(filas.length, 7);
+      bien('resumen: comprueba las licencias contra el Excel del ranking, resuelve la doble licencia y mantiene las retiradas y sustituciones de la hoja (columnas G a L)');
+      await ctx.close();
+    }
+    // --- PDF: sin el Excel del ranking no se puede buscar a los jugadores; con él, resuelve dudas y deja el bloque
+    {
+      const { ctx, pg, api } = await escenario({ semilla: semilla(false) });
+      await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', pdf(espec, 'clasif-unico'));
+      await pg.waitForSelector('#fuente-ranking');
+      assert((await pg.textContent('#fuente-ranking')).includes('No hay ningún Excel del ranking en entregables/'));
+      assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
+      const rk = path.join(tmp, 'ranking-elegido.xlsx'); fs.writeFileSync(rk, rankingXlsx());
+      await pg.setInputFiles('#ranking-excel', rk);
+      await pg.waitForSelector('#revision :text("Faltan por identificar")');
+      assert((await pg.textContent('#fuente-ranking')).includes('ranking-elegido.xlsx') && (await pg.textContent('#fuente-ranking')).includes('has elegido'));
+      await pg.selectOption('.pend:has-text("Rosa Mas Gil") select', 'J0005');
+      for (let i = 0; i < 6 && await pg.locator('.pend').count(); i++) await pg.click('.pend button:text-is("No federado")');
+      await pg.waitForSelector('#copiar-bloque');
+      await pg.click('#copiar-bloque');
+      await pg.waitForFunction(() => document.querySelector('#revision').textContent.includes('Copiado'));
+      const filas = (await leerPortapapeles(pg)).split('\n');
+      assert(filas[0].startsWith('A\t1\t921\tAna Roig\t922\tPau Vidal') && filas.some((x) => x.startsWith('A\t3\t5552\tRosa Mas')) && filas.some((x) => /^B\t2\tNO\tElena Roca\tNO\tHugo Sanz Vila/.test(x)), filas.join(' // '));
+      bien('pdf: con el Excel del ranking elegido busca a los jugadores por su nombre, deja elegir o marcar «No federado» y da el bloque A:L');
+      await pg.check('input[name=destino][value=borr]');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Copia del original guardada")');
+      assert(copiaDe(api, 'del_arbitro/torneos/clasif-unico.pdf').equals(fs.readFileSync(path.join(tmp, 'clasif-unico.pdf'))));
+      bien('pdf: se publica y la copia del PDF original (con sus nombres) va a programas-domino');
+      await ctx.close();
+    }
+    // --- Otro archivo: no se publica nada; solo se guarda, con categoría y descripción obligatorias
+    {
+      const { pg, api } = await escenario({ semilla: semilla() });
+      await abrir(pg);
+      const notas = path.join(tmp, 'Notas de la mesa.txt'); fs.writeFileSync(notas, 'cosas');
+      await pg.setInputFiles('#archivo', notas);
+      await pg.waitForSelector('#subir-cat');
+      assert((await pg.textContent('#lectura')).includes('No es un archivo que la mesa publique') && (await pg.textContent('#lectura')).includes('No se publica nada'));
+      assert.strictEqual(await pg.textContent('#publicar'), 'Guardar en programas-domino'); assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      assert.deepStrictEqual(await pg.$$eval('#subir-cat option', (l) => l.map((o) => o.value)), ['', 'Programas de campeonato', 'Ranking FVD', 'Rankings publicados', 'Torneos', 'Manuales y guías', 'Otros']);
+      await pg.fill('#subir-desc', 'Apuntes de la mesa');
+      assert.strictEqual(await pg.isDisabled('#publicar'), true); assert((await pg.textContent('#pub-nota')).includes('categoría'));
+      await pg.selectOption('#subir-cat', 'Otros');
+      assert.strictEqual(await pg.isDisabled('#publicar'), false);
+      await pg.fill('#subir-desc', '  '); assert.strictEqual(await pg.isDisabled('#publicar'), true); assert((await pg.textContent('#pub-nota')).includes('obligatoria'));
+      await pg.fill('#subir-desc', 'Apuntes de la mesa');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Guardado en programas-domino")');
+      assert.strictEqual(copiaDe(api, 'del_arbitro/otros/Notas de la mesa.txt').toString(), 'cosas');
+      assert.strictEqual(seccionDe(api, 'del_arbitro/otros/Notas de la mesa.txt'), 'Otros');
+      assert.deepStrictEqual([api.puts.length, api.dels.length], [0, 0]);
+      bien('subir (otro): no publica nada; guarda en programas-domino/entregables/del_arbitro/<categoría>/ con su línea en esa categoría; categoría y descripción obligatorias');
+      await pg.setInputFiles('#archivo', notas);
+      await pg.waitForSelector('#subir-cat'); await pg.fill('#subir-desc', 'Otra vez'); await pg.selectOption('#subir-cat', 'Otros');
+      await pg.waitForSelector('#subir-pisar', { state: 'visible' }); assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      await pg.check('#subir-pisar'); assert.strictEqual(await pg.isDisabled('#publicar'), false);
+      await pg.selectOption('#subir-cat', 'Torneos'); await pg.waitForFunction(() => document.querySelector('#subir-pisar-caja').hidden); assert.strictEqual(await pg.isDisabled('#publicar'), false);
+      bien('subir (otro): el mismo nombre en la misma categoría pide confirmar la sustitución; en otra categoría no');
+    }
+    // --- Reconocido pero con errores (un teléfono en la hoja WEB): no se publica; se ofrece guardarlo solo
+    {
+      const { pg, api } = await escenario({ semilla: semilla() });
+      await abrir(pg);
+      const mal = path.join(tmp, 'con-error.xlsx');
+      execFileSync('python3', ['-c', `
+import sys
+sys.argv=['x',r'${path.join(__dirname, 'datos/sp-ejemplo/actual.json')}',r'${mal}']
+src=open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read().replace("wb.save(sys.argv[2])","ws['J5']='6' + '12 34' + ' 56 78'\\nwb.save(sys.argv[2])")
+exec(src)`]);
+      await pg.setInputFiles('#archivo', mal);
+      await pg.waitForSelector('.vals li.bloquea');
+      assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      await pg.click('#guardar-solo');
+      await pg.waitForSelector('#subir-cat');
+      assert.strictEqual(await pg.isVisible('#paso-revision'), false);
+      assert.strictEqual(await pg.inputValue('#subir-cat'), 'Torneos'); assert.strictEqual(await pg.inputValue('#subir-desc'), 'Excel del campeonato de «CAMPEONATO SÚPER-PRESTIGIO DE EJEMPLO» con errores: no se publicó.');
+      await pg.fill('#subir-desc', 'Excel con un error, para corregir');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Guardado en programas-domino")');
+      assert(copiaDe(api, 'del_arbitro/torneos/con-error.xlsx').equals(fs.readFileSync(mal)));
+      assert.deepStrictEqual([api.puts.length, api.dels.length], [0, 0]);
+      bien('subir (con errores): no publica; explica y ofrece solo guardarlo, con categoría y descripción');
+      // un Excel con hoja WEB que no se puede leer (no es de ninguna forma conocida)
+      const roto = path.join(tmp, 'roto-unico.xlsx');
+      fs.writeFileSync(roto, XLSX.write({ SheetNames: ['WEB'], Sheets: { WEB: XLSX.utils.aoa_to_sheet([['x', 'y']]) } }, { type: 'buffer', bookType: 'xlsx' }));
+      await pg.setInputFiles('#archivo', roto);
+      await pg.waitForSelector('#guardar-solo, #subir-cat', { state: 'visible' });
+      assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      assert.strictEqual(api.puts.length, 0);
+      bien('subir (no reconocido): una hoja WEB ilegible no se publica y solo se ofrece guardarla');
+    }
+    // --- Archivos de siempre: la categoría y la descripción salen sugeridas (y se pueden cambiar)
+    {
+      const { pg, api } = await escenario({ semilla: semilla() });
+      await abrir(pg);
+      const sugerido = async (f, cat, desc) => {
+        await pg.setInputFiles('#archivo', f);
+        await pg.waitForSelector('#sugerido');
+        assert.strictEqual(await pg.inputValue('#subir-cat'), cat); assert.strictEqual(await pg.inputValue('#subir-desc'), desc);
+        assert.strictEqual(await pg.isDisabled('#publicar'), false);
+        assert((await pg.textContent('#sugerido')).includes('sugeridas'));
+      };
+      const sinHoja = path.join(tmp, 'Ranking_FVD_plantilla.xlsx');
+      fs.writeFileSync(sinHoja, XLSX.write({ SheetNames: ['INICIO', 'Jugadores', 'Licencias'], Sheets: { INICIO: XLSX.utils.aoa_to_sheet([['x']]), Jugadores: XLSX.utils.aoa_to_sheet([['x']]), Licencias: XLSX.utils.aoa_to_sheet([['x']]) } }, { type: 'buffer', bookType: 'xlsx' }));
+      await sugerido(sinHoja, 'Ranking FVD', 'Excel del ranking, sin la hoja para la web.');
+      const prog = path.join(tmp, 'Programa de parejas vacio.xlsx');
+      fs.writeFileSync(prog, XLSX.write({ SheetNames: ['INICIO', 'PAREJAS'], Sheets: { INICIO: XLSX.utils.aoa_to_sheet([['x']]), PAREJAS: XLSX.utils.aoa_to_sheet([['x']]) } }, { type: 'buffer', bookType: 'xlsx' }));
+      await sugerido(prog, 'Programas de campeonato', 'Programa de parejas, sin la hoja para la web.');
+      const html = path.join(tmp, 'pagina.html'); fs.writeFileSync(html, '<html><head><title>Leer un campeonato para el ranking</title></head></html>');
+      await sugerido(html, 'Ranking FVD', 'Página que lee un campeonato y deja listo el bloque para el ranking.');
+      const man = path.join(tmp, 'Manual de la web.pdf'); fs.writeFileSync(man, '%PDF-1.4 roto');
+      await sugerido(man, 'Manuales y guías', 'Manual o guía: Manual de la web.');
+      await pg.fill('#subir-desc', 'Manual para imprimir'); await pg.selectOption('#subir-cat', 'Otros');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Guardado en programas-domino")');
+      assert.strictEqual(seccionDe(api, 'del_arbitro/otros/Manual de la web.pdf'), 'Otros');
+      assert(lineaDe(api, 'del_arbitro/otros/Manual de la web.pdf').includes('Manual para imprimir'));
+      bien('subir: los archivos de siempre se reconocen por lo que llevan dentro (o por su nombre) y salen con la categoría y la descripción sugeridas, que se pueden cambiar');
+      // lo que no se reconoce no sugiere nada: todo vacío y obligatorio
+      const raro = path.join(tmp, 'raro.dat'); fs.writeFileSync(raro, 'xx');
+      await pg.setInputFiles('#archivo', raro); await pg.waitForSelector('#subir-cat');
+      assert.strictEqual(await pg.locator('#sugerido').count(), 0); assert.strictEqual(await pg.inputValue('#subir-cat'), ''); assert.strictEqual(await pg.inputValue('#subir-desc'), '');
+      assert.strictEqual(await pg.isDisabled('#publicar'), true);
+      bien('subir: si no se reconoce nada, la categoría y la descripción quedan vacías y obligatorias');
+    }
+    // --- Token que no escribe en programas-domino: se publica igual, avisando de que no habrá copia
+    {
+      const { pg, api } = await escenario({ semilla: semilla() });
+      api.soloLectura.prog = true;
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', xlsx('sp-ejemplo', 'sin-copia.xlsx'));
+      await pg.waitForSelector('#revision .resumen');
+      const t = await pg.textContent('#lectura');
+      assert(t.includes('No guardaré copia del original') && t.includes('solo puede leer programas-domino'), t);
+      assert((await pg.textContent('#copia')).includes('No se guardará copia'));
+      await pg.check('input[name=destino][value=web]');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("Publicado")');
+      assert.strictEqual(api.putsProg.length, 0); assert(api.puts.length >= 3);
+      bien('subir: con un token de solo lectura en programas-domino se publica igual y dice que no habrá copia del original');
+    }
+    assert(apis.every((a) => soloDatos(a)), 'nada original del árbitro va a campeonatos-domino ni a borradores');
+    bien('subir: en todos los casos, a campeonatos-domino y a borradores solo van datos (JSON o la normativa cifrada), nunca el archivo original');
   }
 
   assert.deepStrictEqual(apis.flatMap((a) => a.enClaro), [], 'algún PUT a la web iba sin cifrar');

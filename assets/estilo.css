@@ -465,3 +465,7 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .etiqueta-campo { display: block; margin: 12px 0 4px; font-weight: bold; }
 .casilla-pisar { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; }
 .casilla-pisar[hidden] { display: none; }
+
+/* Mesa de control: dudas del bloque para el ranking (quién es cada jugador) */
+.pend { display: grid; gap: 6px; border-top: 1px solid var(--linea); padding: 8px 0; min-width: 0; overflow-wrap: anywhere; }
+.pend select { max-width: 100%; min-width: 0; }

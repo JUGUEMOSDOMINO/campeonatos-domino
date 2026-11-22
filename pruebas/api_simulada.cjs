@@ -1,4 +1,5 @@
 // API de contenidos de GitHub simulada para los tres repositorios de la mesa de control (web, borradores y programas-domino).
+// puts y log: escrituras en campeonatos-domino y borradores; putsProg y logProg: escrituras en programas-domino (copias de los originales y DESCARGAS.md).
 // Uso: const api = await instalar(contexto, opciones); api.repos.web / api.repos.borr / api.repos.prog son Map(ruta -> {sha, texto, plano}). En prog, `texto` puede ser un Buffer (archivos binarios).
 // `texto` es lo que hay de verdad en el repositorio (en la web, sobres cifrados); `plano` es lo descifrado con las claves que la prueba conoce,
 // para poder comprobar el contenido (api.json). Cada PUT a la web que no va cifrado queda en api.enClaro.
@@ -34,7 +35,7 @@ function sembrar(api, clave, id, op = {}) {
 async function instalar(ctx, opciones = {}) {
   const api = {
     repos: { web: new Map(), borr: new Map(), prog: new Map() },
-    puts: [], dels: [], reqs: [], log: [], violaciones: [], // log: 'PUT clave ruta' / 'DELETE clave ruta' en orden; violaciones: veces que la web pública apuntó a archivos que no existían
+    puts: [], putsProg: [], dels: [], reqs: [], log: [], logProg: [], violaciones: [], // log: 'PUT clave ruta' / 'DELETE clave ruta' en orden; violaciones: veces que la web pública apuntó a archivos que no existían
     acceso: { web: true, borr: true, prog: true, ...(opciones.acceso || {}) }, // false: GitHub contesta 404, como con un token sin ese repositorio
     soloLectura: { web: false, borr: false, prog: false },
     token: TOKEN,
@@ -119,8 +120,8 @@ async function instalar(ctx, opciones = {}) {
         if (!valido) api.enClaro.push(ruta);
       }
       api.poner(clave, ruta, texto);
-      api.log.push('PUT ' + clave + ' ' + ruta);
-      api.puts.push({ clave, ruta, mensaje: c.message, rama: c.branch, author: c.author, committer: c.committer });
+      (clave === 'prog' ? api.logProg : api.log).push('PUT ' + clave + ' ' + ruta);
+      (clave === 'prog' ? api.putsProg : api.puts).push({ clave, ruta, mensaje: c.message, rama: c.branch, author: c.author, committer: c.committer }); // putsProg: lo que va a programas-domino (copias y DESCARGAS.md)
       if (clave === 'web') api.revisar('tras escribir ' + ruta);
       return route.fulfill({ status: 201, contentType: 'application/json', body: '{"content":{},"commit":{}}' });
     }
@@ -128,7 +129,7 @@ async function instalar(ctx, opciones = {}) {
       if (!f) return route.fulfill({ status: 404, body: '{}' });
       if (c.sha !== f.sha) return route.fulfill({ status: 409, body: '{}' });
       repo.delete(ruta);
-      api.log.push('DELETE ' + clave + ' ' + ruta);
+      (clave === 'prog' ? api.logProg : api.log).push('DELETE ' + clave + ' ' + ruta);
       api.dels.push({ clave, ruta, mensaje: c.message, rama: c.branch, author: c.author, committer: c.committer });
       if (clave === 'web') api.revisar('tras borrar ' + ruta);
       return route.fulfill({ status: 200, contentType: 'application/json', body: '{"commit":{}}' });

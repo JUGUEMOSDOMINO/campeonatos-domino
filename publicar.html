@@ -16,13 +16,14 @@
 <script src="assets/resumen.js?v=20261123w20b" defer></script>
 <script src="assets/clasifpdf.js?v=20261123w20b" defer></script>
 <script src="assets/clasifaccess.js?v=20261123w20b" defer></script>
+<script src="assets/leerpdf.js?v=20261123w20b" defer></script>
 <script src="assets/partidas.js?v=20261123w20b" defer></script>
 <script src="assets/palabras.js?v=20261123w20b" defer></script>
 <script src="assets/cifra.js?v=20261123w20b" defer></script>
 <script src="assets/mesa.js?v=20261123w20b" defer></script>
 <script src="assets/web.js?v=20261123w20b" defer></script>
-<script src="assets/publicar.js?v=20261123w20b" defer></script>
 <script src="assets/archivos.js?v=20261123w20b" defer></script>
+<script src="assets/publicar.js?v=20261123w20b" defer></script>
 </head>
 <body data-pagina="publicar">
 <header class="barra"><div class="barra-in">
@@ -31,7 +32,7 @@
 </div></header>
 <main>
   <h1 class="tit-publicar">Mesa de control</h1>
-  <p class="nota">Aquí se gestionan los campeonatos: subir un Excel como borrador o directamente a la web, ver los borradores, publicarlos, ocultarlos, editar sus datos y eliminarlos. Esta página lee del Excel la hoja WEB y las hojas de datos de las partidas (_WEBC, _R1… y P.1…), nunca las de licencias, parejas ni jugadores, y lo hace en tu ordenador: el Excel no se sube a ningún sitio. Del Excel del ranking lee solo su hoja WEB, que trae las licencias de los jugadores: son lo único con licencias que se publica, y siempre cifrado. También lee la Hoja de resumen que rellena un organizador con otro programa: a la web sube su clasificación final como campeonato de parejas, sin licencias, y deja copiado en tu ordenador el bloque con licencias para el ranking. También lee lo que saca Access: su exportación a Excel (la hoja PX_05_Clasificacion_Exportar) o, como alternativa, el PDF «Clasificación Partida». Sube lo mismo (clasificación de parejas, sin licencias) y no hay bloque; para el ranking se usa leer_torneo.html. Guarda el Excel antes de elegirlo. Todo lo que va a la web sale cifrado con su contraseña; los borradores no.</p>
+  <p class="nota">Aquí se gestionan los campeonatos y los archivos. Con «Subir archivo» eliges un archivo y la mesa dice qué ha reconocido y qué va a hacer antes de tocar nada: un Excel de campeonato (parejas, individual o Súper Prestigio), el Excel del ranking, la Hoja de resumen de un organizador, el Excel que sale de Access, el PDF «Clasificación Partida» u otro archivo cualquiera. Lo reconoce por lo que lleva dentro, no por su nombre. Todo se lee en tu ordenador. A la web sube solo lo que se ve en ella (la hoja WEB, o la clasificación del organizador, sin licencias; del ranking, también sus licencias), siempre cifrado con la contraseña. El archivo original nunca va a la web: se guarda como copia en programas-domino, que es privado. Los borradores no van cifrados. Guarda el Excel antes de elegirlo.</p>
 
   <section class="paso" id="paso-token" aria-labelledby="t-token">
     <h2 id="t-token">1. Conexión con GitHub</h2>
@@ -62,9 +63,9 @@
   </section>
 
   <section class="paso" id="paso-excel" aria-labelledby="t-excel">
-    <h2 id="t-excel">4. Subir un Excel o un PDF</h2>
-    <label for="archivo" class="solo-lector">Archivo Excel del campeonato, o PDF de la clasificación de un organizador</label>
-    <input id="archivo" type="file" accept=".xlsx,.xlsm,.pdf,application/pdf">
+    <h2 id="t-excel">4. Subir archivo</h2>
+    <label for="archivo" class="etiqueta-campo">Subir archivo</label>
+    <input id="archivo" type="file">
     <div id="lectura" aria-live="polite"></div>
   </section>
 
@@ -75,28 +76,19 @@
   </section>
 
   <section class="paso" id="paso-publicar" aria-labelledby="t-pub" hidden>
-    <h2 id="t-pub">6. Guardar</h2>
-    <div class="acciones"><button class="boton" id="publicar" type="button" disabled>Publicar en la web</button><span id="pub-nota" class="nota sin-margen"></span></div>
+    <h2 id="t-pub">6. Confirmar</h2>
+    <div id="copia"></div>
+    <div class="acciones"><button class="boton" id="publicar" type="button" disabled>Publicar en la web</button><button class="boton sec" id="guardar-solo" type="button" hidden>Guardar solo el archivo</button><button class="boton sec" id="cancelar" type="button">Cancelar</button><span id="pub-nota" class="nota sin-margen"></span></div>
     <pre class="registro" id="registro" hidden></pre>
     <div class="acciones" id="reintento" hidden></div>
     <p class="nota sep-10" id="resultado" hidden></p>
   </section>
   <section class="paso" id="paso-archivos" aria-labelledby="t-archivos">
     <h2 id="t-archivos">Archivos para descargar</h2>
-    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que sube el árbitro desde aquí va siempre a programas-domino, a la carpeta entregables/del_arbitro/ (una subcarpeta por categoría), y nunca a la web pública.</p>
+    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que subes con «Subir archivo» (paso 4) se guarda aquí, en entregables/del_arbitro/ (una subcarpeta por categoría), y nunca en la web pública.</p>
     <div class="acciones sin-margen"><button class="boton sec" id="archivos-ver" type="button">Ver los archivos</button></div>
     <div id="archivos-estado" class="nota sep-10" aria-live="polite"></div>
     <div id="archivos-lista" class="categorias-archivos"></div>
-    <h3 class="subtitulo">Subir un archivo</h3>
-    <label for="subir-archivo" class="solo-lector">Archivo que subir a programas-domino</label>
-    <input id="subir-archivo" type="file">
-    <label for="subir-desc" class="etiqueta-campo">Qué es (obligatorio)</label>
-    <textarea id="subir-desc" rows="2" maxlength="200" autocomplete="off"></textarea>
-    <label for="subir-cat" class="etiqueta-campo">Categoría (obligatoria)</label>
-    <select id="subir-cat"></select>
-    <label id="subir-pisar-caja" class="casilla-pisar" hidden><input id="subir-pisar" type="checkbox"> <span>Ya hay un archivo con ese nombre: sustituirlo</span></label>
-    <div class="acciones"><button class="boton" id="subir-boton" type="button" disabled>Subir a programas-domino</button></div>
-    <p id="subir-nota" class="nota sin-margen" aria-live="polite"></p>
   </section>
 </main>
 <footer class="pie"><div class="pie-in">

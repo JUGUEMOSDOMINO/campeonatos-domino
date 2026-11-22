@@ -181,6 +181,7 @@ function llegaAPuntC() {
     api.ponerCifrado('datos/indice.json', JSON.stringify({ version: '1.0', publicado: '2026-01-01T00:00:00Z', torneos: [] }));
     sembrar(api, 'web', 'sp-ejemplo', { normativa: true }); sembrar(api, 'web', 'nombres-largos');
     sembrar(api, 'borr', 'parejas-ejemplo-2026-11-14'); sembrar(api, 'borr', 'individual-ejemplo-2026-11-14');
+    const XLSXW = require('../assets/xlsx.mini.min.js');
     const NL = 'Ranking_FVD_2026-27_con_un_nombre_muy_largo_que_no_cabe_en_una_pantalla_de_telefono_pequena_copia_final_revisada.xlsx';
     api.poner('prog', 'entregables/DESCARGAS.md', ['# Descargas', '', '## Programas de campeonato', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
       `| \`del_arbitro/programas-de-campeonato/${NL}\` | Una descripción bastante larga para comprobar que en una pantalla de 320 píxeles no se corta ni se esconde nada, ni siquiera con palabras larguísimas como ${'x'.repeat(60)}. | 2026-11-22 |`, '',
@@ -197,9 +198,12 @@ function llegaAPuntC() {
     await mira('mesa · archivos');
     await pg.click('#archivos-lista summary:has-text("Mantenimiento")'); await mira('mesa · archivos con Mantenimiento abierta');
     await pg.click('#archivos-lista summary:has-text("Ranking FVD")'); await mira('mesa · archivos con una categoría cerrada');
-    await pg.setInputFiles('#subir-archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });
-    await pg.fill('#subir-desc', 'Una frase que explica qué es el archivo que se va a subir a programas-domino'); await pg.selectOption('#subir-cat', 'Programas de campeonato'); await pg.check('#subir-pisar');
-    await mira('mesa · subir un archivo');
+    await pg.setInputFiles('#archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });     // un archivo de ningún tipo conocido, con un nombre larguísimo
+    await pg.waitForSelector('#subir-cat');
+    await mira('mesa · subir archivo: no reconocido, sin sugerencia');
+    await pg.fill('#subir-desc', 'Una frase que explica qué es el archivo que se va a subir a programas-domino'); await pg.selectOption('#subir-cat', 'Programas de campeonato');
+    await pg.waitForSelector('#subir-pisar', { state: 'visible' }); await pg.check('#subir-pisar');
+    await mira('mesa · subir archivo: categoría, descripción y sustituir');
     await pg.click('#clave-estado button:text-is("Cambiar la contraseña")'); await pg.waitForSelector('#nueva-clave');
     await mira('mesa · cambiar la contraseña');
     await pg.fill('#nueva-clave', 'corta'); await mira('mesa · contraseña demasiado corta');
@@ -229,6 +233,14 @@ function llegaAPuntC() {
     await mira('publicar · varias partidas: casillas, avisos y botón');
     await pg.setInputFiles('#archivo', resumenOrg); await pg.waitForSelector('#copiar-bloque');
     await mira('publicar · Hoja de resumen: clasificación y botón del bloque');
+    // con el Excel del ranking en entregables/: dudas de doble licencia y la frase de confirmar
+    api.poner('prog', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', Buffer.from(XLSXW.write({ SheetNames: ['Jugadores', 'Licencias'], Sheets: {
+      Jugadores: XLSXW.utils.aoa_to_sheet([[], ['Código', 'Nombre', '1er apellido', '2º apellido', 'Licencia vigente'], ['J1', 'Joan', 'Ferrer', 'Pla con un segundo apellido bastante largo', '7001'], ['J2', 'Joan', 'Ferrer', 'Roca', '7002'], ['J3', 'Vicent', 'Vila', 'Pons', '925']]),
+      Licencias: XLSXW.utils.aoa_to_sheet([[], ['Licencia', 'Código de jugador', 'Asociación', 'Año desde', 'Año hasta'], [7001, 'J1', 'Asociación de ejemplo', 2026, null], [7002, 'J2', 'Asociación de ejemplo', 2026, null], [925, 'J3', 'Asociación de ejemplo', 2020, null]]) } }, { type: 'buffer', bookType: 'xlsx' })));
+    await pg.setInputFiles('#archivo', resumenOrg); await pg.waitForSelector('.pend');
+    await mira('publicar · Hoja de resumen: dudas de licencia con el Excel del ranking');
+    await pg.selectOption('.pend select >> nth=0', { index: 1 });
+    await mira('publicar · Hoja de resumen: una duda resuelta');
     await pg.click('#revision summary'); await pg.waitForSelector('#bloque-ranking');
     await mira('publicar · Hoja de resumen: bloque del ranking abierto');
     // borrador visto por torneo.html: con token, sin token y con token de otro

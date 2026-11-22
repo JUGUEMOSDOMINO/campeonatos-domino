@@ -193,6 +193,63 @@
     }
   }
 
+  /* ---------- programas-domino: copia del original y Excel del ranking ---------- */
+  // El Excel o PDF que sube el árbitro nunca va a la web: a campeonatos-domino solo llegan datos cifrados. Su copia va aquí, al repositorio privado.
+  const AR = () => raiz.Archivos;
+  const aBase64Bytes = (u) => { let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(bin); };
+  const urlRuta = (r) => r.split('/').map(encodeURIComponent).join('/');
+  const rutaCopia = (categoria, nombre) => `del_arbitro/${AR().carpetaDe(categoria)}/${nombre}`;
+  const pasajero = (e) => e.estado === 0 || e.estado >= 500 || choque(e);
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  // sha del archivo de entregables/ (o null si no existe), sin bajar su contenido más que lo que GitHub trae solo
+  async function shaEntregable(ruta) {
+    try { const r = await llamar('prog', `/contents/entregables/${urlRuta(ruta)}?ref=${RAMA}`); return (r && r.sha) || null; } catch (e) { if (noEncontrado(e)) return null; throw e; }
+  }
+  // Un fallo de conexión o de GitHub no deja nada a medias: cada escritura se intenta hasta tres veces. El permiso o el token no se arreglan repitiendo.
+  async function conReintentos(fn) {
+    for (let i = 0; ; i++) { try { return await fn(); } catch (e) { if (!pasajero(e) || i >= 2) throw e; await espera(choque(e) ? 0 : 400 * (i + 1)); } }
+  }
+  async function guardarCopia(ruta, bytes, mensaje) {
+    const contenido = aBase64Bytes(bytes);
+    return conReintentos(async () => {
+      const sha = await shaEntregable(ruta);
+      const cuerpo = { message: mensaje, content: contenido, branch: RAMA, author: AUTOR, committer: AUTOR };
+      if (sha) cuerpo.sha = sha;
+      return llamar('prog', `/contents/entregables/${urlRuta(ruta)}`, { method: 'PUT', body: JSON.stringify(cuerpo) });
+    });
+  }
+  async function anotarLinea(l) {
+    return conReintentos(async () => {
+      const d = await leerArchivo('prog', 'entregables/DESCARGAS.md');
+      const texto = AR().conLinea(d && d.texto, l.ruta, l.descripcion, l.fecha, l.categoria);
+      const cuerpo = { message: `Descargas: línea de ${l.ruta}`, content: aBase64(texto), branch: RAMA, author: AUTOR, committer: AUTOR };
+      if (d) cuerpo.sha = d.sha;
+      return llamar('prog', '/contents/entregables/DESCARGAS.md', { method: 'PUT', body: JSON.stringify(cuerpo) });
+    });
+  }
+  /* Plan para guardar el original en entregables/del_arbitro/<categoría>/ y añadir su línea a DESCARGAS.md, en su categoría. */
+  function planCopia(bytes, nombre, categoria, descripcion) {
+    const A = AR();
+    if (!A.nombreValido(nombre)) throw new ErrorGH(0, 'El nombre del archivo no vale: sin barras, dos puntos, comillas, «?», «#» ni «%», y sin empezar por un punto.', 'prog');
+    if (!bytes.length || bytes.length > A.MAX_SUBIDA) throw new ErrorGH(0, 'Ese archivo está vacío o es demasiado grande.', 'prog');
+    if (!A.CATEGORIAS_SUBIR.includes(categoria)) throw new ErrorGH(0, 'Elige la categoría del archivo: es obligatoria.', 'prog');
+    if (!A.descripcionValida(descripcion)) throw new ErrorGH(0, 'Escribe qué es el archivo: la descripción es obligatoria.', 'prog');
+    const ruta = rutaCopia(categoria, nombre), linea = { ruta, descripcion, fecha: A.fechaHoy(), categoria };
+    return { ruta, pasos: [
+      paso(`Guardar ${nombre} en programas-domino (privado)`, () => guardarCopia(ruta, bytes, `Subir ${nombre} (del árbitro)`)),
+      paso('Añadir su línea a DESCARGAS.md', () => anotarLinea(linea)),
+    ] };
+  }
+  /* El Excel del ranking de la temporada más reciente que haya en entregables/ranking/ → { nombre, bytes } o null. */
+  async function rankingDeEntregables() {
+    const arbol = await llamar('prog', ARBOL_OK);
+    const cand = ((arbol && arbol.tree) || []).filter((t) => t.type === 'blob').map((t) => ({ t, m: /^entregables\/ranking\/Ranking_FVD_(\d{4})-(\d{2})\.xlsx$/.exec(t.path) }))
+      .filter((x) => x.m).sort((a, b) => (b.m[1] + b.m[2]).localeCompare(a.m[1] + a.m[2]));
+    if (!cand.length) return null;
+    const r = await llamar('prog', `/git/blobs/${cand[0].t.sha}`);
+    return { nombre: cand[0].t.path.split('/').pop(), bytes: bytesDe((r && r.content) || '') };
+  }
+
   /* ---------- torneos ---------- */
   const C = () => raiz.Contrato;
   const ahora = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
@@ -376,7 +433,7 @@
   }
 
   const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
-    planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
+    rutaCopia, shaEntregable, planCopia, rankingDeEntregables, planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
     estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveAbierta() { return !!CL.clave; }, get claveJson() { return CL.cj; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = Mesa; else raiz.Mesa = Mesa;
 })(typeof window !== 'undefined' ? window : globalThis);
