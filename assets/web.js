@@ -564,12 +564,13 @@
     const filas = jd.clasificacion.filter((r) => r.grupo === g);
     const subs = (jd.sustituciones || []);
 
-    // Como en el Excel de cada programa. SP: CLAS., PAREJA, NOMBRE y las cifras. Parejas e individual: Puesto, Nº, Pareja o Jugador, Zona, P.G., P.F., P.C., Dif. y Desempate.
+    // Como en el Excel de cada programa. SP: CLAS., PAREJA, NOMBRE y las cifras. Parejas e individual: Puesto, Nº, Pareja o Jugador, Zona, P.G., P.F., P.C. y Dif.
+    // El Desempate del Excel no se enseña (lo pidió el árbitro); sigue en el JSON.
     // Las tres primeras columnas quedan fijas al desplazar. Cada columna: [clave, rótulo, significado].
     const cols = sp
       ? [['jug', 'ENC.J', 'Encuentros jugados'], ['gan', 'ENC.G', tp.gan], ['dp', 'DIF. P.', 'Diferencia de partidas'], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['pg', 'P. G.', 'Partidas ganadas'], ['pp', 'P. P.', 'Partidas perdidas'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['tc', 'PUNT. C.', 'Puntos en contra']]
-      : [['zona', 'Zona', 'Zona'], ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos'], ['desempate', 'Desempate', 'Desempate']];
-    const TEXTO = new Set(['zona', 'desempate']);
+      : [['zona', 'Zona', 'Zona'], ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos']];
+    const TEXTO = new Set(['zona']);
     const cabeceras = sp ? ['CLAS.', tp.unidad.toUpperCase(), 'NOMBRE'] : ['Puesto', 'Nº', cap(tp.unidad)];
 
     const cuerpo = filas.map((r) => {
@@ -594,7 +595,7 @@
       el('tbody', null, cuerpo));
     // Leyenda: en el SP, una por columna; en parejas e individual, la del Excel.
     const leyenda = sp ? cols.map(([, t, ab]) => `${t}: ${ab.toLowerCase()}`).join(' · ')
-      : 'P.G. partidas ganadas · P.F./P.C. tantos a favor/en contra · Dif. diferencia de tantos · Desempate: E.D. = enfrentamiento directo, C.I. = criterio informático';
+      : 'P.G. partidas ganadas · P.F./P.C. tantos a favor/en contra · Dif. diferencia de tantos';
 
     poner(cont,
       selectorJornada(completas, n, tp, (x) => irA({ j: x }, false)),

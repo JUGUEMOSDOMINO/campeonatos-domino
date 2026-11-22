@@ -68,16 +68,17 @@ function llegaACE() {
   caja.scrollLeft = 0;
   return f;
 }
-// (d) en la clasificación se llega hasta la última columna (SP: PUNT. C.; parejas e individual: Desempate)
+// (d) en la clasificación se llega hasta la última columna (SP: PUNT. C.; parejas e individual: Dif., sin Desempate)
 function llegaAPuntC() {
   const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.clasi');
   if (!tabla) return ['(d) no hay tabla de clasificación'];
   const f = [];
   const cab = [...tabla.querySelectorAll('thead th')].map((t) => t.textContent.trim());
   const sp = cab.includes('ENC.J');
-  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.', 'Desempate'];
+  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.'];
+  if (!sp && cab.includes('Desempate')) f.push('(d) la columna Desempate no tiene que salir');
   for (const c of esperadas) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
-  const ultima = sp ? 'PUNT. C.' : 'Desempate';
+  const ultima = sp ? 'PUNT. C.' : 'Dif.';
   caja.scrollLeft = 1e6;
   const tc = [...tabla.querySelectorAll('thead th')].find((t) => t.textContent.trim() === ultima);
   if (!tc) return f;
