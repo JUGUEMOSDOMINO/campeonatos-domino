@@ -443,3 +443,15 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
   .rk th:nth-child(2), .rk td:nth-child(2) { width: 12rem; min-width: 12rem; max-width: 12rem; }
   .rk th:nth-child(3), .rk td:nth-child(3) { left: calc(50px + 12rem); width: 6.6rem; min-width: 6.6rem; max-width: 6.6rem; }
 }
+
+/* Mesa de control: sección «Archivos» (descargar de programas-domino/entregables y subir a entregables/del_arbitro) */
+.lista-archivos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.lista-archivos .archivo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; background: var(--fondo); border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px 12px; min-width: 0; }
+.archivo-datos { flex: 1 1 14rem; min-width: 0; }
+.archivo-nombre, .archivo-ruta, .archivo-desc, .archivo-meta { display: block; overflow-wrap: anywhere; }
+.archivo-ruta, .archivo-meta { color: var(--tinta2); font-size: .85rem; }
+.archivo-desc { margin: 4px 0; }
+.lista-archivos .archivo .boton { padding: 8px 14px; flex: 0 0 auto; }
+.etiqueta-campo { display: block; margin: 12px 0 4px; font-weight: bold; }
+.casilla-pisar { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; }
+.casilla-pisar[hidden] { display: none; }

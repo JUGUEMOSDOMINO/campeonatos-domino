@@ -21,7 +21,7 @@ Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas d
 
 ## Cómo se publica
 
-`publicar.html` es la mesa de control. Trabaja con dos repositorios: `campeonatos-domino` (público, la web) y `campeonatos-borradores` (privado, con la misma estructura `datos/`).
+`publicar.html` es la mesa de control. Trabaja con dos repositorios para los campeonatos: `campeonatos-domino` (público, la web) y `campeonatos-borradores` (privado, con la misma estructura `datos/`). Para la sección «Archivos» toca también `programas-domino` (privado), solo dentro de `entregables/`.
 
 1. La mesa abre `publicar.html` y elige el Excel guardado. La página lo lee en el navegador; el Excel no se sube a ningún sitio. Rechaza archivos de más de 25 MB y hojas WEB con más de 300 filas o 80 columnas, y los textos de más de 300 caracteres.
 2. La mesa elige el destino: borrador o web. Por defecto es la web si el torneo ya está en ella y borrador si es nuevo.
@@ -114,13 +114,22 @@ Límites que conviene conocer:
 
 Es un token fine-grained de GitHub con este alcance:
 
-- los dos repositorios, `JUGUEMOSDOMINO/campeonatos-domino` y `JUGUEMOSDOMINO/campeonatos-borradores`, y ningún otro, en «Repository access» (Only select repositories);
+- los repositorios `JUGUEMOSDOMINO/campeonatos-domino` y `JUGUEMOSDOMINO/campeonatos-borradores`, y ningún otro salvo `JUGUEMOSDOMINO/programas-domino` si se quiere usar la sección «Archivos», en «Repository access» (Only select repositories);
 - permiso «Contents: Read and write» y ningún otro;
 - caduca en noviembre de 2027.
 
 Se pega una vez en `publicar.html`, en el equipo de la mesa, y se queda en el `localStorage` de ese navegador. No se manda por WhatsApp ni por correo, ni se escribe en el Excel o en el repositorio. Con el token se ven los borradores desde ese navegador. El token y la contraseña de la web son cosas distintas: la contraseña se reparte a los jugadores, el token no sale nunca del equipo de la mesa.
 
 Si el token no tiene acceso a `campeonatos-borradores`, la lista de borradores dice que falta «Repository access» y el resto de la página sigue funcionando: se puede subir a la web, ver, editar y eliminar lo que ya está en ella. Ocultar necesita los dos repositorios y se detiene en el primer paso, sin cambiar nada. Si solo puede leer, avisa de que falta «Contents: Read and write».
+
+### La sección «Archivos» (programas-domino)
+
+Sirve para descargar lo que hay en `programas-domino/entregables/` sin entrar en GitHub, y para subir archivos del árbitro. `programas-domino` es privado y lo lleva el mismo token, en el navegador, con la API de GitHub. Lo hace `assets/archivos.js`; todo lo que sale hacia GitHub pasa por `Mesa.llamar` (`assets/mesa.js`), que solo manda el token a `api.github.com`.
+
+- Lee `entregables/DESCARGAS.md` (una línea por archivo: ruta, frase y fecha) y enseña los archivos que tienen línea. Descarga con la API (`/git/blobs/<sha>`): nada sale a otro dominio.
+- Solo se lee dentro de `entregables/` (sin `..`) y solo se escribe `entregables/del_arbitro/<archivo>` y `entregables/DESCARGAS.md`. No se borra nada. `probar_archivos.cjs` lo prueba.
+- «Subir archivo» va siempre a `programas-domino`, nunca a `campeonatos-domino`, y pide una descripción que se añade a `DESCARGAS.md`. Ahí sí pueden ir Excel con datos de jugadores, porque el repositorio es privado.
+- Si el token no tiene `programas-domino`, la sección lo dice y explica cómo añadirlo (edita el token, «Repository access», y «Contents: Read and write»). La página no pide ni guarda ningún otro token.
 
 ### Rotarlo
 

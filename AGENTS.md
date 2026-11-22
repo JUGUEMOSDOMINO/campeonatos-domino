@@ -30,6 +30,10 @@ Si ves que ya se ha subido algo de esto: no lo borres tú sin más. Avisa ensegu
 - Las pruebas de `pruebas/` tienen que pasar (sobre todo `probar_dispositivos.cjs` y `probar_seguridad.cjs`).
 - Datos para pruebas: siempre inventados.
 
+## Entregables (en programas-domino)
+
+Cada archivo nuevo o actualizado en `entregables/` lleva su línea en `entregables/DESCARGAS.md`. Esa carpeta está en el repositorio privado `programas-domino`; la sección «Archivos» de `publicar.html` la lee para que el árbitro descargue sin entrar en GitHub. Lo que sube el árbitro desde allí va siempre a `programas-domino` (`entregables/del_arbitro/`), nunca a este repositorio.
+
 ## Si no estás seguro
 
 Pregunta antes de hacer el cambio. Es mejor preguntar que subir algo que luego no se puede borrar.

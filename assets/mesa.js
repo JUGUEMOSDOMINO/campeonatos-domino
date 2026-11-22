@@ -1,12 +1,14 @@
 /* Mesa de control: el único código que habla con la API de GitHub. Lo cargan publicar.html y torneo.html (para ver borradores).
-   Reglas (SECURITY.md): el token solo viaja al servidor de la API de GitHub; solo se toca campeonatos-domino y campeonatos-borradores;
-   solo se escribe en datos/indice.json, datos/clave.json y datos/<id>/(jornada_NN|actual).json o normativa.pdf.cifrado, con id validado.
+   Reglas (SECURITY.md): el token solo viaja al servidor de la API de GitHub; solo se toca campeonatos-domino, campeonatos-borradores y, para la sección
+   «Archivos», programas-domino (privado) en entregables/. En campeonatos-domino y borradores solo se escribe en datos/indice.json, datos/clave.json y
+   datos/<id>/(jornada_NN|actual).json o normativa.pdf.cifrado, con id validado. En programas-domino solo se lee entregables/ y solo se escribe
+   entregables/del_arbitro/<archivo> y entregables/DESCARGAS.md; no se borra nada.
    Todo lo que va a campeonatos-domino (público) sale cifrado con la contraseña de la web (assets/cifra.js); los borradores, en claro. */
 (function (raiz) {
   'use strict';
   const API = 'https://api.github.com';
   const DUENO = 'JUGUEMOSDOMINO';
-  const REPOS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores' };
+  const REPOS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores', prog: 'programas-domino' };
   const RAMA = 'main';
   const CLAVE = 'tumesa.token';
   // Correo noreply de la cuenta (id de /users/JUGUEMOSDOMINO): así los commits no enseñan el correo real.
@@ -15,6 +17,10 @@
   const ID_OK = new RegExp('^' + ID + '$');
   const RUTA_OK = new RegExp('^datos/(indice\\.json|clave\\.json|' + ID + '/((jornada_\\d{2}|actual)\\.json|normativa\\.pdf\\.cifrado))$');
   const DIR_OK = new RegExp('^datos(/' + ID + ')?$');
+  // programas-domino: leer cualquier ruta de entregables/ (sin «.» ni «..» ni barras invertidas, «?», «#» o «%»); escribir solo del_arbitro/ y DESCARGAS.md
+  const PROG_LEER = /^entregables(\/(?!\.{1,2}(\/|$))[^/\\?#%]+)*$/;
+  const PROG_ESCRIBIR = /^entregables\/(del_arbitro\/(?!\.{1,2}$)[^/\\?#%]+|DESCARGAS\.md)$/;
+  const ARBOL_OK = '/git/trees/main?recursive=1';
   const BLOB_OK = /^\/git\/blobs\/[0-9a-f]{40}$/; // archivos de más de 1 MB: la API de contenidos no trae el contenido
   const ARCHIVO_DATOS = /^(jornada_\d{2}|actual)\.json$/;
   const NORMATIVA = 'normativa.pdf.cifrado', CLAVE_JSON = 'datos/clave.json';
@@ -34,16 +40,23 @@
   const quitarQuery = (r) => r.split('?')[0];
   const SIN_ACCESO = {
     web: 'Con este token no se puede usar el repositorio campeonatos-domino. Comprueba que el token tiene ese repositorio en «Repository access» y el permiso «Contents: Read and write».',
+    prog: 'Con este token no se puede usar el repositorio programas-domino. En GitHub, edita el token y, en «Repository access», añade programas-domino; en «Permissions», deja «Contents: Read and write». Esta página no pide ni guarda ningún otro token.',
     borr: 'Con este token no se puede usar el repositorio campeonatos-borradores. En GitHub, edita el token y, en «Repository access», añade campeonatos-borradores; en «Permissions», deja «Contents: Read and write».',
   };
   // Único punto por el que sale el token. `sufijo` es '' (el repositorio) o '/contents/<ruta>' con ruta permitida.
   async function llamar(clave, sufijo, opciones) {
     const nombre = Object.prototype.hasOwnProperty.call(REPOS, clave) ? REPOS[clave] : null; // «__proto__» o «constructor» no son repositorios
     if (!nombre) throw new ErrorGH(0, 'Repositorio no permitido: ' + clave);
-    if (sufijo && !BLOB_OK.test(sufijo)) {
+    const metodo = (opciones && opciones.method) || 'GET';
+    if (sufijo && !BLOB_OK.test(sufijo) && !(clave === 'prog' && sufijo === ARBOL_OK)) {
       const ruta = sufijo.replace(/^\/contents\//, '');
-      if (!sufijo.startsWith('/contents/') || !(RUTA_OK.test(quitarQuery(ruta)) || DIR_OK.test(quitarQuery(ruta)))) throw new ErrorGH(0, 'Ruta no permitida: ' + sufijo);
+      const limpia = quitarQuery(ruta);
+      const decodificada = (() => { try { return decodeURIComponent(limpia); } catch (e) { return '%'; } })();
+      const permitida = clave === 'prog' ? !/%2f|%5c/i.test(limpia) && PROG_LEER.test(decodificada) : RUTA_OK.test(limpia) || DIR_OK.test(limpia);
+      if (!sufijo.startsWith('/contents/') || !permitida) throw new ErrorGH(0, 'Ruta no permitida: ' + sufijo);
+      if (clave === 'prog' && metodo !== 'GET' && (metodo !== 'PUT' || !PROG_ESCRIBIR.test(decodificada))) throw new ErrorGH(0, 'En programas-domino solo se escribe en entregables/del_arbitro/ y entregables/DESCARGAS.md: ' + sufijo);
     }
+    if (clave === 'prog' && metodo !== 'GET' && !(sufijo || '').startsWith('/contents/')) throw new ErrorGH(0, 'Operación no permitida en programas-domino.');
     const t = token.obtener();
     if (!t) throw new ErrorGH(401, 'Falta el token de GitHub. Pégalo en el paso 1.', clave);
     const ruta = `/repos/${DUENO}/${nombre}${sufijo}`;

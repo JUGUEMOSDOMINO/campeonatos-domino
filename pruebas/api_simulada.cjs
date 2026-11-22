@@ -1,5 +1,5 @@
-// API de contenidos de GitHub simulada para los dos repositorios de la mesa de control.
-// Uso: const api = await instalar(contexto, opciones); api.repos.web / api.repos.borr son Map(ruta -> {sha, texto, plano}).
+// API de contenidos de GitHub simulada para los tres repositorios de la mesa de control (web, borradores y programas-domino).
+// Uso: const api = await instalar(contexto, opciones); api.repos.web / api.repos.borr / api.repos.prog son Map(ruta -> {sha, texto, plano}). En prog, `texto` puede ser un Buffer (archivos binarios).
 // `texto` es lo que hay de verdad en el repositorio (en la web, sobres cifrados); `plano` es lo descifrado con las claves que la prueba conoce,
 // para poder comprobar el contenido (api.json). Cada PUT a la web que no va cifrado queda en api.enClaro.
 const fs = require('fs'), path = require('path'), crypto = require('crypto');
@@ -11,8 +11,8 @@ const CONTRASENA_WEB = 'contraseña de la web simulada';
 const WEB = K.claveJson(CONTRASENA_WEB);
 const CLAVE_WEB_B64 = WEB.clave.toString('base64');
 const MAX_CONTENIDO = 1000000; // como GitHub: un archivo de más de 1 MB no trae «content» y hay que pedir el blob
-const NOMBRES = { 'campeonatos-domino': 'web', 'campeonatos-borradores': 'borr' };
-const OTROS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores' };
+const NOMBRES = { 'campeonatos-domino': 'web', 'campeonatos-borradores': 'borr', 'programas-domino': 'prog' };
+const OTROS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores', prog: 'programas-domino' };
 const TOKEN = 'ghp_TOKEN_DE_PRUEBA';
 
 // Copia un torneo de pruebas/datos a un repositorio simulado (sin Excel: solo JSON) y lo apunta en su índice.
@@ -33,10 +33,10 @@ function sembrar(api, clave, id, op = {}) {
 
 async function instalar(ctx, opciones = {}) {
   const api = {
-    repos: { web: new Map(), borr: new Map() },
+    repos: { web: new Map(), borr: new Map(), prog: new Map() },
     puts: [], dels: [], reqs: [], log: [], violaciones: [], // log: 'PUT clave ruta' / 'DELETE clave ruta' en orden; violaciones: veces que la web pública apuntó a archivos que no existían
-    acceso: { web: true, borr: true, ...(opciones.acceso || {}) }, // false: GitHub contesta 404, como con un token sin ese repositorio
-    soloLectura: { web: false, borr: false },
+    acceso: { web: true, borr: true, prog: true, ...(opciones.acceso || {}) }, // false: GitHub contesta 404, como con un token sin ese repositorio
+    soloLectura: { web: false, borr: false, prog: false },
     token: TOKEN,
     fallar: null, // (metodo, clave, ruta) => estado HTTP o null
     n: 0,
@@ -78,19 +78,21 @@ async function instalar(ctx, opciones = {}) {
     rutas(clave) { return [...this.repos[clave].keys()].sort(); },
   };
   if (!opciones.sinClave) api.poner('web', 'datos/clave.json', JSON.stringify(WEB.json, null, 1) + '\n');
-  const enc = (t) => Buffer.from(t, 'utf8').toString('base64').replace(/(.{60})/g, '$1\n');
+  const buf = (t) => (Buffer.isBuffer(t) ? t : Buffer.from(t, 'utf8'));
+  const enc = (t) => buf(t).toString('base64').replace(/(.{60})/g, '$1\n');
   await ctx.route('https://api.github.com/**', async (route) => {
     const req = route.request(); const u = new URL(req.url());
     const metodo = req.method();
     api.reqs.push({ metodo, ruta: u.pathname, auth: req.headers().authorization });
     if (req.headers().authorization !== 'Bearer ' + api.token) return route.fulfill({ status: 401, body: '{"message":"Bad credentials"}' });
-    const m = /^\/repos\/JUGUEMOSDOMINO\/([^/]+)(?:\/contents\/(.*)|\/git\/blobs\/([0-9a-f]{40}))?$/.exec(u.pathname);
+    const m = /^\/repos\/JUGUEMOSDOMINO\/([^/]+)(?:\/contents\/(.*)|\/git\/blobs\/([0-9a-f]{40})|\/git\/trees\/(main))?$/.exec(u.pathname);
     const clave = m && NOMBRES[m[1]];
     if (!clave || !api.acceso[clave]) return route.fulfill({ status: 404, body: '{"message":"Not Found"}' });
     if (m[3]) {
       const f = [...api.repos[clave].values()].find((x) => x.sha === m[3]);
       return f ? route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ sha: f.sha, encoding: 'base64', content: enc(f.texto) }) }) : route.fulfill({ status: 404, body: '{}' });
     }
+    if (m[4]) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ truncated: false, tree: [...api.repos[clave]].map(([r, f]) => ({ path: r, type: 'blob', sha: f.sha, size: buf(f.texto).length })) }) });
     if (!m[2]) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ name: m[1], permissions: { push: !api.soloLectura[clave] } }) });
     const ruta = decodeURIComponent(m[2]);
     const forzado = api.fallar && api.fallar(metodo, clave, ruta);
@@ -98,7 +100,7 @@ async function instalar(ctx, opciones = {}) {
     const repo = api.repos[clave];
     if (metodo === 'GET') {
       const f = repo.get(ruta);
-      if (f && f.texto.length > MAX_CONTENIDO) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ type: 'file', path: ruta, sha: f.sha, size: f.texto.length, encoding: 'none', content: '' }) });
+      if (f && buf(f.texto).length > MAX_CONTENIDO) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ type: 'file', path: ruta, sha: f.sha, size: buf(f.texto).length, encoding: 'none', content: '' }) });
       if (f) return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ type: 'file', path: ruta, sha: f.sha, content: enc(f.texto) }) });
       const hijos = new Map();
       for (const [r, v] of repo) if (r.startsWith(ruta + '/')) { const nombre = r.slice(ruta.length + 1).split('/')[0]; const esDir = r.slice(ruta.length + 1).includes('/'); if (!hijos.has(nombre)) hijos.set(nombre, { name: nombre, path: ruta + '/' + nombre, type: esDir ? 'dir' : 'file', sha: v.sha }); }
@@ -110,7 +112,7 @@ async function instalar(ctx, opciones = {}) {
     if (metodo === 'PUT') {
       if (f && c.sha !== f.sha) return route.fulfill({ status: 409, body: '{}' });
       if (!f && c.sha) return route.fulfill({ status: 422, body: '{}' });
-      const texto = Buffer.from(c.content, 'base64').toString('utf8');
+      const bytes = Buffer.from(c.content, 'base64'), texto = clave === 'prog' ? bytes : bytes.toString('utf8');
       if (clave === 'web') {
         let valido = K.esSobre(texto);
         if (ruta === 'datos/clave.json') { try { const cj = JSON.parse(texto); valido = cj.version === 1 && K.esSobre(JSON.stringify(cj.verificador)) && !texto.includes(api.contrasenas[api.contrasenas.length - 1]); if (valido) api.aprender(cj); } catch (e) { valido = false; } }

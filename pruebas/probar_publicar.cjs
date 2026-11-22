@@ -1110,6 +1110,124 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.deepStrictEqual(errores, []);
   }
 
+  /* ============ Archivos: descargar de programas-domino/entregables y subir a entregables/del_arbitro (siempre al repositorio privado) ============ */
+  {
+    const crypto = require('crypto');
+    const DESC = ['# Descargas', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      '| `ranking/leer_torneo.html` | Página que se abre con doble clic y deja los resultados listos para el ranking. | 2026-11-22 |',
+      '| `sp/24_SP_sin_macros.xlsx` | El programa del 24º Súper Prestigio. | 2026-11-15 |',
+      '| `web/capturas/` | Capturas del manual. | 2026-11-22 |', '| `fantasma.txt` | Una línea cuyo archivo ya no está. | 2026-11-01 |', ''].join('\n');
+    const GRANDE = crypto.randomBytes(1500000);                       // más de 1 MB: GitHub no trae su «content» y hay que pedir el blob
+    const semilla = (a) => {
+      a.poner('prog', 'entregables/DESCARGAS.md', DESC); a.poner('prog', 'entregables/ranking/leer_torneo.html', '<html>hola</html>');
+      a.poner('prog', 'entregables/sp/24_SP_sin_macros.xlsx', GRANDE); a.poner('prog', 'entregables/web/capturas/pub-01.png', Buffer.from([1, 2, 3]));
+      a.poner('prog', 'entregables/sin_linea.txt', 'x'); a.poner('prog', 'entregables/.gitkeep', '');
+    };
+    const subida = (n, bytes) => ({ name: n, mimeType: 'application/octet-stream', buffer: bytes });
+    const { ctx, pg, api, errores } = await escenario({ semilla });
+    await abrir(pg);
+    assert.strictEqual(await pg.locator('#archivos-lista li').count(), 0);
+    assert.strictEqual(api.reqs.some((r) => /programas-domino/.test(r.ruta)), false);
+    bien('archivos: al abrir la mesa no se llama a programas-domino hasta pulsar «Ver los archivos»');
+    await pg.click('#archivos-ver');
+    await pg.waitForSelector('#archivos-lista li.archivo');
+    const nombresA = await pg.$$eval('#archivos-lista li.archivo .archivo-nombre', (l) => l.map((x) => x.textContent));
+    assert.deepStrictEqual(nombresA, ['leer_torneo.html', '24_SP_sin_macros.xlsx']);
+    const txtA = await pg.textContent('#archivos-lista');
+    assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('22/11/2026') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
+    assert(!txtA.includes('fantasma') && !txtA.includes('pub-01') && !txtA.includes('.gitkeep'), txtA);
+    bien('archivos: lista lo que tiene línea en DESCARGAS.md y existe (nombre, carpeta, frase, fecha y tamaño); no enseña carpetas, huérfanos ni sin línea, y cuenta los sin descripción');
+    const [d1] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("24_SP_sin_macros.xlsx") button')]);
+    assert.strictEqual(d1.suggestedFilename(), '24_SP_sin_macros.xlsx');
+    assert(fs.readFileSync(await d1.path()).equals(GRANDE));
+    assert(api.reqs.some((r) => /\/git\/blobs\/[0-9a-f]{40}$/.test(r.ruta) && r.auth === 'Bearer ' + TOKEN));
+    bien('archivos: «Descargar» baja el archivo tal cual (también el de más de 1 MB) con la API de GitHub y el token del panel');
+    const [d2] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("leer_torneo.html") button')]);
+    assert.strictEqual(fs.readFileSync(await d2.path(), 'utf8'), '<html>hola</html>');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
+    // subir
+    const datosXl = crypto.randomBytes(300000);
+    await pg.setInputFiles('#subir-archivo', subida('Lista de jugadores.xlsx', datosXl));
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
+    assert((await pg.textContent('#subir-nota')).includes('obligatoria'));
+    await pg.fill('#subir-desc', '  ');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
+    await pg.fill('#subir-desc', 'Lista de jugadores | de 2026');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
+    await pg.click('#subir-boton');
+    await pg.waitForSelector('#archivos-lista li:has-text("Lista de jugadores.xlsx")');
+    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
+    assert(api.bytes('prog', 'entregables/del_arbitro/Lista de jugadores.xlsx').equals(datosXl));
+    assert(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().includes('| `del_arbitro/Lista de jugadores.xlsx` | Lista de jugadores / de 2026 | '));
+    assert.deepStrictEqual(api.puts.map((x) => x.clave + ' ' + x.ruta), ['prog entregables/del_arbitro/Lista de jugadores.xlsx', 'prog entregables/DESCARGAS.md']);
+    assert(api.puts.every((x) => x.rama === 'main' && x.author.name === 'Mesa de control' && !/@(?!users\.noreply)/.test(x.author.email)));
+    assert.strictEqual((await pg.$$eval('#archivos-lista li.archivo .archivo-nombre', (l) => l.map((x) => x.textContent)))[0], 'Lista de jugadores.xlsx');
+    assert.strictEqual(await pg.inputValue('#subir-desc'), '');
+    bien('archivos: «Subir» pone el archivo en entregables/del_arbitro/ de programas-domino, añade su línea a DESCARGAS.md (la descripción es obligatoria) y sale el primero de la lista');
+    assert.deepStrictEqual(api.log.filter((x) => !/ prog /.test(x)), []);
+    assert.deepStrictEqual(api.enClaro, []);
+    bien('archivos: no se escribe nada en campeonatos-domino ni en borradores');
+    // sustituir
+    await pg.setInputFiles('#subir-archivo', subida('Lista de jugadores.xlsx', Buffer.from('nuevo')));
+    await pg.fill('#subir-desc', 'Versión nueva');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
+    assert.strictEqual(await pg.isVisible('#subir-pisar'), true);
+    await pg.check('#subir-pisar');
+    await pg.click('#subir-boton');
+    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
+    assert.strictEqual(api.bytes('prog', 'entregables/del_arbitro/Lista de jugadores.xlsx').toString(), 'nuevo');
+    assert.strictEqual((api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().match(/del_arbitro\/Lista de jugadores\.xlsx/g) || []).length, 1);
+    bien('archivos: con el mismo nombre pide confirmar y sustituye el archivo y su línea (no la duplica)');
+    // nombre raro
+    await pg.setInputFiles('#subir-archivo', subida('100%.xlsx', Buffer.from('x'))); await pg.fill('#subir-desc', 'algo');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
+    assert((await pg.textContent('#subir-nota')).includes('nombre del archivo no vale'));
+    bien('archivos: un nombre con caracteres no permitidos no se sube');
+    // fallo al anotar la línea: el archivo está subido y se puede repetir solo la línea
+    await pg.setInputFiles('#subir-archivo', subida('Otro.pdf', Buffer.from('%PDF-1.4'))); await pg.fill('#subir-desc', 'Un PDF');
+    api.fallar = (m, c, ruta) => (m === 'PUT' && c === 'prog' && ruta === 'entregables/DESCARGAS.md' ? 500 : null);
+    await pg.click('#subir-boton');
+    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('se ha subido, pero no se ha podido añadir su línea'));
+    assert(api.repos.prog.has('entregables/del_arbitro/Otro.pdf'));
+    assert.strictEqual(await pg.textContent('#subir-boton'), 'Añadir la línea a DESCARGAS');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
+    api.fallar = null;
+    await pg.click('#subir-boton');
+    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
+    assert(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().includes('`del_arbitro/Otro.pdf` | Un PDF |'));
+    bien('archivos: si falla anotar la línea, lo dice y se repite solo la línea (sin volver a subir el archivo)');
+    assert.deepStrictEqual(api.log.filter((x) => !/ prog /.test(x)), []);
+    assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []);
+    assert.deepStrictEqual(errores, []);
+    bien('archivos: con la política de seguridad de la página no hay una sola infracción ni error');
+    await ctx.close();
+    {
+      // sin permiso en programas-domino
+      const sin = await escenario({ semilla, acceso: { prog: false } });
+      await abrir(sin.pg);
+      await sin.pg.click('#archivos-ver');
+      await sin.pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('programas-domino'));
+      const t = await sin.pg.textContent('#archivos-estado');
+      assert(t.includes('Repository access') && t.includes('Contents: Read and write') && t.includes('ningún otro token'), t);
+      assert.strictEqual(await sin.pg.locator('#archivos-lista li').count(), 0);
+      assert.strictEqual(await sin.pg.isDisabled('#subir-boton'), true);
+      bien('archivos: con un token sin programas-domino lo dice y explica cómo añadirlo (Contents: Read and write), y el resto de la página sigue');
+      await sin.ctx.close();
+      // token de solo lectura
+      const lec = await escenario({ semilla });
+      lec.api.soloLectura.prog = true;
+      await abrir(lec.pg);
+      await lec.pg.click('#archivos-ver');
+      await lec.pg.waitForSelector('#archivos-lista li.archivo');
+      await lec.pg.setInputFiles('#subir-archivo', subida('X.xlsx', Buffer.from('x'))); await lec.pg.fill('#subir-desc', 'algo');
+      assert.strictEqual(await lec.pg.isDisabled('#subir-boton'), true);
+      assert((await lec.pg.textContent('#subir-nota')).includes('solo puede leer'));
+      assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);
+      bien('archivos: con un token de solo lectura se puede descargar pero no subir, y lo dice');
+      await lec.ctx.close();
+    }
+  }
+
   assert.deepStrictEqual(apis.flatMap((a) => a.enClaro), [], 'algún PUT a la web iba sin cifrar');
   bien('en toda la prueba, ningún PUT a campeonatos-domino lleva un JSON en claro ni un PDF sin cifrar');
   assert.deepStrictEqual(externos, []);

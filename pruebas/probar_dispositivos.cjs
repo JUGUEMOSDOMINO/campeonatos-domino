@@ -181,12 +181,22 @@ function llegaAPuntC() {
     api.ponerCifrado('datos/indice.json', JSON.stringify({ version: '1.0', publicado: '2026-01-01T00:00:00Z', torneos: [] }));
     sembrar(api, 'web', 'sp-ejemplo', { normativa: true }); sembrar(api, 'web', 'nombres-largos');
     sembrar(api, 'borr', 'parejas-ejemplo-2026-11-14'); sembrar(api, 'borr', 'individual-ejemplo-2026-11-14');
+    const NL = 'Ranking_FVD_2026-27_con_un_nombre_muy_largo_que_no_cabe_en_una_pantalla_de_telefono_pequena_copia_final_revisada.xlsx';
+    api.poner('prog', 'entregables/DESCARGAS.md', ['# Descargas', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      `| \`del_arbitro/${NL}\` | Una descripción bastante larga para comprobar que en una pantalla de 320 píxeles no se corta ni se esconde nada, ni siquiera con palabras larguísimas como ${'x'.repeat(60)}. | 2026-11-22 |`,
+      '| `ranking/leer_torneo.html` | Página que se abre con doble clic. | 2026-11-22 |', ''].join('\n'));
+    api.poner('prog', `entregables/del_arbitro/${NL}`, Buffer.from('x')); api.poner('prog', 'entregables/ranking/leer_torneo.html', '<html></html>');
     await pg.goto(`${base}/publicar.html`);
     await pg.waitForSelector('#lista-web');
     await mira('mesa · sin token');
     await pg.fill('#token', TOKEN); await pg.click('text=Guardar y comprobar'); await pg.waitForSelector('text=Hay un token guardado');
     await pg.waitForSelector('#lista-web[data-listo]'); await pg.waitForSelector('#lista-borr[data-listo]');
     await mira('mesa · listas');
+    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo');
+    await mira('mesa · archivos');
+    await pg.setInputFiles('#subir-archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });
+    await pg.fill('#subir-desc', 'Una frase que explica qué es el archivo que se va a subir a programas-domino'); await pg.check('#subir-pisar');
+    await mira('mesa · subir un archivo');
     await pg.click('#clave-estado button:text-is("Cambiar la contraseña")'); await pg.waitForSelector('#nueva-clave');
     await mira('mesa · cambiar la contraseña');
     await pg.fill('#nueva-clave', 'corta'); await mira('mesa · contraseña demasiado corta');

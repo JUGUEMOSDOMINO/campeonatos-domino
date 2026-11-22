@@ -22,6 +22,7 @@
 <script src="assets/mesa.js?v=20261123w19o" defer></script>
 <script src="assets/web.js?v=20261123w19o" defer></script>
 <script src="assets/publicar.js?v=20261123w19o" defer></script>
+<script src="assets/archivos.js?v=20261123w19o" defer></script>
 </head>
 <body data-pagina="publicar">
 <header class="barra"><div class="barra-in">
@@ -79,6 +80,21 @@
     <pre class="registro" id="registro" hidden></pre>
     <div class="acciones" id="reintento" hidden></div>
     <p class="nota sep-10" id="resultado" hidden></p>
+  </section>
+  <section class="paso" id="paso-archivos" aria-labelledby="t-archivos">
+    <h2 id="t-archivos">Archivos para descargar</h2>
+    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que sube el árbitro desde aquí va siempre a programas-domino, a la carpeta entregables/del_arbitro/, y nunca a la web pública.</p>
+    <div class="acciones sin-margen"><button class="boton sec" id="archivos-ver" type="button">Ver los archivos</button></div>
+    <div id="archivos-estado" class="nota sep-10" aria-live="polite"></div>
+    <ul id="archivos-lista" class="lista-archivos"></ul>
+    <h3 class="subtitulo">Subir un archivo</h3>
+    <label for="subir-archivo" class="solo-lector">Archivo que subir a programas-domino</label>
+    <input id="subir-archivo" type="file">
+    <label for="subir-desc" class="etiqueta-campo">Qué es (obligatorio)</label>
+    <textarea id="subir-desc" rows="2" maxlength="200" autocomplete="off"></textarea>
+    <label id="subir-pisar-caja" class="casilla-pisar" hidden><input id="subir-pisar" type="checkbox"> <span>Ya hay un archivo con ese nombre: sustituirlo</span></label>
+    <div class="acciones"><button class="boton" id="subir-boton" type="button" disabled>Subir a programas-domino</button></div>
+    <p id="subir-nota" class="nota sin-margen" aria-live="polite"></p>
   </section>
 </main>
 <footer class="pie"><div class="pie-in">
