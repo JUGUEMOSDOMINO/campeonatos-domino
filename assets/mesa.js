@@ -17,9 +17,10 @@
   const ID_OK = new RegExp('^' + ID + '$');
   const RUTA_OK = new RegExp('^datos/(indice\\.json|clave\\.json|' + ID + '/((jornada_\\d{2}|actual)\\.json|normativa\\.pdf\\.cifrado))$');
   const DIR_OK = new RegExp('^datos(/' + ID + ')?$');
-  // programas-domino: leer cualquier ruta de entregables/ (sin «.» ni «..» ni barras invertidas, «?», «#» o «%»); escribir solo del_arbitro/ y DESCARGAS.md
+  // programas-domino: leer cualquier ruta de entregables/ (sin «.» ni «..» ni barras invertidas, «?», «#» o «%»); escribir solo del_arbitro/<categoría>/ y DESCARGAS.md
   const PROG_LEER = /^entregables(\/(?!\.{1,2}(\/|$))[^/\\?#%]+)*$/;
-  const PROG_ESCRIBIR = /^entregables\/(del_arbitro\/(?!\.{1,2}$)[^/\\?#%]+|DESCARGAS\.md)$/;
+  // Las carpetas de categoría son las de Archivos.carpetaDe(CATEGORIAS_SUBIR) (assets/archivos.js); «mantenimiento» no está: no se sube ahí. probar_archivos.cjs vigila que coincidan.
+  const PROG_ESCRIBIR = /^entregables\/(del_arbitro\/(programas-de-campeonato|ranking-fvd|rankings-publicados|torneos|manuales-y-guias|otros)\/(?!\.{1,2}$)[^/\\?#%]+|DESCARGAS\.md)$/;
   const ARBOL_OK = '/git/trees/main?recursive=1';
   const BLOB_OK = /^\/git\/blobs\/[0-9a-f]{40}$/; // archivos de más de 1 MB: la API de contenidos no trae el contenido
   const ARCHIVO_DATOS = /^(jornada_\d{2}|actual)\.json$/;
@@ -54,7 +55,7 @@
       const decodificada = (() => { try { return decodeURIComponent(limpia); } catch (e) { return '%'; } })();
       const permitida = clave === 'prog' ? !/%2f|%5c/i.test(limpia) && PROG_LEER.test(decodificada) : RUTA_OK.test(limpia) || DIR_OK.test(limpia);
       if (!sufijo.startsWith('/contents/') || !permitida) throw new ErrorGH(0, 'Ruta no permitida: ' + sufijo);
-      if (clave === 'prog' && metodo !== 'GET' && (metodo !== 'PUT' || !PROG_ESCRIBIR.test(decodificada))) throw new ErrorGH(0, 'En programas-domino solo se escribe en entregables/del_arbitro/ y entregables/DESCARGAS.md: ' + sufijo);
+      if (clave === 'prog' && metodo !== 'GET' && (metodo !== 'PUT' || !PROG_ESCRIBIR.test(decodificada))) throw new ErrorGH(0, 'En programas-domino solo se escribe en entregables/del_arbitro/<categoría>/ y entregables/DESCARGAS.md: ' + sufijo);
     }
     if (clave === 'prog' && metodo !== 'GET' && !(sufijo || '').startsWith('/contents/')) throw new ErrorGH(0, 'Operación no permitida en programas-domino.');
     const t = token.obtener();
@@ -376,6 +377,6 @@
 
   const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
     planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
-    estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveJson() { return CL.cj; } };
+    estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveAbierta() { return !!CL.clave; }, get claveJson() { return CL.cj; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = Mesa; else raiz.Mesa = Mesa;
 })(typeof window !== 'undefined' ? window : globalThis);

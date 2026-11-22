@@ -126,9 +126,9 @@ Si el token no tiene acceso a `campeonatos-borradores`, la lista de borradores d
 
 Sirve para descargar lo que hay en `programas-domino/entregables/` sin entrar en GitHub, y para subir archivos del árbitro. `programas-domino` es privado y lo lleva el mismo token, en el navegador, con la API de GitHub. Lo hace `assets/archivos.js`; todo lo que sale hacia GitHub pasa por `Mesa.llamar` (`assets/mesa.js`), que solo manda el token a `api.github.com`.
 
-- Lee `entregables/DESCARGAS.md` (una línea por archivo: ruta, frase y fecha) y enseña los archivos que tienen línea. Descarga con la API (`/git/blobs/<sha>`): nada sale a otro dominio.
-- Solo se lee dentro de `entregables/` (sin `..`) y solo se escribe `entregables/del_arbitro/<archivo>` y `entregables/DESCARGAS.md`. No se borra nada. `probar_archivos.cjs` lo prueba.
-- «Subir archivo» va siempre a `programas-domino`, nunca a `campeonatos-domino`, y pide una descripción que se añade a `DESCARGAS.md`. Ahí sí pueden ir Excel con datos de jugadores, porque el repositorio es privado.
+- Lee `entregables/DESCARGAS.md` (una línea por archivo: ruta, frase y fecha, bajo su categoría) y enseña por categorías los archivos que tienen línea. Descarga con la API (`/git/blobs/<sha>`): nada sale a otro dominio.
+- Solo se lee dentro de `entregables/` (sin `..`) y solo se escribe `entregables/del_arbitro/<categoría>/<archivo>` (la carpeta es una de seis fijas; «Mantenimiento» no se puede elegir) y `entregables/DESCARGAS.md`. No se borra nada. `probar_archivos.cjs` lo prueba.
+- «Subir archivo» va siempre a `programas-domino`, nunca a `campeonatos-domino`, y pide una descripción y una categoría; la línea se añade a `DESCARGAS.md`, en esa categoría. Ahí sí pueden ir Excel con datos de jugadores, porque el repositorio es privado.
 - Si el token no tiene `programas-domino`, la sección lo dice y explica cómo añadirlo (edita el token, «Repository access», y «Contents: Read and write»). La página no pide ni guarda ningún otro token.
 
 ### Rotarlo

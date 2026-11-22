@@ -844,19 +844,49 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     bien('la web, en el mismo navegador que la mesa, se abre con la contraseña nueva y enseña la normativa');
   }
 
-  // «Cifrar lo publicado»: solo cambia lo que estaba en claro
+  // Lo publicado sin cifrar se cifra solo en cuanto la mesa tiene la contraseña abierta: solo cambia lo que estaba en claro
   {
     const { pg, api } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'web', PAR, { enClaro: true }); } });
-    await abrir(pg);
-    assert((await pg.textContent('#lista-web')).includes('sin cifrar'));
     const cifrados = api.rutas('web').filter((r) => api.cifradoCon(r) === 0);
     api.log.length = 0;
-    await pg.click('#clave-estado button:text-is("Cifrar lo publicado")');
-    await pg.waitForSelector('#registro-clave:has-text("Todo lo publicado está cifrado")');
+    await abrir(pg);
+    await pg.waitForSelector('#registro-clave:has-text("ya está cifrado")');
+    await pg.waitForSelector('#lista-web[data-listo]');
     assert(todasCon(api, 0)); assert.deepStrictEqual(api.enClaro, []);
     assert(!api.log.some((x) => cifrados.some((r) => x === 'PUT web ' + r)), 'lo que ya iba cifrado no se toca');
     assert(!api.log.includes('PUT web datos/clave.json'));
-    bien('«Cifrar lo publicado» cifra los JSON en claro, no toca lo ya cifrado ni clave.json');
+    assert(!(await pg.textContent('#lista-web')).includes('sin cifrar'));
+    bien('lo publicado sin cifrar se cifra solo al abrir la mesa con la contraseña: no hay que pulsar nada, no se toca lo ya cifrado ni clave.json');
+    api.log.length = 0;
+    await pg.click('#clave-estado button:text-is("Cifrar lo publicado")');
+    await pg.waitForSelector('#registro-clave:has-text("Todo lo publicado está cifrado")');
+    assert.deepStrictEqual(api.log.filter((x) => x.startsWith('PUT')), []);
+    bien('«Cifrar lo publicado» sigue ahí para quien quiera usarlo; con todo cifrado no escribe nada');
+  }
+  // sin la contraseña abierta no se puede cifrar: espera a que se escriba y entonces lo hace solo
+  {
+    const { pg, api } = await escenario({ clave: false, semilla: (a) => { sembrarWeb(a); sembrar(a, 'web', PAR, { enClaro: true }); } });
+    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#clave-web');
+    assert.deepStrictEqual(api.puts.filter((x) => x.clave === 'web'), []);
+    await pg.fill('#clave-web', CONTRASENA_WEB); await pg.click('#clave-estado button:text-is("Abrir")');
+    await pg.waitForSelector('#registro-clave:has-text("ya está cifrado")');
+    assert(todasCon(api, 0)); assert.deepStrictEqual(api.enClaro, []);
+    bien('con la contraseña sin abrir no se escribe nada en la web; al escribirla, lo que estaba en claro se cifra solo');
+  }
+  // si el cifrado automático falla, no se vuelve a intentar en bucle: dice qué falta y ofrece «Reintentar»
+  {
+    const { pg, api } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'web', PAR, { enClaro: true }); } });
+    let intentos = 0;
+    api.fallar = (m, c, r) => { if (m === 'PUT' && c === 'web') { intentos++; return 500; } return null; };
+    await abrir(pg);
+    await pg.waitForSelector('#reintento-clave button:text-is("Reintentar")');
+    await pg.waitForTimeout(800);
+    assert.strictEqual(intentos, 1, 'un solo intento automático');
+    api.fallar = null;
+    await pg.click('#reintento-clave button:text-is("Reintentar")');
+    await pg.waitForSelector('#registro-clave:has-text("ya está cifrado")');
+    assert(todasCon(api, 0)); assert.deepStrictEqual(api.enClaro, []);
+    bien('si el cifrado automático falla, lo dice, no se repite en bucle y «Reintentar» lo termina');
   }
 
   // Sin la clave en el navegador: la mesa la pide; sin ella no lee la web
@@ -1113,13 +1143,17 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
   /* ============ Archivos: descargar de programas-domino/entregables y subir a entregables/del_arbitro (siempre al repositorio privado) ============ */
   {
     const crypto = require('crypto');
-    const DESC = ['# Descargas', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
-      '| `ranking/leer_torneo.html` | Página que se abre con doble clic y deja los resultados listos para el ranking. | 2026-11-22 |',
-      '| `sp/24_SP_sin_macros.xlsx` | El programa del 24º Súper Prestigio. | 2026-11-15 |',
-      '| `web/capturas/` | Capturas del manual. | 2026-11-22 |', '| `fantasma.txt` | Una línea cuyo archivo ya no está. | 2026-11-01 |', ''].join('\n');
+    const DESC = ['# Descargas', '', '## Programas de campeonato', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      '| `sp/24_SP_sin_macros.xlsx` | El programa del 24º Súper Prestigio. | 2026-11-15 |', '',
+      '## Ranking FVD', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      '| `ranking/Ranking_FVD_plantilla.xlsx` | El ranking vacío. | 2026-11-10 |',
+      '| `ranking/leer_torneo.html` | Página que se abre con doble clic y deja los resultados listos para el ranking. | 2026-11-22 |', '',
+      '## Otros', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `fantasma.txt` | Una línea cuyo archivo ya no está. | 2026-11-01 |', '',
+      '## Mantenimiento', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      '| `web/recortar.py` | Programa que recorta las capturas. | 2026-11-16 |', '| `web/capturas/` | Capturas del manual. | 2026-11-22 |', ''].join('\n');
     const GRANDE = crypto.randomBytes(1500000);                       // más de 1 MB: GitHub no trae su «content» y hay que pedir el blob
     const semilla = (a) => {
-      a.poner('prog', 'entregables/DESCARGAS.md', DESC); a.poner('prog', 'entregables/ranking/leer_torneo.html', '<html>hola</html>');
+      a.poner('prog', 'entregables/DESCARGAS.md', DESC); a.poner('prog', 'entregables/ranking/leer_torneo.html', '<html>hola</html>'); a.poner('prog', 'entregables/ranking/Ranking_FVD_plantilla.xlsx', 'vacio'); a.poner('prog', 'entregables/web/recortar.py', 'print()');
       a.poner('prog', 'entregables/sp/24_SP_sin_macros.xlsx', GRANDE); a.poner('prog', 'entregables/web/capturas/pub-01.png', Buffer.from([1, 2, 3]));
       a.poner('prog', 'entregables/sin_linea.txt', 'x'); a.poner('prog', 'entregables/.gitkeep', '');
     };
@@ -1131,11 +1165,25 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     bien('archivos: al abrir la mesa no se llama a programas-domino hasta pulsar «Ver los archivos»');
     await pg.click('#archivos-ver');
     await pg.waitForSelector('#archivos-lista li.archivo');
+    const cats = await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => [d.querySelector('summary .cat-nombre').textContent, d.querySelector('summary .cat-n').textContent, d.open]));
+    assert.deepStrictEqual(cats, [['Programas de campeonato', '1 archivo', true], ['Ranking FVD', '2 archivos', true], ['Mantenimiento', '1 archivo', false]]);
+    bien('archivos: una sección por categoría, en su orden, con el número de archivos; las vacías no salen y Mantenimiento va la última y cerrada');
     const nombresA = await pg.$$eval('#archivos-lista li.archivo .archivo-nombre', (l) => l.map((x) => x.textContent));
-    assert.deepStrictEqual(nombresA, ['leer_torneo.html', '24_SP_sin_macros.xlsx']);
-    const txtA = await pg.textContent('#archivos-lista');
+    assert.deepStrictEqual(nombresA, ['24_SP_sin_macros.xlsx', 'leer_torneo.html', 'Ranking_FVD_plantilla.xlsx', 'recortar.py']);
+    bien('archivos: dentro de cada categoría, lo más reciente primero');
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("recortar.py")'), false);
+    await pg.click('#archivos-lista summary:has-text("Mantenimiento")');
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("recortar.py")'), true);
+    await pg.click('#archivos-lista summary:has-text("Mantenimiento")');
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("recortar.py")'), false);
+    await pg.click('#archivos-lista summary:has-text("Programas de campeonato")');
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), false);
+    await pg.click('#archivos-lista summary:has-text("Programas de campeonato")');
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), true);
+    bien('archivos: cada categoría se abre y se cierra con un clic en su título');
+    const txtA = await pg.textContent('#archivos-estado') + await pg.textContent('#archivos-lista');
     assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('22/11/2026') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
-    assert(!txtA.includes('fantasma') && !txtA.includes('pub-01') && !txtA.includes('.gitkeep'), txtA);
+    assert(!txtA.includes('fantasma') && !txtA.includes('pub-01') && !txtA.includes('.gitkeep') && !txtA.includes('Capturas del manual'), txtA);
     bien('archivos: lista lo que tiene línea en DESCARGAS.md y existe (nombre, carpeta, frase, fecha y tamaño); no enseña carpetas, huérfanos ni sin línea, y cuenta los sin descripción');
     const [d1] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("24_SP_sin_macros.xlsx") button')]);
     assert.strictEqual(d1.suggestedFilename(), '24_SP_sin_macros.xlsx');
@@ -1147,55 +1195,77 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
     // subir
     const datosXl = crypto.randomBytes(300000);
+    assert.deepStrictEqual(await pg.$$eval('#subir-cat option', (l) => l.map((o) => o.value)), ['', 'Programas de campeonato', 'Ranking FVD', 'Rankings publicados', 'Torneos', 'Manuales y guías', 'Otros']);
+    bien('archivos: la categoría al subir es una lista cerrada, sin Mantenimiento y sin ninguna elegida de entrada');
     await pg.setInputFiles('#subir-archivo', subida('Lista de jugadores.xlsx', datosXl));
     assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
     assert((await pg.textContent('#subir-nota')).includes('obligatoria'));
     await pg.fill('#subir-desc', '  ');
     assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
     await pg.fill('#subir-desc', 'Lista de jugadores | de 2026');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
+    assert((await pg.textContent('#subir-nota')).includes('categoría'));
+    await pg.selectOption('#subir-cat', 'Torneos');
     assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
     await pg.click('#subir-boton');
     await pg.waitForSelector('#archivos-lista li:has-text("Lista de jugadores.xlsx")');
     await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    assert(api.bytes('prog', 'entregables/del_arbitro/Lista de jugadores.xlsx').equals(datosXl));
-    assert(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().includes('| `del_arbitro/Lista de jugadores.xlsx` | Lista de jugadores / de 2026 | '));
-    assert.deepStrictEqual(api.puts.map((x) => x.clave + ' ' + x.ruta), ['prog entregables/del_arbitro/Lista de jugadores.xlsx', 'prog entregables/DESCARGAS.md']);
+    assert(api.bytes('prog', 'entregables/del_arbitro/torneos/Lista de jugadores.xlsx').equals(datosXl));
+    assert(/## Torneos\n\n\| Archivo \| Qué es \| Fecha \|\n\|---\|---\|---\|\n\| `del_arbitro\/torneos\/Lista de jugadores\.xlsx` \| Lista de jugadores \/ de 2026 \| /.test(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString()));
+    assert.deepStrictEqual(api.puts.map((x) => x.clave + ' ' + x.ruta), ['prog entregables/del_arbitro/torneos/Lista de jugadores.xlsx', 'prog entregables/DESCARGAS.md']);
     assert(api.puts.every((x) => x.rama === 'main' && x.author.name === 'Mesa de control' && !/@(?!users\.noreply)/.test(x.author.email)));
-    assert.strictEqual((await pg.$$eval('#archivos-lista li.archivo .archivo-nombre', (l) => l.map((x) => x.textContent)))[0], 'Lista de jugadores.xlsx');
-    assert.strictEqual(await pg.inputValue('#subir-desc'), '');
-    bien('archivos: «Subir» pone el archivo en entregables/del_arbitro/ de programas-domino, añade su línea a DESCARGAS.md (la descripción es obligatoria) y sale el primero de la lista');
+    assert.deepStrictEqual(await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => d.querySelector('.cat-nombre').textContent)), ['Programas de campeonato', 'Ranking FVD', 'Torneos', 'Mantenimiento']);
+    assert.deepStrictEqual(await pg.$$eval('#archivos-lista details.categoria:nth-of-type(3) li .archivo-nombre', (l) => l.map((x) => x.textContent)), ['Lista de jugadores.xlsx']);
+    assert.strictEqual(await pg.inputValue('#subir-desc'), ''); assert.strictEqual(await pg.inputValue('#subir-cat'), '');
+    bien('archivos: «Subir» pone el archivo en entregables/del_arbitro/<categoría>/ de programas-domino, añade su línea a DESCARGAS.md en su categoría (descripción y categoría son obligatorias) y sale en la lista');
     assert.deepStrictEqual(api.log.filter((x) => !/ prog /.test(x)), []);
     assert.deepStrictEqual(api.enClaro, []);
     bien('archivos: no se escribe nada en campeonatos-domino ni en borradores');
     // sustituir
     await pg.setInputFiles('#subir-archivo', subida('Lista de jugadores.xlsx', Buffer.from('nuevo')));
-    await pg.fill('#subir-desc', 'Versión nueva');
+    await pg.fill('#subir-desc', 'Versión nueva'); await pg.selectOption('#subir-cat', 'Otros');
+    assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
+    assert.strictEqual(await pg.isVisible('#subir-pisar'), false);
+    bien('archivos: el mismo nombre en otra categoría es otro archivo y no pide sustituir');
+    await pg.selectOption('#subir-cat', 'Torneos');
     assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
     assert.strictEqual(await pg.isVisible('#subir-pisar'), true);
     await pg.check('#subir-pisar');
     await pg.click('#subir-boton');
     await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    assert.strictEqual(api.bytes('prog', 'entregables/del_arbitro/Lista de jugadores.xlsx').toString(), 'nuevo');
-    assert.strictEqual((api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().match(/del_arbitro\/Lista de jugadores\.xlsx/g) || []).length, 1);
+    assert.strictEqual(api.bytes('prog', 'entregables/del_arbitro/torneos/Lista de jugadores.xlsx').toString(), 'nuevo');
+    assert.strictEqual((api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().match(/del_arbitro\/torneos\/Lista de jugadores\.xlsx/g) || []).length, 1);
     bien('archivos: con el mismo nombre pide confirmar y sustituye el archivo y su línea (no la duplica)');
     // nombre raro
-    await pg.setInputFiles('#subir-archivo', subida('100%.xlsx', Buffer.from('x'))); await pg.fill('#subir-desc', 'algo');
+    await pg.setInputFiles('#subir-archivo', subida('100%.xlsx', Buffer.from('x'))); await pg.fill('#subir-desc', 'algo'); await pg.selectOption('#subir-cat', 'Otros');
     assert.strictEqual(await pg.isDisabled('#subir-boton'), true);
     assert((await pg.textContent('#subir-nota')).includes('nombre del archivo no vale'));
     bien('archivos: un nombre con caracteres no permitidos no se sube');
     // fallo al anotar la línea: el archivo está subido y se puede repetir solo la línea
-    await pg.setInputFiles('#subir-archivo', subida('Otro.pdf', Buffer.from('%PDF-1.4'))); await pg.fill('#subir-desc', 'Un PDF');
-    api.fallar = (m, c, ruta) => (m === 'PUT' && c === 'prog' && ruta === 'entregables/DESCARGAS.md' ? 500 : null);
+    await pg.setInputFiles('#subir-archivo', subida('Otro.pdf', Buffer.from('%PDF-1.4'))); await pg.fill('#subir-desc', 'Un PDF'); await pg.selectOption('#subir-cat', 'Manuales y guías');
+    let intentosLinea = 0;
+    api.fallar = (m, c, ruta) => { if (m === 'PUT' && c === 'prog' && ruta === 'entregables/DESCARGAS.md') { intentosLinea++; return 500; } return null; };
     await pg.click('#subir-boton');
     await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('se ha subido, pero no se ha podido añadir su línea'));
-    assert(api.repos.prog.has('entregables/del_arbitro/Otro.pdf'));
+    assert.strictEqual(intentosLinea, 3, 'la línea se intenta sola tres veces antes de rendirse');
+    assert(api.repos.prog.has('entregables/del_arbitro/manuales-y-guias/Otro.pdf'));
     assert.strictEqual(await pg.textContent('#subir-boton'), 'Añadir la línea a DESCARGAS');
     assert.strictEqual(await pg.isDisabled('#subir-boton'), false);
     api.fallar = null;
     await pg.click('#subir-boton');
     await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
-    assert(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().includes('`del_arbitro/Otro.pdf` | Un PDF |'));
-    bien('archivos: si falla anotar la línea, lo dice y se repite solo la línea (sin volver a subir el archivo)');
+    assert(/## Manuales y guías\n[^#]*`del_arbitro\/manuales-y-guias\/Otro\.pdf` \| Un PDF \|/.test(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString()));
+    bien('archivos: la línea de DESCARGAS se intenta sola tres veces; si sigue fallando lo dice, y el botón repite solo la línea (sin volver a subir el archivo)');
+    // un fallo suelto no llega a verse: la segunda vez entra sola
+    await pg.setInputFiles('#subir-archivo', subida('Suelto.pdf', Buffer.from('%PDF-1.4'))); await pg.fill('#subir-desc', 'Otro PDF'); await pg.selectOption('#subir-cat', 'Otros');
+    let una = 0;
+    api.fallar = (m, c, ruta) => (m === 'PUT' && c === 'prog' && ruta === 'entregables/DESCARGAS.md' && !una++ ? 500 : null);
+    await pg.click('#subir-boton');
+    await pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('Subido a programas-domino'));
+    api.fallar = null;
+    assert(api.repos.prog.get('entregables/DESCARGAS.md').texto.toString().includes('`del_arbitro/otros/Suelto.pdf` | Otro PDF |'));
+    assert.strictEqual(await pg.textContent('#subir-boton'), 'Subir a programas-domino');
+    bien('archivos: si anotar la línea falla una vez, se repite solo y el árbitro no tiene que pulsar nada más');
     assert.deepStrictEqual(api.log.filter((x) => !/ prog /.test(x)), []);
     assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []);
     assert.deepStrictEqual(errores, []);
@@ -1219,7 +1289,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       await abrir(lec.pg);
       await lec.pg.click('#archivos-ver');
       await lec.pg.waitForSelector('#archivos-lista li.archivo');
-      await lec.pg.setInputFiles('#subir-archivo', subida('X.xlsx', Buffer.from('x'))); await lec.pg.fill('#subir-desc', 'algo');
+      await lec.pg.setInputFiles('#subir-archivo', subida('X.xlsx', Buffer.from('x'))); await lec.pg.fill('#subir-desc', 'algo'); await lec.pg.selectOption('#subir-cat', 'Otros');
       assert.strictEqual(await lec.pg.isDisabled('#subir-boton'), true);
       assert((await lec.pg.textContent('#subir-nota')).includes('solo puede leer'));
       assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);

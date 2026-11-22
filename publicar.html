@@ -9,20 +9,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mesa de control · Campeonatos de dominó</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2018%2032%27%3E%3Crect%20x=%271%27%20y=%271%27%20width=%2716%27%20height=%2730%27%20rx=%274%27%20fill=%27%230c3a38%27/%3E%3Cpath%20d=%27M1%2016h16%27%20stroke=%27%23fff%27%20stroke-width=%271.6%27/%3E%3Ccircle%20cx=%279%27%20cy=%278.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%279%27%20cy=%2723.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/estilo.css?v=20261123w19o">
-<script src="assets/xlsx.mini.min.js?v=20261123w19o" defer></script>
-<script src="assets/contrato.js?v=20261123w19o" defer></script>
-<script src="assets/ranking.js?v=20261123w19o" defer></script>
-<script src="assets/resumen.js?v=20261123w19o" defer></script>
-<script src="assets/clasifpdf.js?v=20261123w19o" defer></script>
-<script src="assets/clasifaccess.js?v=20261123w19o" defer></script>
-<script src="assets/partidas.js?v=20261123w19o" defer></script>
-<script src="assets/palabras.js?v=20261123w19o" defer></script>
-<script src="assets/cifra.js?v=20261123w19o" defer></script>
-<script src="assets/mesa.js?v=20261123w19o" defer></script>
-<script src="assets/web.js?v=20261123w19o" defer></script>
-<script src="assets/publicar.js?v=20261123w19o" defer></script>
-<script src="assets/archivos.js?v=20261123w19o" defer></script>
+<link rel="stylesheet" href="assets/estilo.css?v=20261123w20a">
+<script src="assets/xlsx.mini.min.js?v=20261123w20a" defer></script>
+<script src="assets/contrato.js?v=20261123w20a" defer></script>
+<script src="assets/ranking.js?v=20261123w20a" defer></script>
+<script src="assets/resumen.js?v=20261123w20a" defer></script>
+<script src="assets/clasifpdf.js?v=20261123w20a" defer></script>
+<script src="assets/clasifaccess.js?v=20261123w20a" defer></script>
+<script src="assets/partidas.js?v=20261123w20a" defer></script>
+<script src="assets/palabras.js?v=20261123w20a" defer></script>
+<script src="assets/cifra.js?v=20261123w20a" defer></script>
+<script src="assets/mesa.js?v=20261123w20a" defer></script>
+<script src="assets/web.js?v=20261123w20a" defer></script>
+<script src="assets/publicar.js?v=20261123w20a" defer></script>
+<script src="assets/archivos.js?v=20261123w20a" defer></script>
 </head>
 <body data-pagina="publicar">
 <header class="barra"><div class="barra-in">
@@ -83,15 +83,17 @@
   </section>
   <section class="paso" id="paso-archivos" aria-labelledby="t-archivos">
     <h2 id="t-archivos">Archivos para descargar</h2>
-    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que sube el árbitro desde aquí va siempre a programas-domino, a la carpeta entregables/del_arbitro/, y nunca a la web pública.</p>
+    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que sube el árbitro desde aquí va siempre a programas-domino, a la carpeta entregables/del_arbitro/ (una subcarpeta por categoría), y nunca a la web pública.</p>
     <div class="acciones sin-margen"><button class="boton sec" id="archivos-ver" type="button">Ver los archivos</button></div>
     <div id="archivos-estado" class="nota sep-10" aria-live="polite"></div>
-    <ul id="archivos-lista" class="lista-archivos"></ul>
+    <div id="archivos-lista" class="categorias-archivos"></div>
     <h3 class="subtitulo">Subir un archivo</h3>
     <label for="subir-archivo" class="solo-lector">Archivo que subir a programas-domino</label>
     <input id="subir-archivo" type="file">
     <label for="subir-desc" class="etiqueta-campo">Qué es (obligatorio)</label>
     <textarea id="subir-desc" rows="2" maxlength="200" autocomplete="off"></textarea>
+    <label for="subir-cat" class="etiqueta-campo">Categoría (obligatoria)</label>
+    <select id="subir-cat"></select>
     <label id="subir-pisar-caja" class="casilla-pisar" hidden><input id="subir-pisar" type="checkbox"> <span>Ya hay un archivo con ese nombre: sustituirlo</span></label>
     <div class="acciones"><button class="boton" id="subir-boton" type="button" disabled>Subir a programas-domino</button></div>
     <p id="subir-nota" class="nota sin-margen" aria-live="polite"></p>

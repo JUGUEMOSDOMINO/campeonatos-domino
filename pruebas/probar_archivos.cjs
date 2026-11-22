@@ -12,41 +12,110 @@ const MD = `# Descargas
 
 Texto de la regla, con una barra | dentro de la explicación que no es una fila.
 
+## Ranking FVD
+
 | Archivo | Qué es | Fecha |
 |---|---|---|
 | \`ranking/leer_torneo.html\` | Página que se abre con doble clic. | 2026-11-22 |
+
+## Programas de campeonato
+
+| Archivo | Qué es | Fecha |
+|---|---|---|
 | \`sp/24_SP_sin_macros.xlsx\` | El programa del 24º Súper Prestigio. | 2026-11-15 |
+
+## Mantenimiento
+
+| Archivo | Qué es | Fecha |
+|---|---|---|
 | \`web/capturas/\` | Capturas del manual. | 2026-11-22 |
-| \`del_arbitro/Lista de jugadores.xlsx\` | Lo que subió el árbitro. | 2026-11-23 |
+| \`web/recortar.py\` | Programa que recorta las capturas. | 2026-11-16 |
+
+## Torneos
+
+| Archivo | Qué es | Fecha |
+|---|---|---|
+| \`del_arbitro/torneos/Lista de jugadores.xlsx\` | Lo que subió el árbitro. | 2026-11-23 |
 `;
+const lee = (md) => Ar.leerDescargas(md).map((f) => `${f.categoria} | ${f.ruta}`);
 
 (async () => {
+  console.log('Categorías');
+  await ok('la lista cerrada, en orden, con Mantenimiento la última y sin poder subirse', () => {
+    assert.deepStrictEqual(Ar.CATEGORIAS, ['Programas de campeonato', 'Ranking FVD', 'Rankings publicados', 'Torneos', 'Manuales y guías', 'Otros', 'Mantenimiento']);
+    assert.deepStrictEqual(Ar.CATEGORIAS_SUBIR, Ar.CATEGORIAS.slice(0, 6));
+  });
+  await ok('la carpeta de cada categoría: sin tildes, en minúsculas y con guiones', () => {
+    assert.deepStrictEqual(Ar.CATEGORIAS.map(Ar.carpetaDe), ['programas-de-campeonato', 'ranking-fvd', 'rankings-publicados', 'torneos', 'manuales-y-guias', 'otros', 'mantenimiento']);
+  });
+
   console.log('DESCARGAS.md');
-  await ok('lee una fila por archivo: ruta, frase y fecha; ignora cabecera, separador, texto suelto y carpetas', () => {
+  await ok('lee una fila por archivo con su categoría (la sección en la que está); ignora cabecera, separador, texto suelto y carpetas', () => {
     assert.deepStrictEqual(Ar.leerDescargas(MD), [
-      { ruta: 'ranking/leer_torneo.html', descripcion: 'Página que se abre con doble clic.', fecha: '2026-11-22' },
-      { ruta: 'sp/24_SP_sin_macros.xlsx', descripcion: 'El programa del 24º Súper Prestigio.', fecha: '2026-11-15' },
-      { ruta: 'del_arbitro/Lista de jugadores.xlsx', descripcion: 'Lo que subió el árbitro.', fecha: '2026-11-23' }]);
+      { ruta: 'ranking/leer_torneo.html', descripcion: 'Página que se abre con doble clic.', fecha: '2026-11-22', categoria: 'Ranking FVD' },
+      { ruta: 'sp/24_SP_sin_macros.xlsx', descripcion: 'El programa del 24º Súper Prestigio.', fecha: '2026-11-15', categoria: 'Programas de campeonato' },
+      { ruta: 'web/recortar.py', descripcion: 'Programa que recorta las capturas.', fecha: '2026-11-16', categoria: 'Mantenimiento' },
+      { ruta: 'del_arbitro/torneos/Lista de jugadores.xlsx', descripcion: 'Lo que subió el árbitro.', fecha: '2026-11-23', categoria: 'Torneos' }]);
+  });
+  await ok('una fila fuera de toda sección, o bajo un título que no es una categoría, cuenta como «Otros»', () => {
+    const md = '# Descargas\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `a.txt` | Suelta. | 2026-11-01 |\n\n## Cosas raras\n\n| `b.txt` | Bajo otro título. | 2026-11-02 |\n';
+    assert.deepStrictEqual(lee(md), ['Otros | a.txt', 'Otros | b.txt']);
   });
   await ok('un archivo vacío o sin tabla da una lista vacía', () => { assert.deepStrictEqual(Ar.leerDescargas(''), []); assert.deepStrictEqual(Ar.leerDescargas('# Descargas\n\nnada'), []); });
-  await ok('añade la línea de un archivo nuevo al final de la tabla, sin tocar el resto', () => {
-    const n = Ar.conLinea(MD, 'del_arbitro/Otro.pdf', 'Un PDF del árbitro.', '2026-11-24');
-    assert.ok(n.startsWith(MD.trimEnd())); assert.ok(n.trimEnd().endsWith('| `del_arbitro/Otro.pdf` | Un PDF del árbitro. | 2026-11-24 |'));
+
+  await ok('añade la línea al principio de su categoría (lo más reciente arriba), sin tocar el resto', () => {
+    const n = Ar.conLinea(MD, 'del_arbitro/torneos/Otro.pdf', 'Un PDF del árbitro.', '2026-11-24', 'Torneos');
+    assert.deepStrictEqual(lee(n).filter((x) => x.startsWith('Torneos')), ['Torneos | del_arbitro/torneos/Otro.pdf', 'Torneos | del_arbitro/torneos/Lista de jugadores.xlsx']);
+    assert.strictEqual(lee(n).length, 5);
+    assert.strictEqual(n.replace(/\| `del_arbitro\/torneos\/Otro\.pdf`.*\n/, ''), MD);
+  });
+  await ok('si la categoría aún no tiene sección, la crea en su sitio del orden (sin mover las demás)', () => {
+    const n = Ar.conLinea(MD, 'del_arbitro/otros/Nota.txt', 'Una nota.', '2026-11-24', 'Otros');
+    const t = [...n.matchAll(/^## (.*)$/gm)].map((m) => m[1]);
+    assert.deepStrictEqual(t, ['Ranking FVD', 'Programas de campeonato', 'Otros', 'Mantenimiento', 'Torneos']);
+    assert.ok(/## Otros\n\n\| Archivo \| Qué es \| Fecha \|\n\|---\|---\|---\|\n\| `del_arbitro\/otros\/Nota\.txt` \| Una nota\. \| 2026-11-24 \|\n/.test(n), n);
+  });
+  await ok('la sección nueva va antes de la primera categoría posterior que ya exista, o al final si no hay', () => {
+    const base = '# Descargas\n\n## Mantenimiento\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `x.py` | Script. | 2026-11-01 |\n';
+    const t = (md) => [...md.matchAll(/^## (.*)$/gm)].map((m) => m[1]);
+    assert.deepStrictEqual(t(Ar.conLinea(base, 'a/b.xlsx', 'Frase.', '2026-11-24', 'Torneos')), ['Torneos', 'Mantenimiento']);
+    assert.deepStrictEqual(t(Ar.conLinea(base, 'a/c.xlsx', 'Frase.', '2026-11-24', 'Programas de campeonato')), ['Programas de campeonato', 'Mantenimiento']);
+    assert.deepStrictEqual(t(Ar.conLinea('# Descargas\n\n## Torneos\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `t.xlsx` | T. | 2026-11-01 |\n', 'm.pdf', 'Frase.', '2026-11-24', 'Manuales y guías')), ['Torneos', 'Manuales y guías']);
+  });
+  await ok('si el archivo ya tenía línea, la sustituye (no se duplica), también si cambia de categoría', () => {
+    const n = Ar.conLinea(MD, 'del_arbitro/torneos/Lista de jugadores.xlsx', 'Versión nueva.', '2026-11-25', 'Torneos');
+    assert.deepStrictEqual(Ar.leerDescargas(n).filter((x) => x.ruta.endsWith('Lista de jugadores.xlsx')), [{ ruta: 'del_arbitro/torneos/Lista de jugadores.xlsx', descripcion: 'Versión nueva.', fecha: '2026-11-25', categoria: 'Torneos' }]);
     assert.strictEqual(Ar.leerDescargas(n).length, 4);
+    const m = Ar.conLinea(MD, 'sp/24_SP_sin_macros.xlsx', 'Ahora es un torneo.', '2026-11-25', 'Torneos');
+    assert.deepStrictEqual(lee(m).filter((x) => x.includes('24_SP')), ['Torneos | sp/24_SP_sin_macros.xlsx']);
+    assert.strictEqual(Ar.leerDescargas(m).length, 4);
   });
-  await ok('si el archivo ya tenía línea, la sustituye (no se duplica)', () => {
-    const n = Ar.conLinea(MD, 'del_arbitro/Lista de jugadores.xlsx', 'Versión nueva.', '2026-11-25');
-    const l = Ar.leerDescargas(n).filter((x) => x.ruta === 'del_arbitro/Lista de jugadores.xlsx');
-    assert.deepStrictEqual(l, [{ ruta: 'del_arbitro/Lista de jugadores.xlsx', descripcion: 'Versión nueva.', fecha: '2026-11-25' }]);
-    assert.strictEqual(Ar.leerDescargas(n).length, 3);
+  await ok('sin archivo DESCARGAS.md crea el documento entero, con la sección de la categoría', () => {
+    const n = Ar.conLinea(null, 'del_arbitro/otros/A.xlsx', 'Frase.', '2026-11-24', 'Otros');
+    assert.deepStrictEqual(Ar.leerDescargas(n), [{ ruta: 'del_arbitro/otros/A.xlsx', descripcion: 'Frase.', fecha: '2026-11-24', categoria: 'Otros' }]);
+    assert.ok(n.startsWith('# Descargas') && n.includes('## Otros'));
   });
-  await ok('sin archivo DESCARGAS.md crea la tabla entera', () => {
-    const n = Ar.conLinea(null, 'del_arbitro/A.xlsx', 'Frase.', '2026-11-24');
-    assert.deepStrictEqual(Ar.leerDescargas(n), [{ ruta: 'del_arbitro/A.xlsx', descripcion: 'Frase.', fecha: '2026-11-24' }]);
+  await ok('un DESCARGAS.md de tabla única (el de antes) sigue funcionando: sus filas son «Otros» y la nueva va en su sección', () => {
+    const viejo = '# Descargas\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `a.xlsx` | Antigua. | 2026-11-15 |\n';
+    const n = Ar.conLinea(viejo, 'del_arbitro/torneos/T.xlsx', 'Nueva.', '2026-11-24', 'Torneos');
+    assert.deepStrictEqual(lee(n), ['Otros | a.xlsx', 'Torneos | del_arbitro/torneos/T.xlsx']);
+  });
+  await ok('una categoría que no está en la lista no se escribe: la línea va a «Otros»', () => {
+    assert.deepStrictEqual(lee(Ar.conLinea(null, 'x.txt', 'Frase.', '2026-11-24', 'Inventada')), ['Otros | x.txt']);
   });
   await ok('la descripción no puede romper la tabla: sin barras verticales ni saltos de línea', () => {
-    const n = Ar.conLinea(MD, 'del_arbitro/B.xlsx', 'Una | otra\ncosa  con   espacios', '2026-11-24');
-    assert.strictEqual(Ar.leerDescargas(n).pop().descripcion, 'Una / otra cosa con espacios');
+    const n = Ar.conLinea(MD, 'del_arbitro/otros/B.xlsx', 'Una | otra\ncosa  con   espacios', '2026-11-24', 'Otros');
+    assert.strictEqual(Ar.leerDescargas(n).find((x) => x.ruta === 'del_arbitro/otros/B.xlsx').descripcion, 'Una / otra cosa con espacios');
+  });
+
+  console.log('Agrupar para el panel');
+  await ok('por categoría en su orden, solo las que tienen archivos, y dentro lo más reciente primero (a igual fecha, como en el documento)', () => {
+    const filas = [
+      { ruta: 'a', descripcion: 'x', fecha: '2026-11-15', categoria: 'Torneos' }, { ruta: 'b', descripcion: 'x', fecha: '2026-11-23', categoria: 'Torneos' },
+      { ruta: 'c', descripcion: 'x', fecha: '2026-11-23', categoria: 'Torneos' }, { ruta: 'd', descripcion: 'x', fecha: '2026-11-01', categoria: 'Mantenimiento' },
+      { ruta: 'e', descripcion: 'x', fecha: '2026-11-02', categoria: 'Programas de campeonato' }];
+    assert.deepStrictEqual(Ar.agrupar(filas).map((g) => [g.categoria, g.filas.map((f) => f.ruta).join('')]), [['Programas de campeonato', 'e'], ['Torneos', 'bca'], ['Mantenimiento', 'd']]);
+    assert.deepStrictEqual(Ar.agrupar([]), []);
   });
 
   console.log('Nombre y descripción');
@@ -75,11 +144,13 @@ Texto de la regla, con una barra | dentro de la explicación que no es una fila.
       assert.ok(/no permitida/i.test(await prueba('prog', r)), r);
     assert.deepStrictEqual(llamadas, []);
   });
-  await ok('escribir: solo entregables/del_arbitro/<archivo> y entregables/DESCARGAS.md, y solo con PUT', async () => {
-    for (const r of ['/contents/entregables/del_arbitro/Lista.xlsx', '/contents/entregables/del_arbitro/Lista%20de%20jugadores.xlsx', '/contents/entregables/DESCARGAS.md']) assert.strictEqual(await prueba('prog', r, 'PUT'), 'pasó', r);
-    for (const r of ['/contents/entregables/ranking/leer_torneo.html', '/contents/entregables/web/Manual.pdf', '/contents/entregables/del_arbitro', '/contents/entregables/del_arbitro/sub/x.xlsx', '/contents/entregables/DESCARGAS.md/x', '/contents/entregables/del_arbitro/..', '/contents/CLAUDE.md', '/contents/entregables/.gitkeep'])
+  await ok('escribir: solo entregables/del_arbitro/<categoría>/<archivo> y entregables/DESCARGAS.md, y solo con PUT', async () => {
+    for (const c of Ar.CATEGORIAS_SUBIR) assert.strictEqual(await prueba('prog', `/contents/entregables/del_arbitro/${Ar.carpetaDe(c)}/Lista.xlsx`, 'PUT'), 'pasó', c);
+    for (const r of ['/contents/entregables/del_arbitro/torneos/Lista%20de%20jugadores.xlsx', '/contents/entregables/DESCARGAS.md']) assert.strictEqual(await prueba('prog', r, 'PUT'), 'pasó', r);
+    for (const r of ['/contents/entregables/ranking/leer_torneo.html', '/contents/entregables/web/Manual.pdf', '/contents/entregables/del_arbitro', '/contents/entregables/del_arbitro/Lista.xlsx', '/contents/entregables/del_arbitro/sub/x.xlsx',
+      '/contents/entregables/del_arbitro/mantenimiento/x.py', '/contents/entregables/del_arbitro/Torneos/x.xlsx', '/contents/entregables/del_arbitro/torneos/sub/x.xlsx', '/contents/entregables/del_arbitro/torneos/..', '/contents/entregables/del_arbitro/torneos', '/contents/entregables/del_arbitro/torneos%2Fx.xlsx', '/contents/entregables/DESCARGAS.md/x', '/contents/entregables/del_arbitro/..', '/contents/CLAUDE.md', '/contents/entregables/.gitkeep'])
       assert.ok(/solo se escribe|no permitida/i.test(await prueba('prog', r, 'PUT')), r);
-    for (const r of ['/contents/entregables/del_arbitro/Lista.xlsx', '/contents/entregables/DESCARGAS.md']) assert.ok(/solo se escribe|no permitida/i.test(await prueba('prog', r, 'DELETE')), 'DELETE ' + r);
+    for (const r of ['/contents/entregables/del_arbitro/torneos/Lista.xlsx', '/contents/entregables/DESCARGAS.md']) assert.ok(/solo se escribe|no permitida/i.test(await prueba('prog', r, 'DELETE')), 'DELETE ' + r);
     assert.ok(/no permitida/i.test(await prueba('prog', '', 'PUT')));
   });
   await ok('el token solo va a api.github.com y a /repos/JUGUEMOSDOMINO/programas-domino', async () => {

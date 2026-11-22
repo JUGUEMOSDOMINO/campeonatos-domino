@@ -182,10 +182,11 @@ function llegaAPuntC() {
     sembrar(api, 'web', 'sp-ejemplo', { normativa: true }); sembrar(api, 'web', 'nombres-largos');
     sembrar(api, 'borr', 'parejas-ejemplo-2026-11-14'); sembrar(api, 'borr', 'individual-ejemplo-2026-11-14');
     const NL = 'Ranking_FVD_2026-27_con_un_nombre_muy_largo_que_no_cabe_en_una_pantalla_de_telefono_pequena_copia_final_revisada.xlsx';
-    api.poner('prog', 'entregables/DESCARGAS.md', ['# Descargas', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
-      `| \`del_arbitro/${NL}\` | Una descripción bastante larga para comprobar que en una pantalla de 320 píxeles no se corta ni se esconde nada, ni siquiera con palabras larguísimas como ${'x'.repeat(60)}. | 2026-11-22 |`,
-      '| `ranking/leer_torneo.html` | Página que se abre con doble clic. | 2026-11-22 |', ''].join('\n'));
-    api.poner('prog', `entregables/del_arbitro/${NL}`, Buffer.from('x')); api.poner('prog', 'entregables/ranking/leer_torneo.html', '<html></html>');
+    api.poner('prog', 'entregables/DESCARGAS.md', ['# Descargas', '', '## Programas de campeonato', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      `| \`del_arbitro/programas-de-campeonato/${NL}\` | Una descripción bastante larga para comprobar que en una pantalla de 320 píxeles no se corta ni se esconde nada, ni siquiera con palabras larguísimas como ${'x'.repeat(60)}. | 2026-11-22 |`, '',
+      '## Ranking FVD', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `ranking/leer_torneo.html` | Página que se abre con doble clic. | 2026-11-22 |', '',
+      '## Mantenimiento', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `web/hacer_capturas_mesa.cjs` | Programa que hace las capturas de la mesa de control para el manual. Solo lo usa quien mantiene la web. | 2026-11-22 |', ''].join('\n'));
+    api.poner('prog', `entregables/del_arbitro/programas-de-campeonato/${NL}`, Buffer.from('x')); api.poner('prog', 'entregables/ranking/leer_torneo.html', '<html></html>'); api.poner('prog', 'entregables/web/hacer_capturas_mesa.cjs', 'x');
     await pg.goto(`${base}/publicar.html`);
     await pg.waitForSelector('#lista-web');
     await mira('mesa · sin token');
@@ -194,8 +195,10 @@ function llegaAPuntC() {
     await mira('mesa · listas');
     await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo');
     await mira('mesa · archivos');
+    await pg.click('#archivos-lista summary:has-text("Mantenimiento")'); await mira('mesa · archivos con Mantenimiento abierta');
+    await pg.click('#archivos-lista summary:has-text("Ranking FVD")'); await mira('mesa · archivos con una categoría cerrada');
     await pg.setInputFiles('#subir-archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });
-    await pg.fill('#subir-desc', 'Una frase que explica qué es el archivo que se va a subir a programas-domino'); await pg.check('#subir-pisar');
+    await pg.fill('#subir-desc', 'Una frase que explica qué es el archivo que se va a subir a programas-domino'); await pg.selectOption('#subir-cat', 'Programas de campeonato'); await pg.check('#subir-pisar');
     await mira('mesa · subir un archivo');
     await pg.click('#clave-estado button:text-is("Cambiar la contraseña")'); await pg.waitForSelector('#nueva-clave');
     await mira('mesa · cambiar la contraseña');

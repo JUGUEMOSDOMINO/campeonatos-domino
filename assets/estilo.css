@@ -445,6 +445,16 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 }
 
 /* Mesa de control: sección «Archivos» (descargar de programas-domino/entregables y subir a entregables/del_arbitro) */
+.categorias-archivos { display: grid; gap: 12px; margin-top: 8px; }
+/* Cada categoría es una ficha de dominó tumbada: el nombre en una mitad, el número de archivos en la otra, y la raya en medio.
+   Cerrada está boca abajo (oscura); abierta, boca arriba (clara). */
+.categoria > summary { display: flex; align-items: stretch; cursor: pointer; list-style: none; min-width: 0; border: 2px solid var(--barra); border-radius: 12px; background: var(--barra); color: var(--barra-texto); }
+.categoria > summary::-webkit-details-marker { display: none; }
+.categoria[open] > summary { background: var(--papel); color: var(--tinta); }
+.cat-nombre { flex: 1 1 auto; min-width: 0; padding: 10px 14px; font-weight: 800; overflow-wrap: anywhere; }
+.cat-n { flex: none; display: flex; align-items: center; padding: 10px 14px; border-left: 2px solid currentColor; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.categoria[open] > .lista-archivos { margin-top: 10px; }
+@media (prefers-color-scheme: dark) { .categoria > summary { border-color: var(--barra-suave); } }
 .lista-archivos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
 .lista-archivos .archivo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; background: var(--fondo); border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px 12px; min-width: 0; }
 .archivo-datos { flex: 1 1 14rem; min-width: 0; }

@@ -168,6 +168,16 @@
     try { res = { web: await cargarRepo('web'), borr: await cargarRepo('borr') }; } catch (e) { if (!siCaduco(e)) { poner($('#estado-mesa'), e.message); } return; }
     pintarLista('web', res.web); pintarLista('borr', res.borr);
     pintarRestos(res.web);
+    if (res.web.estado === 'ok' && res.web.enClaro && !res.web.soloLectura && M.claveJson && M.claveAbierta && !M.pendiente && !E.cifradoSolo) await cifrarSolo();
+  }
+  /* Lo publicado que quedó sin cifrar (de antes de la contraseña, o subido por otro camino) se cifra solo en cuanto la mesa tiene la contraseña abierta.
+     Un único intento por fallo: si falla, el registro dice qué falta y «Reintentar» lo termina (no se vuelve a probar en bucle). */
+  async function cifrarSolo() {
+    E.cifradoSolo = true;
+    try {
+      const plan = await M.planCifrarPublicado();
+      if (await correr(plan.pasos, salidaClave(), 'Lo que estaba sin cifrar ya está cifrado.', cargarTorneos)) E.cifradoSolo = false;
+    } catch (e) { if (!siCaduco(e)) { const s = salidaClave(); s.pre.hidden = false; s.pre.textContent = '✖ ' + e.message; } }
   }
   function pintarLista(clave, r) {
     const caja = $(clave === 'web' ? '#lista-web' : '#lista-borr');
@@ -176,7 +186,7 @@
     else {
       poner(caja,
         r.soloLectura ? el('p', { class: 'nota caja' }, 'Este token solo puede leer ' + M.REPOS[clave] + '. Para escribir hace falta el permiso «Contents: Read and write».') : null,
-        r.enClaro ? el('p', { class: 'nota caja' }, M.claveJson ? 'Hay archivos de la web sin cifrar. Pulsa «Cifrar lo publicado» en el paso 2.' : 'La web todavía no tiene contraseña y lo publicado está sin cifrar: cualquiera puede leerlo. Establece la contraseña en el paso 2.') : null,
+        r.enClaro ? el('p', { class: 'nota caja' }, M.claveJson ? (M.claveAbierta ? 'Hay archivos de la web sin cifrar. La mesa los cifra sola; si no lo consigue, pulsa «Cifrar lo publicado» en el paso 2.' : 'Hay archivos de la web sin cifrar. Escribe la contraseña en el paso 2 y se cifran solos.') : 'La web todavía no tiene contraseña y lo publicado está sin cifrar: cualquiera puede leerlo. Establece la contraseña en el paso 2.') : null,
         r.torneos.length ? el('ul', { class: 'torneos' }, r.torneos.map((t) => tarjeta(clave, t))) : el('p', { class: 'vacio' }, clave === 'web' ? 'Todavía no hay campeonatos en la web.' : 'No hay borradores.'));
     }
     marcarListo(clave === 'web' ? '#lista-web' : '#lista-borr');
