@@ -15,6 +15,7 @@
   const SUST = ['grupo', 'num', 'nombre', 'lic', 'quien', 'partidas', 'caso'];
   const RE_TEL = /[6-9](?:[\s.\-]?\d){8}|\+\s?\d{2}/;
   const ID = /^[a-z0-9][a-z0-9-]{2,59}$/;
+  const PARTICULAS = new Set(['del', 'las', 'los', 'san', 'van', 'von', 'der']);   // «de la», «del»…: no delatan a nadie (hay «Venta del Moro» o un apellido como «del Prado»)
   const CONTACTO = 'Jesús Eduardo Elián C.';
 
   const letra = (i) => String.fromCharCode(65 + i);
@@ -105,7 +106,8 @@
     pub = pub || {};
     const v = [];
     const add = (cod, gravedad, msg) => v.push({ cod, gravedad, msg });
-    const donde = (x) => `${x._hoja}, fila ${x._ref}`;
+    const pdf = r.origen === 'pdf';                 // del PDF de Access: sin licencias ni lugar, y con P.P. para cuadrar las partidas
+    const donde = (x) => x._donde || `${x._hoja}, fila ${x._ref}`;
     const d = r.datos;
     if (r.estructura.length) add('R01', 'bloquea', `Este archivo no es la Hoja de resumen o está cambiado (mira ${r.estructura[0]}). Pide la hoja de nuevo.`);
     if (r.celdasError.length) add('R01', 'bloquea', `Hay un error en una celda (${r.celdasError[0]}${r.celdasError.length > 1 ? ' y otras ' + (r.celdasError.length - 1) : ''}). Corrígela en el Excel y guárdalo.`);
@@ -116,9 +118,15 @@
     const np = entero(d.partidas);
     if (!(np >= 1 && np <= MAX_PARTIDAS)) p.push(`las partidas jugadas tienen que ser un número de 1 a ${MAX_PARTIDAS}`);
     if (p.length) add('R02', 'bloquea', 'Datos del campeonato: ' + p.join('; ') + '.');
-    if (!r.estructura.length && !p.length && (!d.lugar || !d.organizador)) add('R02', 'avisa', `Falta ${!d.lugar && !d.organizador ? 'el lugar y el organizador' : !d.lugar ? 'el lugar' : 'el organizador'}: la web lo dejará en blanco.`);
+    if (!pdf && !r.estructura.length && !p.length && (!d.lugar || !d.organizador)) add('R02', 'avisa', `Falta ${!d.lugar && !d.organizador ? 'el lugar y el organizador' : !d.lugar ? 'el lugar' : 'el organizador'}: la web lo dejará en blanco.`);
     const A = r.grupos.A, B = r.grupos.B, todas = [...A, ...B];
     if (!A.length) add('R03', 'bloquea', 'No hay ninguna pareja en el grupo A.');
+    if (pdf && r.lineasMalas.length) add('P01', 'bloquea', 'Hay líneas del PDF que no se han podido leer, y no se publica sin ellas: ' + rango(r.lineasMalas.map((x) => `página ${x.pag}, línea ${x.n} (${x.motivo}): «${x.t}»`)) + '.');
+    if (pdf) {
+      const largas = [...A, ...B].filter((x) => String(x.pareja).length >= 50).map((x) => entero(x.num));
+      if (largas.length) add('P04', 'avisa', `Access corta los nombres muy largos (acaban en «Ib» o «Prad», por ejemplo). Hay ${largas.length} ${largas.length === 1 ? 'pareja con nombre largo' : 'parejas con nombres largos'} (Nº ${rango(largas.map(String)).replace(/; /g, ', ')}): si alguno sale cortado, se publica cortado.`);
+    }
+    if (pdf && r.rellenos) add('P02', 'avisa', `Se han saltado ${r.rellenos} ${r.rellenos === 1 ? 'fila de relleno' : 'filas de relleno'} («XXX XXX - ZZZ ZZZ»). No cuentan como parejas.`);
     // filas incompletas y nombres
     const inc = [], jug = new Map();
     for (const x of todas) {
@@ -158,6 +166,23 @@
       if (dif !== pf - pc) cu.push(`${donde(x)}: Dif. (${dif}) no es P.F. menos P.C. (${pf - pc})`);
       if (Math.max(Math.abs(pf), Math.abs(pc), Math.abs(dif)) > 99999) cu.push(`${donde(x)}: una cifra pasa de 5 cifras`);
     }
+    if (pdf && np >= 1) {
+      // ganadas + perdidas = partidas. El grupo A las juega todas. Otro grupo (el B) puede haber jugado menos, pero todas sus parejas las mismas.
+      for (const [g, fs] of [['A', A], ['B', B]]) {
+        const sumas = fs.map((x) => entero(x.pg) + entero(x.pp)).filter((n) => !isNaN(n));
+        if (!sumas.length) continue;
+        const cuenta = new Map(); sumas.forEach((n) => cuenta.set(n, (cuenta.get(n) || 0) + 1));
+        const comun = g === 'A' ? np : [...cuenta].sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+        for (const x of fs) {
+          const s = entero(x.pg) + entero(x.pp);
+          if (isNaN(s) || s === comun) continue;
+          cu.push(g === 'A' ? `${donde(x)}: la pareja ${entero(x.num)} tiene ${entero(x.pg)} ganadas y ${entero(x.pp)} perdidas: ${s} partidas, y el campeonato tuvo ${np}`
+            : `${donde(x)}: la pareja ${entero(x.num)} tiene ${s} partidas y las demás del grupo ${g}, ${comun}`);
+        }
+        if (comun > np) cu.push(`grupo ${g}: sus parejas tienen ${comun} partidas y el campeonato tuvo ${np}`);
+        else if (comun !== np && g !== 'A') add('P03', 'avisa', `En el grupo ${g} cada pareja jugó ${comun} ${comun === 1 ? 'partida' : 'partidas'} y el campeonato tuvo ${np}. Si no es lo que esperabas, mira el PDF.`);
+      }
+    }
     if (cu.length) add('R06', 'bloquea', 'Hay cuentas que no cuadran: ' + rango(cu) + '.');
     // licencias
     const raras = [], faltan = [], usadas = new Map(), dup = [];
@@ -167,7 +192,7 @@
       else if (l.tipo === 'vacia') faltan.push(`${donde(x)} (${quien})`);
       else if (l.tipo === 'fvd') { if (usadas.has(l.n)) dup.push(`la licencia ${l.n} sale dos veces (${donde(usadas.get(l.n))} y ${donde(x)})`); else usadas.set(l.n, x); }
     };
-    for (const x of todas) { mirar(x, x.lic1, 'jugador 1'); mirar(x, x.lic2, 'jugador 2'); }
+    if (!pdf) { for (const x of todas) { mirar(x, x.lic1, 'jugador 1'); mirar(x, x.lic2, 'jugador 2'); } }
     for (const x of r.sust) mirar(x, x.lic, 'sustituto');
     if (raras.length) add('R07', 'bloquea', rango(raras) + '.');
     if (faltan.length) add('R07', 'avisa', 'Falta una licencia (escribe NO si no tiene): ' + rango(faltan) + '.');
@@ -207,8 +232,8 @@
     if (!ID.test(id)) add('R12', 'bloquea', 'El identificador del campeonato no vale: cambia el nombre (de 3 a 60 letras, cifras o guiones).');
     else {
       const palabras = new Set();
-      for (const j of jug.values()) for (const t of j) for (const s of [t.nombre, t.apellido1]) for (const w of sinTilde(s).split(/[^a-zñ]+/)) if (w.length >= 3) palabras.add(w);
-      for (const x of r.sust) for (const w of sinTilde(x.nombre).split(/[^a-zñ]+/)) if (w.length >= 3) palabras.add(w);
+      for (const j of jug.values()) for (const t of j) for (const s of [t.nombre, t.apellido1]) for (const w of sinTilde(s).split(/[^a-zñ]+/)) if (w.length >= 3 && !PARTICULAS.has(w)) palabras.add(w);
+      for (const x of r.sust) for (const w of sinTilde(x.nombre).split(/[^a-zñ]+/)) if (w.length >= 3 && !PARTICULAS.has(w)) palabras.add(w);
       const delata = id.split('-').filter((w) => palabras.has(w));
       if (delata.length) add('R12', 'bloquea', `El identificador del campeonato (${id}) lleva «${delata[0]}», que es el nombre o el apellido de un jugador. Las carpetas de la web no se cifran: cambia el nombre del campeonato.`);
       const e = pub.indice && (pub.indice.torneos || []).find((y) => y.id === id);

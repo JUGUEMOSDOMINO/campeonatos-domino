@@ -1,0 +1,11 @@
+pdf.js (Mozilla) 6.5.438: pdf.min.mjs y pdf.worker.min.mjs, build «legacy» (la que funciona en móviles y navegadores más viejos) del paquete npm pdfjs-dist, sin tocar.
+Licencia Apache 2.0: pdfjs.LICENSE.txt. Lo usa assets/clasifpdf.js para leer el PDF «Clasificación Partida» que sacan los organizadores desde Access.
+Sin CDN: publicar.html lo carga desde su propio sitio, con una política de seguridad que solo permite 'self' (el worker también sale de aquí).
+Se llama con isEvalSupported: false y disableFontFace: true, así que no usa eval ni fuentes en data:.
+El paquete (pdfjs-dist-6.5.438.tgz) tiene sha256 7461aefcd27c4ef0dd76f9ca5760f09466eb6b3f934432670c12132e7b3d6faa
+y, según npm, integrity sha512-vg8Pw1x+AFKy4AMDvhuWl5cOYV8d698UoEANoFFhc79hqXDnZQqnOXoxw3HG907WHOg1JYOvLhP756boddFxpA==.
+  pdf.min.mjs         sha256 522ad2c83bc8a0010e7f0cc60d0892b77c8d2bf2c9702dc12288311d94270f42
+  pdf.worker.min.mjs  sha256 b4c8353ded0d88d2e2009574a29eb4e0c3ff7e942ecdf51ef5f71566a9667f31
+  pdfjs.LICENSE.txt   sha256 0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594
+Para actualizar: npm pack pdfjs-dist, copiar legacy/build/pdf.min.mjs, legacy/build/pdf.worker.min.mjs y LICENSE, y poner aquí la versión y los sha256 nuevos.
+Las mismas copias están en programas-domino, tools/ranking/vendor/.

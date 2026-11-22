@@ -79,6 +79,21 @@
     "id": 7,
     "corto": "Soler-Serra"
    }
+  },
+  {
+   "id": "torneo-de-ejemplo-villa-inventada-2027-03-12",
+   "nombre": "Torneo de Ejemplo - Villa Inventada",
+   "tipo": "parejas",
+   "temporada": null,
+   "fecha": "2027-03-12",
+   "estado": "terminado",
+   "jornada_actual": 7,
+   "n_jornadas": 7,
+   "n_participantes": 8,
+   "ganador": {
+    "id": 5,
+    "corto": "Mas-Soler"
+   }
   }
  ]
 }

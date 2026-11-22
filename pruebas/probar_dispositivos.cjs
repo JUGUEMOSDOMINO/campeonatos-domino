@@ -1,5 +1,6 @@
 // Prueba de que la web se ve entera en cualquier dispositivo: nada se oculta, nada se corta, la página no se desplaza en horizontal.
 // Regla fija del plan (Anexo A, «Web en cualquier dispositivo»). Uso: node pruebas/probar_dispositivos.cjs [url-base] [carpeta-de-capturas]
+const assert = require('assert');
 const fs = require('fs'), os = require('os'), path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
@@ -75,7 +76,9 @@ function llegaAPuntC() {
   const f = [];
   const cab = [...tabla.querySelectorAll('thead th')].map((t) => t.textContent.trim());
   const sp = cab.includes('ENC.J');
-  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.'];
+  const sinZona = !!window.__sinZona;                // el PDF de Access no trae zona: la columna vacía no se enseña
+  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : sinZona ? ['Puesto', 'Nº', 'P.G.', 'P.F.', 'P.C.', 'Dif.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.'];
+  if (sinZona && cab.includes('Zona')) f.push('(d) la columna Zona no tiene que salir si ninguna pareja la tiene');
   if (!sp && cab.includes('Desempate')) f.push('(d) la columna Desempate no tiene que salir');
   for (const c of esperadas) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
   const ultima = sp ? 'PUNT. C.' : 'Dif.';
@@ -162,6 +165,15 @@ function llegaAPuntC() {
     await mira('organizador · clasificación grupo A', llegaAPuntC);
     await pg.click('.grupos button:has-text("Grupo B")'); await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 2);
     await mira('organizador · clasificación grupo B');
+
+    // campeonato publicado desde el PDF de Access: sin zona (la columna no se enseña), con nombres cortados por Access y el grupo B con 3 partidas
+    await pg.goto(`${base}/torneo.html?${D}&t=torneo-de-ejemplo-villa-inventada-2027-03-12`); await pg.waitForSelector('table.clasi');
+    assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
+    await pg.evaluate(() => { window.__sinZona = true; });
+    await mira('pdf · clasificación grupo A', llegaAPuntC);
+    await pg.click('.grupos button:has-text("Grupo B")'); await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 3);
+    await mira('pdf · clasificación grupo B');
+    await pg.evaluate(() => { window.__sinZona = false; });
 
     // mesa de control: listas de la web y de borradores (con nombres largos), cada panel de acción, el Excel con destino, un fallo a mitad y un borrador
     const api = await instalar(ctx);

@@ -578,9 +578,10 @@
     // Como en el Excel de cada programa. SP: CLAS., PAREJA, NOMBRE y las cifras. Parejas e individual: Puesto, Nº, Pareja o Jugador, Zona, P.G., P.F., P.C. y Dif.
     // El Desempate del Excel no se enseña (lo pidió el árbitro); sigue en el JSON.
     // Las tres primeras columnas quedan fijas al desplazar. Cada columna: [clave, rótulo, significado].
+    const hayZona = jd.participantes.some((p) => p.zona); // sin ninguna zona (p. ej. un PDF de Access), la columna iría vacía: no se enseña
     const cols = sp
       ? [['jug', 'ENC.J', 'Encuentros jugados'], ['gan', 'ENC.G', tp.gan], ['dp', 'DIF. P.', 'Diferencia de partidas'], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['pg', 'P. G.', 'Partidas ganadas'], ['pp', 'P. P.', 'Partidas perdidas'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['tc', 'PUNT. C.', 'Puntos en contra']]
-      : [['zona', 'Zona', 'Zona'], ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos']];
+      : [...(hayZona ? [['zona', 'Zona', 'Zona']] : []), ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos']];
     const TEXTO = new Set(['zona']);
     const cabeceras = sp ? ['CLAS.', tp.unidad.toUpperCase(), 'NOMBRE'] : ['Puesto', 'Nº', cap(tp.unidad)];
 
@@ -708,15 +709,15 @@
     const a = E.actual, tp = tipoDe(a.torneo.tipo);
     const ps = a.participantes.slice().sort((x, y) => x.id - y.id);
     if (!ps.length) { cont.replaceChildren(el('p', { class: 'vacio' }, `Todavía no hay ${tp.unidades} publicadas.`)); return; }
-    const hayB = ps.some((p) => p.grupo === 'B');
+    const hayB = ps.some((p) => p.grupo === 'B'), hayZona = ps.some((p) => p.zona);
     cont.replaceChildren(el('div', { class: 'tabla-caja' }, el('table', { class: 'lista-parejas' },
       el('caption', { class: 'solo-lector' }, `${tp.unidades[0].toUpperCase() + tp.unidades.slice(1)} ${tp.unidades === 'jugadores' ? 'inscritos' : 'inscritas'}`),
-      el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Nº'), el('th', { scope: 'col' }, tp.unidades === 'jugadores' ? 'Jugador' : 'Jugadores'), el('th', { scope: 'col' }, 'Zona'))),
+      el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Nº'), el('th', { scope: 'col' }, tp.unidades === 'jugadores' ? 'Jugador' : 'Jugadores'), hayZona ? el('th', { scope: 'col' }, 'Zona') : null)),
       el('tbody', null, ps.map((p) => el('tr', { class: p.ret ? 'ret' : null },
         el('td', { class: 'n' }, p.id),
         el('td', null, [[p.j1_nombre, p.j1_apellido1], [p.j2_nombre, p.j2_apellido1]].filter((x) => x[0]).map((x) => el('span', { class: 'nom' }, x.join(' '))),
           p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null, hayB ? el('span', { class: 'etq' }, 'Grupo ' + p.grupo) : null),
-        el('td', { class: 'zona' }, p.zona)))))));
+        hayZona ? el('td', { class: 'zona' }, p.zona) : null))))));
   }
 
   /* ----- calendario ----- */

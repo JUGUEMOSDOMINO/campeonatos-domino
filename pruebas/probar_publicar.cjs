@@ -1016,6 +1016,59 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.deepStrictEqual(errores, []);
   }
 
+  /* ============ PDF «Clasificación Partida» de Access: lo mismo que la Hoja de resumen, sin bloque (no trae licencias) y sin columnas vacías ============ */
+  {
+    const espec = { titulo: 'Torneo de Ejemplo - Villa Inventada', fecha: '20/02/2027', partidas: 7, filas_por_pagina: 3, grupos: {
+      A: [[1, 5, 'Ana Roig Mas - Pau Vidal Soler', 6, 1, 1500, 2100, 600], [2, 3, 'Marta Puig - Toni Serra Vila', 5, 2, -2100, 1994, 4094],
+        [3, 7, 'Rosa Mas Gil - Vicent Vila Pons', 4, 3, 12, 1200, 1188], [4, 2, 'Lola Soler Ruiz - Joan Ferrer Bosch', 3, 4, -5, 900, 905],
+        [5, 9, 'XXX XXX - ZZZ ZZZ', 0, 7, -2100, 0, 2100]],
+      B: [[1, 12, 'Nuria Pons - Albert Mora', 3, 0, 480, 900, 420], [2, 14, 'Elena Roca - Hugo Sanz Vila', 2, 1, -5, 700, 705]] } };
+    const pdf = (e, n) => { const j = path.join(tmp, n + '.json'), f = path.join(tmp, n + '.pdf'); fs.writeFileSync(j, JSON.stringify(e)); execFileSync('python3', ['-I', path.join(__dirname, 'hacer_pdf.py'), j, f]); return f; };
+    const ID = 'torneo-de-ejemplo-villa-inventada-2027-02-20';
+    const { ctx, pg, api, errores } = await escenario({ semilla: sembrarWeb });
+    await abrir(pg);
+    await pg.setInputFiles('#archivo', pdf(espec, 'clasif'));
+    await pg.waitForSelector('#revision .resumen');
+    let txt = await pg.textContent('#revision');
+    assert(txt.includes('Torneo de Ejemplo - Villa Inventada') && txt.includes('Con grupo B') && txt.includes('parejas'), txt);
+    assert(txt.includes('P02') && txt.includes('P03') && txt.includes('Ana Roig Mas - Pau Vidal Soler'), txt);
+    assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0);
+    assert(!txt.includes('Para el ranking'), 'el PDF no trae licencias: no hay bloque');
+    assert.strictEqual(await pg.locator('#revision li.bloquea').count(), 0);
+    bien('pdf: se lee un PDF de dos páginas (grupo A partido, relleno, negativa con miles); avisa del relleno y de las partidas del B, enseña la clasificación y no ofrece bloque');
+    await pg.check('input[name=destino][value=borr]');
+    await pg.click('#publicar');
+    await pg.waitForSelector('#registro:has-text("borrador")');
+    const j = api.json('borr', `datos/${ID}/actual.json`);
+    assert.deepStrictEqual([j.torneo.tipo, j.torneo.estado, j.torneo.n_jornadas, j.torneo.fecha, j.torneo.hay_b, j.clasificacion.length], ['parejas', 'terminado', 7, '2027-02-20', true, 6]);
+    assert.deepStrictEqual(j.participantes.map((p) => p.zona), [null, null, null, null, null, null]);
+    assert.deepStrictEqual(j.clasificacion.filter((c) => c.grupo === 'A').map((c) => [c.puesto, c.id, c.dt]), [[1, 5, 1500], [2, 3, -2100], [3, 7, 12], [4, 2, -5]]);
+    assert(!/licencia|"lic/i.test(JSON.stringify(j)));
+    assert.deepStrictEqual(api.enClaro, []);
+    bien('pdf: lo que se guarda es un campeonato de parejas terminado, solo clasificación, sin zona ni licencias, cifrado');
+    await pg.goto(base + `/torneo.html?t=${ID}&borrador=1`);
+    await pg.waitForSelector('table.clasi');
+    assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
+    assert.strictEqual(await pg.locator('table.clasi tbody tr').count(), 4);
+    bien('pdf: la web no enseña la columna Zona cuando ninguna pareja la tiene');
+    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]');
+    // un PDF con una cuenta que no cuadra no se publica
+    const roto = JSON.parse(JSON.stringify(espec)); roto.grupos.A[1][5] = -2000;
+    await pg.setInputFiles('#archivo', pdf(roto, 'roto'));
+    await pg.waitForSelector('#revision li.bloquea:has-text("R06")');
+    assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    bien('pdf: con Dif. ≠ P.F. − P.C. no se puede publicar');
+    // algo que no es una clasificación
+    const nada = path.join(tmp, 'nada.pdf'); fs.writeFileSync(nada, 'esto no es un pdf');
+    await pg.setInputFiles('#archivo', nada);
+    await pg.waitForSelector('#lectura :text("PDF")');
+    assert.strictEqual(await pg.locator('#paso-publicar:visible').count(), 0);
+    bien('pdf: un archivo que no es PDF da un mensaje claro y no deja publicar');
+    assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []);
+    assert.deepStrictEqual(errores, []);
+    bien('pdf: pdf.js corre con la política de seguridad de la página, sin una sola infracción ni error');
+  }
+
   assert.deepStrictEqual(apis.flatMap((a) => a.enClaro), [], 'algún PUT a la web iba sin cifrar');
   bien('en toda la prueba, ningún PUT a campeonatos-domino lleva un JSON en claro ni un PDF sin cifrar');
   assert.deepStrictEqual(externos, []);

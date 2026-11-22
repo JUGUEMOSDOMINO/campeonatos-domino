@@ -14,6 +14,7 @@
 <script src="assets/contrato.js?v=20261123w19o" defer></script>
 <script src="assets/ranking.js?v=20261123w19o" defer></script>
 <script src="assets/resumen.js?v=20261123w19o" defer></script>
+<script src="assets/clasifpdf.js?v=20261123w19o" defer></script>
 <script src="assets/partidas.js?v=20261123w19o" defer></script>
 <script src="assets/palabras.js?v=20261123w19o" defer></script>
 <script src="assets/cifra.js?v=20261123w19o" defer></script>
@@ -28,7 +29,7 @@
 </div></header>
 <main>
   <h1 class="tit-publicar">Mesa de control</h1>
-  <p class="nota">Aquí se gestionan los campeonatos: subir un Excel como borrador o directamente a la web, ver los borradores, publicarlos, ocultarlos, editar sus datos y eliminarlos. Esta página lee del Excel la hoja WEB y las hojas de datos de las partidas (_WEBC, _R1… y P.1…), nunca las de licencias, parejas ni jugadores, y lo hace en tu ordenador: el Excel no se sube a ningún sitio. Del Excel del ranking lee solo su hoja WEB, que trae las licencias de los jugadores: son lo único con licencias que se publica, y siempre cifrado. También lee la Hoja de resumen que rellena un organizador con otro programa: a la web sube su clasificación final como campeonato de parejas, sin licencias, y deja copiado en tu ordenador el bloque con licencias para el ranking. Guarda el Excel antes de elegirlo. Todo lo que va a la web sale cifrado con su contraseña; los borradores no.</p>
+  <p class="nota">Aquí se gestionan los campeonatos: subir un Excel como borrador o directamente a la web, ver los borradores, publicarlos, ocultarlos, editar sus datos y eliminarlos. Esta página lee del Excel la hoja WEB y las hojas de datos de las partidas (_WEBC, _R1… y P.1…), nunca las de licencias, parejas ni jugadores, y lo hace en tu ordenador: el Excel no se sube a ningún sitio. Del Excel del ranking lee solo su hoja WEB, que trae las licencias de los jugadores: son lo único con licencias que se publica, y siempre cifrado. También lee la Hoja de resumen que rellena un organizador con otro programa: a la web sube su clasificación final como campeonato de parejas, sin licencias, y deja copiado en tu ordenador el bloque con licencias para el ranking. También lee el PDF «Clasificación Partida» que saca Access: sube lo mismo (clasificación de parejas, sin licencias) y no hay bloque, porque el PDF no trae licencias. Guarda el Excel antes de elegirlo. Todo lo que va a la web sale cifrado con su contraseña; los borradores no.</p>
 
   <section class="paso" id="paso-token" aria-labelledby="t-token">
     <h2 id="t-token">1. Conexión con GitHub</h2>
@@ -59,9 +60,9 @@
   </section>
 
   <section class="paso" id="paso-excel" aria-labelledby="t-excel">
-    <h2 id="t-excel">4. Subir un Excel</h2>
-    <label for="archivo" class="solo-lector">Archivo Excel del campeonato</label>
-    <input id="archivo" type="file" accept=".xlsx,.xlsm">
+    <h2 id="t-excel">4. Subir un Excel o un PDF</h2>
+    <label for="archivo" class="solo-lector">Archivo Excel del campeonato, o PDF de la clasificación de un organizador</label>
+    <input id="archivo" type="file" accept=".xlsx,.xlsm,.pdf,application/pdf">
     <div id="lectura" aria-live="polite"></div>
   </section>
 
