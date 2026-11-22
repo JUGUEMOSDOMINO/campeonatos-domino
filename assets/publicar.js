@@ -6,11 +6,12 @@
   const C = window.Contrato;
   const P = window.Partidas;
   const M = window.Mesa;
+  const RK = window.Ranking;
   // Límites al leer el Excel (el real pesa unos 7 MB; la hoja WEB cabe en 210 filas y 53 columnas).
   const MAX_BYTES = 25 * 1024 * 1024, MAX_FILAS = 300, MAX_COLUMNAS = 80;
   const $ = (s) => document.querySelector(s);
   const NOMBRE_REPO = { web: 'la web', borr: 'borradores' };
-  const E = { json: null, raw: null, partidas: [], sel: new Set(), aviso: null, omitidas: [], pub: null, vals: [], confirmadas: new Set(), dest: null, indices: { web: null, borr: null }, acceso: { web: null, borr: null }, archivo: '' };
+  const E = { modo: null, rk: null, json: null, raw: null, partidas: [], sel: new Set(), aviso: null, omitidas: [], pub: null, vals: [], confirmadas: new Set(), dest: null, indices: { web: null, borr: null }, acceso: { web: null, borr: null }, archivo: '' };
   const tp = (t) => TIPOS[t] || TIPOS.parejas;
 
   /* ---------- paso 1: token ---------- */
@@ -334,7 +335,7 @@
   async function alElegirArchivo(ev) {
     const f = ev.target.files[0];
     ev.target.value = ''; // así se puede volver a elegir el mismo archivo tras guardarlo de nuevo
-    E.json = null; E.partidas = [];
+    E.json = null; E.partidas = []; E.modo = null; E.rk = null;
     $('#paso-revision').hidden = true; $('#paso-publicar').hidden = true;
     if (!f) { poner($('#lectura')); return; }
     const aviso = (t) => poner($('#lectura'), el('p', { class: 'nota caja' }, t));
@@ -350,9 +351,10 @@
     const ws = wb.Sheets && wb.Sheets.WEB;
     if (!ws) { aviso('Este archivo no tiene la hoja WEB. ¿Es el Excel del campeonato?'); return; }
     const rg = XLSX.utils.decode_range(ws['!ref'] || 'A1');
-    if (rg.e.r + 1 > MAX_FILAS || rg.e.c + 1 > MAX_COLUMNAS) { aviso('La hoja WEB es mucho más grande de lo normal. ¿Es el Excel del campeonato?'); return; }
+    const esRanking = RK.es(ws); // el del ranking tiene una fila por jugador: hasta la 603
+    if (rg.e.r + 1 > (esRanking ? RK.FILA_MAX + 5 : MAX_FILAS) || rg.e.c + 1 > MAX_COLUMNAS) { aviso('La hoja WEB es mucho más grande de lo normal. ¿Es el Excel del campeonato?'); return; }
     E.archivo = f.name;
-    await revisar(ws, wb, bytes);
+    if (esRanking) await revisarRanking(ws); else await revisar(ws, wb, bytes);
   }
 
   /* Lo que ya hay publicado de este torneo en un repositorio: índice, actual.json y el archivo de cada una de las partidas dadas que ya estén publicadas. */
@@ -442,6 +444,7 @@
   }
   async function cambiarDestino(d) {
     E.dest = d;
+    if (E.modo === 'ranking') { pintarRanking(); return; }
     poner($('#lectura'), el('p', { class: 'nota' }, 'Comprobando lo que ya está publicado…'));
     try { E.pub = await estadoPublicado(E.json.torneo.id, d, E.partidas.map((p) => p.k)); } catch (e) { if (!siCaduco(e)) poner($('#lectura'), el('p', { class: 'nota caja' }, e.message)); return; }
     leido();
@@ -529,6 +532,7 @@
   const cuadro = (b, s) => el('div', null, el('b', null, b), el('span', null, s));
 
   function actualizarBoton() {
+    if (E.modo === 'ranking') { actualizarBotonRanking(); return; }
     const sel = marcadas();
     const bloquea = sel.some((p) => p.vals.some((x) => x.gravedad === 'bloquea'));
     const falta = sel.some((p) => p.vals.filter((x) => x.gravedad === 'confirma').some((x) => !E.confirmadas.has(p.k + ':' + x.cod)));
@@ -556,6 +560,7 @@
     return pasos;
   }
   async function publicar() {
+    if (E.modo === 'ranking') { await publicarRanking(); return; }
     const boton = $('#publicar');
     const js = marcadas().map((p) => p.json).sort((x, y) => x.jornada.numero - y.jornada.numero);
     if (!js.length) return;
@@ -575,6 +580,82 @@
       $('#resultado').hidden = false;
       E.pub = await estadoPublicado(id, clave, E.partidas.map((p) => p.k)).catch(() => E.pub);
       repintar(); boton.disabled = true; // la lista pasa a decir «ya publicada»; para subir otra vez, se cambia algo
+      await cargarTorneos();
+    });
+    if (!ok) boton.disabled = !M.token.obtener();
+  }
+
+  /* ---------- el Excel del ranking (contrato 1.1, assets/ranking.js) ---------- */
+  // Solo su hoja WEB. Es el único JSON con licencias: a la web sube cifrado (mesa.js no deja subir nada en claro); en borradores, privado.
+  async function revisarRanking(ws) {
+    try {
+      E.modo = 'ranking';
+      E.rk = RK.leer(ws);
+      poner($('#lectura'), el('p', { class: 'nota' }, 'Comprobando lo que ya está publicado…'));
+      const web = await M.leer('web', 'datos/indice.json'); E.indices.web = web ? web.json : null;
+      E.acceso.borr = await M.acceso('borr');
+      if (E.acceso.borr.ok) { const b = await M.leer('borr', 'datos/indice.json'); E.indices.borr = b ? b.json : null; }
+      E.dest = enWeb(E.rk.doc.torneo.id) ? 'web' : E.acceso.borr.ok ? 'borr' : null;
+    } catch (e) {
+      if (e.estado === 401) { pintarToken(e.message, true); $('#paso-revision').hidden = true; $('#paso-publicar').hidden = true; }
+      poner($('#lectura'), el('p', { class: 'nota caja' }, e instanceof M.ErrorGH ? e.message : 'Esa hoja WEB no se puede leer. Comprueba que es la del ranking y que el Excel está guardado.'));
+      return;
+    }
+    const t = E.rk.doc.torneo;
+    poner($('#lectura'), el('p', { class: 'nota' }, `Leído «${E.archivo}»: ${t.nombre || 'ranking sin nombre'}${t.temporada ? ', temporada ' + t.temporada : ''}.`));
+    pintarDestino();
+    pintarRanking();
+    $('#registro').hidden = true; $('#reintento').hidden = true; $('#resultado').hidden = true;
+  }
+  function valsRanking() {
+    const id = E.rk.doc.torneo.id;
+    const v = RK.validar(E.rk, { indice: E.indices[E.dest] || E.indices.web });
+    if (E.dest === 'borr' && enWeb(id)) v.push({ cod: 'M01', gravedad: 'avisa', msg: 'Este ranking ya está en la web. El borrador es una copia aparte: la web no cambia hasta que lo publiques.' });
+    if (E.dest === 'web' && !enWeb(id)) v.push({ cod: 'M02', gravedad: 'avisa', msg: 'Este ranking todavía no está en la web: se publica ahora y lo ven todos los que tengan la contraseña.' });
+    return v;
+  }
+  function pintarRanking() {
+    const d = E.rk.doc, t = d.torneo;
+    E.valsRk = valsRanking();
+    const resumen = el('div', { class: 'resumen' },
+      cuadro(t.temporada || '—', 'Temporada'), cuadro(`${t.n_torneos} de ${d.torneos.length}`, 'torneos con resultados'),
+      cuadro(t.n_jugadores, 'jugadores con puntos'), cuadro(d.ranking.filter((f) => f.plaza_ce).length, 'plazas para el Campeonato de España'));
+    const vals = E.valsRk.length ? E.valsRk.map((x) => el('li', { class: x.gravedad }, el('span', { class: 'cod' }, x.cod), el('b', null, ETIQ[x.gravedad] + ': '), x.msg))
+      : [el('li', { class: 'ok' }, 'Todo en orden: no hay nada que avisar.')];
+    const tabla = el('div', { class: 'tabla-caja sep-12' }, el('table', { class: 'clasi' },
+      el('caption', { class: 'solo-lector' }, 'Primeros puestos del ranking leídos del Excel'),
+      el('thead', null, el('tr', null, el('th', null, '#'), el('th', null, 'Total'), el('th', { class: 'izq' }, 'Jugador'), el('th', null, 'Licencia'), el('th', null, 'Plaza CE'))),
+      el('tbody', null, d.ranking.slice(0, 10).map((f) => el('tr', null, el('td', null, f.puesto), el('td', { class: 'gan' }, f.total),
+        el('td', { class: 'pareja' }, el('span', { class: 'nom' }, `${f.nombre || ''} ${f.apellido1 || ''}`)), el('td', null, f.licencia || ''), el('td', null, f.plaza_ce ? 'Sí' : ''))))));
+    const bloquea = E.valsRk.some((x) => x.gravedad === 'bloquea');
+    poner($('#revision'), resumen, el('ul', { class: 'vals' }, vals),
+      el('p', { class: 'nota sep-12' }, 'Este Excel es el del ranking. Lleva las licencias de los jugadores: a la web solo suben cifradas con la contraseña, y en borradores se quedan en el repositorio privado.'),
+      bloquea ? null : [el('p', { class: 'nota sep-12' }, 'Así empieza el ranking que verá la web:'), tabla]);
+    $('#paso-revision').hidden = false;
+    $('#paso-publicar').hidden = false;
+    actualizarBoton();
+  }
+  function actualizarBotonRanking() {
+    const bloquea = (E.valsRk || []).some((x) => x.gravedad === 'bloquea');
+    $('#publicar').textContent = E.dest === 'borr' ? 'Guardar como borrador' : 'Publicar en la web';
+    $('#publicar').disabled = !E.dest || bloquea;
+    $('#pub-nota').textContent = !E.dest ? 'Elige dónde guardarlo.' : bloquea ? 'Corrige lo que se marca en rojo en el Excel del ranking, guárdalo y elígelo otra vez.' : '';
+  }
+  async function publicarRanking() {
+    const boton = $('#publicar');
+    const clave = E.dest, ahora = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z');
+    const doc = { ...E.rk.doc, publicado: ahora }, id = doc.torneo.id;
+    const msg = `${clave === 'web' ? 'Publicar' : 'Borrador'} ${id}`;
+    boton.disabled = true;
+    const pasos = [
+      { txt: 'Escribir actual.json', fn: () => M.poner(clave, `datos/${id}/actual.json`, RK.aTexto(doc), msg) },
+      { txt: 'Escribir indice.json', fn: async () => { const i = await M.leer(clave, 'datos/indice.json'); await M.poner(clave, 'datos/indice.json', C.aTexto(C.indiceCon(i && i.json, RK.entradaIndice(doc), ahora)), msg); } },
+    ];
+    const final = clave === 'web' ? 'Ranking publicado. La web lo mostrará en uno o dos minutos.' : 'Ranking guardado como borrador. Solo lo ves tú, con el token de este navegador.';
+    const ok = await correr(pasos, { pre: $('#registro'), acc: $('#reintento') }, final, async () => {
+      poner($('#resultado'), el('a', { href: clave === 'web' ? `ranking.html?r=${encodeURIComponent(id)}` : `ranking.html?r=${encodeURIComponent(id)}&borrador=1`, target: '_blank', rel: 'noopener' },
+        clave === 'web' ? 'Abrir el ranking en la web' : 'Ver el borrador'));
+      $('#resultado').hidden = false;
       await cargarTorneos();
     });
     if (!ok) boton.disabled = !M.token.obtener();

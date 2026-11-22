@@ -20,8 +20,10 @@ const D = 'd=datos/_prueba';
 
     await pg.goto(`${base}/index.html?${D}`);
     await pg.waitForSelector('.tarjeta');
-    assert.strictEqual(await pg.locator('.tarjeta').count(), 4);
-    await sinDesborde('portada'); bien('portada: 4 campeonatos sin desbordar');
+    assert.strictEqual(await pg.locator('.tarjeta').count(), 5);
+    assert.strictEqual((await pg.locator('#lista h2.seccion').first().textContent()).trim(), 'Ranking');
+    assert.strictEqual(await pg.getAttribute('#lista ul.tarjetas >> nth=0 >> a.tarjeta', 'href'), 'ranking.html?r=ranking-ejemplo&d=datos%2F_prueba');
+    await sinDesborde('portada'); bien('portada: el ranking en su propia sección, la primera, y los 4 campeonatos, sin desbordar');
     assert.strictEqual(await pg.locator('.fecha-ficha').count(), 0);
     assert(!/\b(oct|nov|ene|feb)\b/i.test(await pg.locator('#lista').innerText()), 'queda la marca de fecha');
     bien('portada: sin la fecha de inicio en las tarjetas');

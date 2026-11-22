@@ -781,7 +781,9 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     for (const r of api.rutas('web')) {
       const t = api.repos.web.get(r).texto;
       // un sobre cifrado es base64 al azar: «ES76» puede salir por casualidad (pasaba una de cada cinco veces); basta con que sea un sobre. Lo que no es sobre se busca entero.
-      for (const x of [...nombres, ...(K.esSobre(t) ? [] : [/Calap/i, /ES76/i, /(?<!\d)[6-9]\d{8}(?!\d)/])]) assert(!(x instanceof RegExp ? x.test(t) : t.includes(x)), `${r}: ${x}`);
+      // y un apellido corto («Roca») también: en un sobre se busca fuera de iv y ct
+      const legible = K.esSobre(t) ? t.replace(/"(iv|ct)"\s*:\s*"[A-Za-z0-9+/=]*"/g, '') : t;
+      for (const x of [...nombres, ...(K.esSobre(t) ? [] : [/Calap/i, /ES76/i, /(?<!\d)[6-9]\d{8}(?!\d)/])]) assert(!(x instanceof RegExp ? x.test(legible) : legible.includes(x)), `${r}: ${x}`);
       assert(r === 'datos/clave.json' || K.esSobre(t), r);
       assert(![...nombres].some((x) => r.toLowerCase().includes(x.toLowerCase())), r);
     }
@@ -904,6 +906,53 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     await pg.waitForSelector('#registro-mesa:has-text("Normativa quitada")');
     assert(!api.repos.web.has(r));
     bien('«Quitar normativa» la borra de la web');
+  }
+
+  /* ============ Ranking FVD: el Excel del ranking (hoja WEB 1.1) se publica como tipo «ranking», cifrado ============ */
+  {
+    const RKJ = path.join(__dirname, 'datos', 'ranking-ejemplo', 'actual.json');
+    const libroRk = (extra = []) => { const f = path.join(tmp, 'ranking' + extra.join('') + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), RKJ, f, ...extra]); return f; };
+    const ref = JSON.parse(fs.readFileSync(RKJ, 'utf8'));
+    const sinPub = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.publicado; return c; };
+    const { pg, api, errores } = await escenario({ semilla: sembrarWeb });
+    await abrir(pg);
+    await pg.setInputFiles('#archivo', libroRk());
+    await pg.waitForSelector('#revision .resumen');
+    const txt = await pg.textContent('#revision');
+    assert(txt.includes('2026-27') && txt.includes('4 de 5') && txt.includes('torneos con resultados') && txt.includes('Ana Roig') && txt.includes('46/ 9201'), txt);
+    assert(txt.includes('a la web solo suben cifradas'), txt);
+    assert.strictEqual(await pg.isChecked('input[name=destino][value=borr]'), true);
+    bien('ranking: se reconoce el Excel del ranking, enseña temporada, torneos, jugadores y los primeros puestos; destino por defecto Borrador');
+    await pg.check('input[name=destino][value=web]');
+    await pg.waitForSelector('#revision li.avisa:has-text("M02")');
+    assert.strictEqual(await pg.textContent('#publicar'), 'Publicar en la web');
+    await pg.click('#publicar');
+    await pg.waitForSelector('#registro:has-text("Ranking publicado")');
+    const r = 'datos/ranking-ejemplo/actual.json';
+    assert(K.esSobre(api.repos.web.get(r).texto) && !/46\/ \d/.test(api.repos.web.get(r).texto), 'el ranking no va cifrado');
+    assert.deepStrictEqual(sinPub(api.json('web', r)), sinPub(ref));
+    const ind = api.json('web', 'datos/indice.json');
+    const e = ind.torneos.find((t) => t.id === 'ranking-ejemplo');
+    assert.deepStrictEqual(e, { id: 'ranking-ejemplo', nombre: 'Ranking FVD Jaume I', tipo: 'ranking', temporada: '2026-27', fecha: '2027-01-16', estado: 'en_juego', jornada_actual: 4, n_jornadas: 5, n_participantes: 14, ganador: null });
+    assert(!/46\/ \d/.test(JSON.stringify(ind)) && K.esSobre(api.repos.web.get('datos/indice.json').texto));
+    assert.strictEqual(await pg.getAttribute('#resultado a', 'href'), 'ranking.html?r=ranking-ejemplo');
+    assert.deepStrictEqual(api.enClaro, []);
+    bien('ranking: «Publicar en la web» escribe actual.json cifrado (el mismo JSON que web_export.py) y su línea de indice.json, tipo ranking y sin licencias');
+    await pg.waitForSelector('#lista-web li.torneo[data-id="ranking-ejemplo"]');
+    const tj = await pg.textContent('#lista-web li.torneo[data-id="ranking-ejemplo"]');
+    assert(tj.includes('Ranking') && tj.includes('Torneos 4 de 5'), tj);
+    bien('ranking: sale en la lista «En la web» como Ranking, con los torneos jugados');
+    await pg.check('input[name=destino][value=borr]');
+    await pg.waitForSelector('#revision li.avisa:has-text("M01")');
+    await pg.click('#publicar');
+    await pg.waitForSelector('#registro:has-text("guardado como borrador")');
+    assert.deepStrictEqual(sinPub(api.json('borr', r)), sinPub(ref));
+    bien('ranking: también se guarda como borrador (privado, en claro)');
+    await pg.setInputFiles('#archivo', libroRk(['--errores', '3']));
+    await pg.waitForSelector('#revision li.bloquea:has-text("VR6")');
+    assert.strictEqual(await pg.isDisabled('#publicar'), true);
+    bien('ranking: con errores (✖) en el Excel, VR6 no deja publicar');
+    assert.deepStrictEqual(errores, []);
   }
 
   assert.deepStrictEqual(apis.flatMap((a) => a.enClaro), [], 'algún PUT a la web iba sin cifrar');

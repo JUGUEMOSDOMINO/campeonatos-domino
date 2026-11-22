@@ -6,15 +6,18 @@ Este repositorio es público y lo sirve GitHub Pages. Aquí se explica qué se p
 
 En `datos/` van los JSON de cada campeonato: nombre, organizador, temporada, fechas, y por cada pareja o jugador el nombre de pila, el primer apellido y un nombre corto (por ejemplo «Fontan-Ródenas»). También van la zona, las mesas de cada jornada con su resultado, la clasificación y el calendario. Cada jornada queda guardada con los nombres que tenía ese día. Si la mesa la sube, va también la normativa del campeonato en PDF.
 
+El Ranking FVD Jaume I va en su propio JSON (`datos/<id>/actual.json`, tipo `ranking`): por cada jugador, el puesto, el nombre de pila, el primer apellido, la licencia federativa (y la anterior, si cambió en enero), la asociación, los puntos de cada torneo, el total y si tiene plaza para el Campeonato de España. Las licencias salen en la web porque lo pidió el árbitro (decisión aprobada el 22/11/2026). Es el único JSON con licencias y solo puede ir cifrado.
+
 Todo eso va cifrado con la contraseña de la web (ver «La contraseña de la web»). En el repositorio, en la web servida, en las cachés y en cualquier copia que hagan buscadores o archivos de internet solo hay sobres cifrados. Sin la contraseña no se lee ni un nombre.
 
 Nunca entran en el repositorio:
 
-- teléfonos, números de licencia, segundos apellidos, direcciones de correo ni cuentas bancarias;
+- teléfonos, segundos apellidos, direcciones de correo ni cuentas bancarias;
+- números de licencia, salvo dentro del JSON cifrado del ranking;
 - ningún Excel (el `.gitignore` deja fuera `*.xlsx`, `*.xlsm` y `*.xls`);
 - el token de GitHub.
 
-Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas de datos de las partidas (`_WEBC`, `_R1`… y `P.1`…, más la celda de cada semilla de sorteo), nunca `Licencias`, `PAREJAS`, `JUGADORES` ni `SUSTITUCIONES`, en el ordenador de la mesa, y su validación V06 bloquea cualquier nombre con cifras o con arroba y cualquier texto libre que parezca un teléfono. Además, `pruebas/probar_contrato.cjs` comprueba esa validación. Si un dato personal llegara a publicarse por error, hay que borrarlo del repositorio y avisar a la persona afectada; el historial de Git conserva las versiones anteriores, así que quitar el archivo no basta.
+Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas de datos de las partidas (`_WEBC`, `_R1`… y `P.1`…, más la celda de cada semilla de sorteo), nunca `Licencias`, `PAREJAS`, `JUGADORES` ni `SUSTITUCIONES`, en el ordenador de la mesa, y su validación V06 bloquea cualquier nombre con cifras o con arroba y cualquier texto libre que parezca un teléfono. Del Excel del ranking lee solo su hoja WEB (`assets/ranking.js`, validaciones VR0 a VR6). Además, `pruebas/probar_contrato.cjs` comprueba esas validaciones y `pruebas/probar_licencias.cjs`, que ningún JSON lleva licencias salvo el del ranking y que en `datos/` no hay ninguna legible. Si un dato personal llegara a publicarse por error, hay que borrarlo del repositorio y avisar a la persona afectada; el historial de Git conserva las versiones anteriores, así que quitar el archivo no basta.
 
 ## Cómo se publica
 

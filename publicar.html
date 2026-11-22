@@ -9,15 +9,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mesa de control · Campeonatos de dominó</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2018%2032%27%3E%3Crect%20x=%271%27%20y=%271%27%20width=%2716%27%20height=%2730%27%20rx=%274%27%20fill=%27%230c3a38%27/%3E%3Cpath%20d=%27M1%2016h16%27%20stroke=%27%23fff%27%20stroke-width=%271.6%27/%3E%3Ccircle%20cx=%279%27%20cy=%278.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%279%27%20cy=%2723.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/estilo.css?v=20261122w17b">
-<script src="assets/xlsx.mini.min.js?v=20261122w17b" defer></script>
-<script src="assets/contrato.js?v=20261122w17b" defer></script>
-<script src="assets/partidas.js?v=20261122w17b" defer></script>
-<script src="assets/palabras.js?v=20261122w17b" defer></script>
-<script src="assets/cifra.js?v=20261122w17b" defer></script>
-<script src="assets/mesa.js?v=20261122w17b" defer></script>
-<script src="assets/web.js?v=20261122w17b" defer></script>
-<script src="assets/publicar.js?v=20261122w17b" defer></script>
+<link rel="stylesheet" href="assets/estilo.css?v=20261122w18r">
+<script src="assets/xlsx.mini.min.js?v=20261122w18r" defer></script>
+<script src="assets/contrato.js?v=20261122w18r" defer></script>
+<script src="assets/ranking.js?v=20261122w18r" defer></script>
+<script src="assets/partidas.js?v=20261122w18r" defer></script>
+<script src="assets/palabras.js?v=20261122w18r" defer></script>
+<script src="assets/cifra.js?v=20261122w18r" defer></script>
+<script src="assets/mesa.js?v=20261122w18r" defer></script>
+<script src="assets/web.js?v=20261122w18r" defer></script>
+<script src="assets/publicar.js?v=20261122w18r" defer></script>
 </head>
 <body data-pagina="publicar">
 <header class="barra"><div class="barra-in">
@@ -26,7 +27,7 @@
 </div></header>
 <main>
   <h1 class="tit-publicar">Mesa de control</h1>
-  <p class="nota">Aquí se gestionan los campeonatos: subir un Excel como borrador o directamente a la web, ver los borradores, publicarlos, ocultarlos, editar sus datos y eliminarlos. Esta página lee del Excel la hoja WEB y las hojas de datos de las partidas (_WEBC, _R1… y P.1…), nunca las de licencias, parejas ni jugadores, y lo hace en tu ordenador: el Excel no se sube a ningún sitio. Guarda el Excel antes de elegirlo. Todo lo que va a la web sale cifrado con su contraseña; los borradores no.</p>
+  <p class="nota">Aquí se gestionan los campeonatos: subir un Excel como borrador o directamente a la web, ver los borradores, publicarlos, ocultarlos, editar sus datos y eliminarlos. Esta página lee del Excel la hoja WEB y las hojas de datos de las partidas (_WEBC, _R1… y P.1…), nunca las de licencias, parejas ni jugadores, y lo hace en tu ordenador: el Excel no se sube a ningún sitio. Del Excel del ranking lee solo su hoja WEB, que trae las licencias de los jugadores: son lo único con licencias que se publica, y siempre cifrado. Guarda el Excel antes de elegirlo. Todo lo que va a la web sale cifrado con su contraseña; los borradores no.</p>
 
   <section class="paso" id="paso-token" aria-labelledby="t-token">
     <h2 id="t-token">1. Conexión con GitHub</h2>

@@ -53,6 +53,21 @@ function revisar() {
   return fallos;
 }
 
+// (d') en el ranking se llega desplazando hasta la última columna (CE) y puesto, jugador y licencia siguen fijos y a la vista
+function llegaACE() {
+  const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.rk');
+  if (!tabla) return ["(d') no hay tabla del ranking"];
+  const f = [];
+  const cab = [...tabla.querySelectorAll('thead th')];
+  if (cab.slice(0, 3).map((t) => t.textContent.trim()).join('|') !== 'Puesto|Jugador|Licencia') f.push("(d') las tres primeras columnas no son Puesto, Jugador y Licencia");
+  caja.scrollLeft = 1e6;
+  const b = caja.getBoundingClientRect();
+  const ce = cab[cab.length - 1].getBoundingClientRect();
+  if (ce.right > b.right + 1 || ce.left < b.left) f.push("(d') la columna CE no se ve al desplazar hasta el final");
+  for (const th of cab.slice(0, 3)) { const r = th.getBoundingClientRect(); if (r.left < b.left - 1 || r.right > b.right + 1) f.push(`(d') ${th.textContent.trim()} no queda fija`); }
+  caja.scrollLeft = 0;
+  return f;
+}
 // (d) en la clasificación se llega hasta la última columna (SP: PUNT. C.; parejas e individual: Desempate)
 function llegaAPuntC() {
   const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.clasi');
@@ -107,6 +122,12 @@ function llegaAPuntC() {
     await pg.fill('#buscar', 'pons'); await pg.waitForSelector('.persona .puesto:not(:text("…"))'); await pg.waitForTimeout(200);
     await mira('portada · buscador');
     await pg.fill('#buscar', 'zzzz'); await pg.waitForSelector('text=No hay nadie'); await mira('portada · sin resultados');
+
+    // ranking FVD: la tabla (puesto, jugador y licencia fijos; hasta la columna CE) y la ficha de un jugador con nombre y asociación largos
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-ejemplo`); await pg.waitForSelector('table.rk');
+    await mira('ranking', llegaACE);
+    await pg.click('.nombre-rk:text("Fernández-Villaverde")'); await pg.waitForSelector('#ficha:not([hidden])');
+    await mira('ranking · ficha');
 
     // páginas sueltas del árbitro: federación, casos del libro, retos y plataforma de juego
     for (const f of ['federacion-jaume-i', 'ejemplos-libro', 'retos', 'jugar']) {

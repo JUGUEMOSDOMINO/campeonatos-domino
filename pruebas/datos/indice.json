@@ -3,6 +3,18 @@
  "publicado": "2026-11-14T18:30:00Z",
  "torneos": [
   {
+   "id": "ranking-ejemplo",
+   "nombre": "Ranking FVD Jaume I",
+   "tipo": "ranking",
+   "temporada": "2026-27",
+   "fecha": "2027-01-16",
+   "estado": "en_juego",
+   "jornada_actual": 4,
+   "n_jornadas": 5,
+   "n_participantes": 14,
+   "ganador": null
+  },
+  {
    "id": "parejas-ejemplo-2026-11-14",
    "nombre": "CAMPEONATO DE PAREJAS DE EJEMPLO",
    "tipo": "parejas",

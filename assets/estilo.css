@@ -412,3 +412,34 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .dia-unico { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 14px 16px; margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
 .dia-unico b { display: block; }
 .dia-unico span { display: block; color: var(--tinta2); font-size: .95rem; margin-top: 2px; }
+
+/* ranking FVD (ranking.html): puesto, jugador y licencia fijos al desplazar; una columna por torneo jugado */
+.rk th:nth-child(1), .rk td:nth-child(1) { left: 0; width: 50px; min-width: 50px; max-width: 50px; padding-left: 6px; padding-right: 2px; text-align: left; white-space: nowrap; }
+.rk th:nth-child(2), .rk td:nth-child(2) { left: 50px; width: 7.4rem; min-width: 7.4rem; max-width: 7.4rem; padding-left: 4px; padding-right: 4px; text-align: left; white-space: normal; }
+.rk th:nth-child(3), .rk td:nth-child(3) { left: calc(50px + 7.4rem); width: 5.4rem; min-width: 5.4rem; max-width: 5.4rem; padding-left: 4px; padding-right: 6px; text-align: left; white-space: normal; border-right: 1px solid var(--linea); font-size: .82rem; }
+.rk th:nth-child(-n+3) { font-size: .66rem; }
+.rk td.jug { overflow-wrap: anywhere; }
+.rk th.tor { white-space: normal; min-width: 5rem; max-width: 7.5rem; vertical-align: bottom; overflow-wrap: anywhere; }
+.rk td.cero { color: var(--tinta2); }
+.rk td.ce { text-align: center; }
+.rk .empate { margin-left: 2px; font-weight: 800; text-decoration: none; cursor: help; }
+.rk .sub { display: block; font-size: .75rem; color: var(--tinta2); }
+.nombre-rk { background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; overflow-wrap: anywhere; }
+/* la plaza CE es una ficha de dominó: C arriba, E abajo */
+.plaza-ce { display: inline-grid; grid-template-rows: 1fr 1fr; width: 1.15rem; height: 2rem; border: 2px solid var(--barra); border-radius: 4px; background: var(--papel); color: var(--barra); font-size: .62rem; font-weight: 800; line-height: 1; vertical-align: middle; }
+.plaza-ce span { display: grid; place-items: center; }
+.plaza-ce span + span { border-top: 1.5px solid var(--barra); }
+@media (prefers-color-scheme: dark) { .plaza-ce { border-color: var(--barra-suave); color: var(--barra-suave); } .plaza-ce span + span { border-top-color: var(--barra-suave); } }
+.ficha-rk { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 12px 14px; margin: 0 0 14px; }
+.ficha-rk h2 { margin: 0 0 8px; font-size: 1.25rem; overflow-wrap: anywhere; }
+.datos-ficha { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0 0 10px; }
+.datos-ficha dt { color: var(--tinta2); }
+.datos-ficha dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.puntos-ficha { list-style: none; padding: 0; margin: 0 0 6px; }
+.puntos-ficha li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--linea); }
+.puntos-ficha li span { overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 380px) { .datos-ficha { grid-template-columns: minmax(0, 1fr); gap: 0 0; } .datos-ficha dd { margin-bottom: 6px; } }
+@media (min-width: 720px) {
+  .rk th:nth-child(2), .rk td:nth-child(2) { width: 12rem; min-width: 12rem; max-width: 12rem; }
+  .rk th:nth-child(3), .rk td:nth-child(3) { left: calc(50px + 12rem); width: 6.6rem; min-width: 6.6rem; max-width: 6.6rem; }
+}

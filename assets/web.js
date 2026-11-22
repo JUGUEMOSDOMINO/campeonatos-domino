@@ -47,6 +47,7 @@
     sp: { nombre: 'Super-Prestigio', jornada: 'Jornada', unidad: 'pareja', unidades: 'parejas', gan: 'Encuentros ganados' },
     parejas: { nombre: 'Parejas', jornada: 'Partida', unidad: 'pareja', unidades: 'parejas', gan: 'Partidas ganadas' },
     individual: { nombre: 'Individual', jornada: 'Partida', unidad: 'jugador', unidades: 'jugadores', gan: 'Partidas ganadas' },
+    ranking: { nombre: 'Ranking', jornada: 'Torneos', unidad: 'jugador', unidades: 'jugadores', gan: 'Puntos' },
   };
   const tipoDe = (t) => TIPOS[t] || TIPOS.parejas;
 
@@ -55,7 +56,7 @@
   let BASE = 'datos';
   const d = qs.get('d');
   // torneo.html?t=<id>&borrador=1 lee de campeonatos-borradores por la API de GitHub, con el token de este navegador (assets/mesa.js).
-  const BORRADOR = qs.get('borrador') === '1' && document.body.dataset.pagina === 'torneo';
+  const BORRADOR = qs.get('borrador') === '1' && ['torneo', 'ranking'].includes(document.body.dataset.pagina);
   if (d && !BORRADOR && /^datos(\/[a-z0-9_-]+)+$/.test(d)) BASE = d;
   const ES_PRUEBA = BASE !== 'datos';
 
@@ -63,7 +64,7 @@
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(params || {})) if (v != null && v !== '') p.set(k, v);
     if (ES_PRUEBA) p.set('d', BASE);
-    if (BORRADOR && pagina === 'torneo.html') p.set('borrador', '1');
+    if (BORRADOR && (pagina === 'torneo.html' || pagina === 'ranking.html')) p.set('borrador', '1');
     const s = p.toString();
     return pagina + (s ? '?' + s : '');
   }
@@ -171,6 +172,16 @@
           tp.nombre + (t.temporada ? ' ' + t.temporada : '') + ' · ' + partes.join(' · ')))));
   }
 
+  function tarjetaRanking(t) {
+    const partes = [t.temporada && 'Temporada ' + t.temporada, `${t.jornada_actual} de ${t.n_jornadas} torneos`, `${t.n_participantes} jugadores`].filter(Boolean);
+    return el('li', null, el('a', { class: 'tarjeta', href: url('ranking.html', { r: t.id }) },
+      el('div', null,
+        el('h3', null, t.nombre),
+        el('div', { class: 'linea' },
+          el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado),
+          partes.join(' · ')))));
+  }
+
   async function portada() {
     const lista = $('#lista');
     let indice;
@@ -180,12 +191,14 @@
       lista.replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha podido cargar la lista de campeonatos. Prueba otra vez dentro de un minuto.'));
       return;
     }
-    const ts = indice.torneos || [];
+    const todos = indice.torneos || [];
+    const rks = todos.filter((t) => t.tipo === 'ranking'), ts = todos.filter((t) => t.tipo !== 'ranking');
+    const ranking = rks.length ? [el('h2', { class: 'seccion' }, 'Ranking'), el('ul', { class: 'tarjetas' }, rks.map(tarjetaRanking))] : [];
     if (!ts.length) {
-      lista.replaceChildren(el('p', { class: 'vacio' }, 'Todavía no hay campeonatos publicados.'));
+      lista.replaceChildren(...ranking, el('p', { class: 'vacio' }, 'Todavía no hay campeonatos publicados.'));
     } else {
       const grupos = [['en_juego', 'En juego'], ['proximo', 'Próximos'], ['terminado', 'Terminados']];
-      lista.replaceChildren(...grupos.flatMap(([est, tit]) => {
+      lista.replaceChildren(...ranking, ...grupos.flatMap(([est, tit]) => {
         const g = ts.filter((t) => t.estado === est);
         return g.length ? [el('h2', { class: 'seccion' }, tit), el('ul', { class: 'tarjetas' }, g.map(tarjeta))] : [];
       }));
@@ -817,6 +830,7 @@
     }
     try { E.actual = await leer(`${BASE}/${E.id}/actual.json`, true); }
     catch (e) { if (BORRADOR) borradorPrivado(); else $('#contenido').replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha encontrado este campeonato. Puede que todavía no esté publicado.')); return; }
+    if (E.actual.torneo && E.actual.torneo.tipo === 'ranking') { location.replace(url('ranking.html', { r: E.id })); return; }
     await pintar();
     window.addEventListener('popstate', () => { leerUrl(); pintar(); });
     if (E.actual.torneo.estado === 'en_juego' && !BORRADOR) {
@@ -825,14 +839,84 @@
     }
   }
 
+  /* =====================================================================
+     RANKING FVD (ranking.html?r=<id>): puesto, jugador, licencia, puntos de cada torneo jugado, total y plaza CE.
+     La asociación y el detalle, en la ficha del jugador.
+     ===================================================================== */
+  const RKE = { id: null, a: null };
+  // La plaza pagada para el Campeonato de España de Parejas es una ficha: C arriba, E abajo, como la ficha de la marca de la web.
+  const fichaCE = () => el('span', { class: 'plaza-ce', role: 'img', 'aria-label': 'Plaza para el Campeonato de España', title: 'Plaza para el Campeonato de España' },
+    el('span', { 'aria-hidden': 'true' }, 'C'), el('span', { 'aria-hidden': 'true' }, 'E'));
+  const nombreRk = (f) => [f.nombre, f.apellido1].filter(Boolean).join(' ');
+
+  function fichaJugador(f) {
+    const a = RKE.a, t = a.torneo, caja = $('#ficha');
+    const fila = (k, v) => (v == null || v === '' ? null : [el('dt', null, k), el('dd', null, v)]);
+    const jugados = a.torneos.map((x, k) => [x, f.puntos[k]]).filter(([x]) => x.cargado);
+    poner(caja,
+      el('h2', { id: 't-ficha' }, nombreRk(f)),
+      el('dl', { class: 'datos-ficha' },
+        fila('Puesto', `${f.puesto}.º${f.empate ? ' (empatado)' : ''}`),
+        fila('Licencia', f.licencia), fila('Licencia anterior', f.licencia_ant), fila('Asociación', f.asociacion),
+        fila('Total', `${f.total} puntos (suman sus ${t.n_mejores} mejores puntuaciones)`),
+        f.plaza_ce ? fila('Campeonato de España', 'Tiene plaza pagada') : null),
+      el('h3', { class: 'sub' }, 'Puntos por torneo'),
+      el('ul', { class: 'puntos-ficha' }, jugados.map(([x, p]) => el('li', null, el('span', null, x.nombre), el('b', null, p == null ? '—' : p)))),
+      el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton sec', onclick: () => { caja.hidden = true; poner(caja); } }, 'Cerrar la ficha')));
+    caja.hidden = false;
+    caja.scrollIntoView({ block: 'start' });
+  }
+
+  function pintarRanking() {
+    const a = RKE.a, t = a.torneo;
+    document.title = t.nombre + (t.temporada ? ' ' + t.temporada : '');
+    const datos = [t.temporada && 'Temporada ' + t.temporada, `${t.n_torneos} de ${a.torneos.length} torneos jugados`, t.fecha && 'Último: ' + fechaLarga(t.fecha)].filter(Boolean);
+    $('#cab').replaceChildren(
+      el('div', null, el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado), el('span', { class: 'etiqueta' }, 'Ranking')),
+      el('h1', null, t.nombre), el('p', { class: 'linea' }, datos.join(' · ')));
+    const jugados = a.torneos.map((x, k) => [x, k]).filter(([x]) => x.cargado);
+    const porJugar = a.torneos.filter((x) => !x.cargado);
+    const tabla = el('table', { class: 'clasi rk' },
+      el('caption', { class: 'solo-lector' }, `${t.nombre}, temporada ${t.temporada || ''}`),
+      el('thead', null, el('tr', null,
+        el('th', { scope: 'col' }, 'Puesto'), el('th', { scope: 'col', class: 'izq' }, 'Jugador'), el('th', { scope: 'col', class: 'izq' }, 'Licencia'),
+        jugados.map(([x]) => el('th', { scope: 'col', class: 'tor' }, x.nombre)),
+        el('th', { scope: 'col' }, 'Total'), el('th', { scope: 'col' }, el('abbr', { title: 'Plaza para el Campeonato de España' }, 'CE')))),
+      el('tbody', null, a.ranking.map((f) => el('tr', { class: f.plaza_ce ? 'con-plaza' : null },
+        el('td', null, el('span', { class: 'puesto' + (f.puesto <= 3 ? ' p' + f.puesto : '') }, f.puesto), f.empate ? el('abbr', { class: 'empate', title: 'Empatado' }, '=') : null),
+        el('td', { class: 'jug' }, el('button', { type: 'button', class: 'nombre-rk', onclick: () => fichaJugador(f) }, nombreRk(f))),
+        el('td', { class: 'lic' }, f.licencia || '', f.licencia_ant ? el('span', { class: 'sub' }, `(${f.licencia_ant})`) : null),
+        jugados.map(([, k]) => el('td', { class: f.puntos[k] === 0 ? 'cero' : null }, f.puntos[k] == null ? '' : f.puntos[k])),
+        el('td', { class: 'gan' }, f.total), el('td', { class: 'ce' }, f.plaza_ce ? fichaCE() : null)))));
+    poner($('#contenido'),
+      el('p', { class: 'nota' }, `Suman las ${t.n_mejores} mejores puntuaciones de cada jugador. `, fichaCE(),
+        ` plaza pagada para el Campeonato de España de Parejas: los ${t.plazas_ce} primeros, o el siguiente si alguno renuncia. Pulsa un nombre para ver su ficha.`),
+      a.ranking.length ? marco(tabla) : el('p', { class: 'vacio' }, 'El ranking aparecerá cuando haya resultados del primer torneo.'),
+      porJugar.length ? el('p', { class: 'leyenda' }, 'Por jugar: ' + porJugar.map((x) => x.nombre + (x.fecha ? ` (${corta(x.fecha)})` : '')).join(' · ')) : null);
+  }
+
+  async function paginaRanking() {
+    RKE.id = new URLSearchParams(location.search).get('r');
+    if (!RKE.id || !/^[a-z0-9][a-z0-9-]{2,59}$/.test(RKE.id)) { $('#contenido').replaceChildren(el('p', { class: 'aviso alerta' }, 'Falta el ranking. Vuelve a la portada y elígelo.')); return; }
+    if (BORRADOR) {
+      document.body.prepend(el('div', { class: 'banda-prueba' }, 'Borrador privado: solo lo ves tú, con el token de este navegador. La web pública no lo enseña.'));
+      if (!window.Mesa || !window.Mesa.token.obtener()) { borradorPrivado(); return; }
+    }
+    try { RKE.a = await leer(`${BASE}/${RKE.id}/actual.json`, true); }
+    catch (e) { if (BORRADOR) borradorPrivado(); else $('#contenido').replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha encontrado este ranking. Puede que todavía no esté publicado.')); return; }
+    if (!RKE.a.torneo || RKE.a.torneo.tipo !== 'ranking') { location.replace(url('torneo.html', { t: RKE.id })); return; }
+    pintarRanking();
+  }
+
   window.TuMesa = { el, poner, instante, TIPOS, ESTADOS };
 
   document.addEventListener('DOMContentLoaded', async () => {
     bandaPrueba();
     const pagina = document.body.dataset.pagina;
-    if ((pagina === 'portada' || pagina === 'torneo') && !BORRADOR && !(await desbloquear())) return;
+    if ((pagina === 'portada' || pagina === 'torneo' || pagina === 'ranking') && !BORRADOR && !(await desbloquear())) return;
     if (pagina === 'portada') portada();
     else if (pagina === 'torneo') torneo();
+    else if (pagina === 'ranking') paginaRanking();
     document.querySelectorAll('a[data-conservar]').forEach((x) => { if (ES_PRUEBA) x.href = url(x.getAttribute('href')); });
   });
 })();
