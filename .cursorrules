@@ -24,6 +24,7 @@ Si ves que ya se ha subido algo de esto: no lo borres tú sin más. Avisa ensegu
 ## Si vas a cambiar la web
 
 - Haz el cambio en una rama y que lo revise Jeel antes de llevarlo a `main`. No edites `main` directamente.
+- Antes de tocar reglas del ranking, de las plazas o de la web, lee `docs/coordinacion/Decisiones_arbitro.md` (en el repositorio privado `JUGUEMOSDOMINO/programas-domino`). Si algo choca, dilo en el informe.
 - Con 320 px de ancho o más, la web nunca puede ocultar ni cortar información.
 - No pongas `style="..."` ni `<script>` dentro del HTML, tampoco en el HTML que genere el JavaScript (por ejemplo en `mesa-domino.js`): la política de seguridad (CSP) lo bloquea. Los estilos van en `.css` y el código en `.js`.
 - No cambies `assets/cifra.js`, `assets/contrato.js`, `datos/clave.json` ni la frase interna «tu mesa» del verificador: romperías la contraseña de la web.
