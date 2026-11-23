@@ -1,6 +1,7 @@
 /* Sección «Archivos» de la mesa de control: el árbitro descarga lo que hay en programas-domino/entregables/ sin entrar en GitHub.
    - La lista sale de entregables/DESCARGAS.md (una fila por archivo: ruta, frase y fecha); solo se enseñan los archivos que tienen línea y existen.
    - Se agrupan por categoría (la sección de DESCARGAS.md donde está cada fila), lo más reciente primero.
+   - La fecha que se enseña, al segundo y en hora de Madrid, es la del último commit que tocó el archivo en programas-domino (una sola consulta GraphQL, Mesa.fechasEntregables). La columna Fecha de DESCARGAS.md no se enseña: solo ordena si la consulta falla, y entonces se lee «Fecha no disponible».
    - Subir va por «Subir archivo» (paso 4, assets/publicar.js): lo que el árbitro sube se guarda siempre en programas-domino (privado), en entregables/del_arbitro/<categoría>/, con su línea en DESCARGAS.md. Nunca en campeonatos-domino.
    - Todo pasa por Mesa.llamar (assets/mesa.js), que es lo único que manda el token y solo deja leer entregables/ y escribir del_arbitro/<categoría>/ y DESCARGAS.md.
    La parte sin navegador (leer y escribir DESCARGAS.md, validar nombre y descripción) se prueba en Node con pruebas/probar_archivos.cjs. */
@@ -36,9 +37,20 @@
     return out;
   }
 
+  // «dd/mm/aaaa hh:mm:ss» en hora de Madrid (con el cambio de horario) de un instante ISO como 2026-11-23T14:05:09Z; '' si no es una fecha válida.
+  function fechaHora(iso) {
+    const d = new Date(iso);
+    if (!/^\d{4}-\d{2}-\d{2}T/.test(String(iso)) || isNaN(d)) return '';
+    const p = {};
+    for (const x of new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(d)) p[x.type] = x.value;
+    return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}:${p.second}`;
+  }
+  // Con la fecha del commit (`commit`, ISO en UTC) se ordena por ella; sin ella, por la fecha de DESCARGAS.md a las 00:00.
+  const clave = (f) => f.commit || f.fecha + 'T00:00:00Z';
+
   // Por categoría y en su orden, solo las que tienen archivos; dentro, lo más reciente primero (a igual fecha, el orden del documento).
   function agrupar(filas) {
-    return CATEGORIAS.map((categoria) => ({ categoria, filas: filas.filter((f) => f.categoria === categoria).sort((a, b) => (a.fecha < b.fecha) - (a.fecha > b.fecha)) })).filter((g) => g.filas.length);
+    return CATEGORIAS.map((categoria) => ({ categoria, filas: filas.filter((f) => f.categoria === categoria).sort((a, b) => (clave(a) < clave(b)) - (clave(a) > clave(b))) })).filter((g) => g.filas.length);
   }
 
   // El texto de DESCARGAS.md con la línea de `ruta` puesta al principio de su categoría (la más reciente arriba). Si ya tenía una línea, en cualquier categoría, se quita antes.
@@ -63,7 +75,7 @@
     return ls.join('\n') + '\n';
   }
 
-  const API = { CATEGORIAS, CATEGORIAS_SUBIR, carpetaDe, agrupar, leerDescargas, conLinea, nombreValido, descripcionValida, limpiarDescripcion, fechaHoy, MAX_SUBIDA };
+  const API = { CATEGORIAS, CATEGORIAS_SUBIR, carpetaDe, agrupar, fechaHora, leerDescargas, conLinea, nombreValido, descripcionValida, limpiarDescripcion, fechaHoy, MAX_SUBIDA };
   if (typeof module !== 'undefined' && module.exports) { module.exports = API; return; }
   raiz.Archivos = API;
 
@@ -77,7 +89,6 @@
     const decir = (t) => { $('archivos-estado').textContent = t || ''; };
     const tam = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
     const bytesDe = (b64) => { const bin = atob(b64.replace(/\s/g, '')); const u = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i); return u; };
-    const fecha = (iso) => iso.split('-').reverse().join('/');
 
     async function leerDescargasRepo() {
       try {
@@ -96,6 +107,8 @@
         E.archivos = new Map((arbol.tree || []).filter((t) => t.type === 'blob' && t.path.startsWith('entregables/')).map((t) => [t.path.slice('entregables/'.length), { size: t.size || 0, sha: t.sha }]));
         const d = await leerDescargasRepo();
         const filas = leerDescargas(d && d.texto).filter((f) => E.archivos.has(f.ruta));
+        const fechas = await M.fechasEntregables(filas.map((f) => f.ruta)); // una consulta para todos; si falla, queda vacía
+        for (const f of filas) f.commit = fechas.get(f.ruta) || null;
         const carpetas = d ? [...d.texto.matchAll(/^\|\s*`([^`]+\/)`/gm)].map((m) => m[1]) : [];
         const descritos = new Set(filas.map((f) => f.ruta));
         const sinLinea = [...E.archivos.keys()].filter((r) => !descritos.has(r) && !r.endsWith('.gitkeep') && r !== 'DESCARGAS.md' && !carpetas.some((c) => r.startsWith(c)));
@@ -125,7 +138,7 @@
           const cuerpo = nodo('div', null, 'archivo-datos');
           cuerpo.append(nodo('b', nombre, 'archivo-nombre'));
           if (partes.length) cuerpo.append(nodo('span', partes.join('/') + '/', 'archivo-ruta'));
-          cuerpo.append(nodo('p', f.descripcion, 'archivo-desc'), nodo('span', `${fecha(f.fecha)} · ${tam(E.archivos.get(f.ruta).size)}`, 'archivo-meta'));
+          cuerpo.append(nodo('p', f.descripcion, 'archivo-desc'), nodo('span', f.commit ? `Actualizado: ${fechaHora(f.commit)}` : 'Fecha no disponible', 'archivo-fecha'), nodo('span', tam(E.archivos.get(f.ruta).size), 'archivo-meta'));
           const bt = nodo('button', 'Descargar', 'boton sec');
           bt.type = 'button';
           bt.setAttribute('aria-label', `Descargar ${nombre}`);

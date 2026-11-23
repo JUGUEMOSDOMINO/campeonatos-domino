@@ -1194,6 +1194,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       a.poner('prog', 'entregables/DESCARGAS.md', DESC); a.poner('prog', 'entregables/ranking/leer_torneo.html', '<html>hola</html>'); a.poner('prog', 'entregables/ranking/Ranking_FVD_plantilla.xlsx', 'vacio'); a.poner('prog', 'entregables/web/recortar.py', 'print()');
       a.poner('prog', 'entregables/sp/24_SP_sin_macros.xlsx', GRANDE); a.poner('prog', 'entregables/web/capturas/pub-01.png', Buffer.from([1, 2, 3]));
       a.poner('prog', 'entregables/sin_linea.txt', 'x'); a.poner('prog', 'entregables/.gitkeep', '');
+      a.ponerFecha('entregables/ranking/leer_torneo.html', '2026-11-22T14:05:09Z'); a.ponerFecha('entregables/ranking/Ranking_FVD_plantilla.xlsx', '2026-11-10T08:00:00Z');
     };
     const subida = (n, bytes) => ({ name: n, mimeType: 'application/octet-stream', buffer: bytes });
     const { ctx, pg, api, errores } = await escenario({ semilla });
@@ -1220,7 +1221,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), true);
     bien('archivos: cada categoría se abre y se cierra con un clic en su título');
     const txtA = await pg.textContent('#archivos-estado') + await pg.textContent('#archivos-lista');
-    assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('22/11/2026') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
+    assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('Actualizado: 22/11/2026 15:05:09') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
     assert(!txtA.includes('fantasma') && !txtA.includes('pub-01') && !txtA.includes('.gitkeep') && !txtA.includes('Capturas del manual'), txtA);
     bien('archivos: lista lo que tiene línea en DESCARGAS.md y existe (nombre, carpeta, frase, fecha y tamaño); no enseña carpetas, huérfanos ni sin línea, y cuenta los sin descripción');
     const [d1] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("24_SP_sin_macros.xlsx") button')]);
@@ -1256,6 +1257,62 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);
       bien('archivos: con un token de solo lectura se puede descargar');
       await lec.ctx.close();
+    }
+
+    /* ---- fecha y hora al segundo de cada archivo (último commit en programas-domino), con una sola consulta GraphQL ---- */
+    {
+      const DESC2 = ['# Descargas', '', '## Ranking FVD', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+        '| `ranking/Ranking_FVD_2026-27.xlsx` | El ranking de la temporada (copia del agente). | 2026-11-20 |',
+        '| `del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx` | El ranking que subió el árbitro. | 2026-01-01 |',
+        '| `ranking/leer_torneo.html` | Página de lectura. | 2026-11-30 |', '',
+        '## Torneos', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+        '| `del_arbitro/torneos/Verano.xlsx` | Lista de verano. | 2026-12-31 |', ''].join('\n');
+      const semilla2 = (a) => {
+        a.poner('prog', 'entregables/DESCARGAS.md', DESC2);
+        for (const r of ['ranking/Ranking_FVD_2026-27.xlsx', 'del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx', 'ranking/leer_torneo.html', 'del_arbitro/torneos/Verano.xlsx']) a.poner('prog', 'entregables/' + r, 'x');
+        a.ponerFecha('entregables/ranking/Ranking_FVD_2026-27.xlsx', '2026-11-23T08:09:05Z');                 // invierno (UTC+1): 09:09:05
+        a.ponerFecha('entregables/del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx', '2026-11-23T08:09:07Z');  // el mismo día, dos segundos después
+        a.ponerFecha('entregables/ranking/leer_torneo.html', '2026-03-29T00:59:59Z');                          // el último segundo antes del cambio de hora: 01:59:59
+        a.ponerFecha('entregables/del_arbitro/torneos/Verano.xlsx', '2026-07-15T21:59:59Z');                   // verano (UTC+2): 23:59:59
+      };
+      const e2 = await escenario({ semilla: semilla2 });
+      await abrir(e2.pg);
+      await e2.pg.click('#archivos-ver');
+      await e2.pg.waitForSelector('#archivos-lista li.archivo');
+      const fechas = await e2.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-ruta').textContent, x.querySelector('.archivo-fecha').textContent]));
+      assert.deepStrictEqual(fechas, [
+        ['Ranking_FVD_2026-27.xlsx', 'del_arbitro/ranking-fvd/', 'Actualizado: 23/11/2026 09:09:07'],
+        ['Ranking_FVD_2026-27.xlsx', 'ranking/', 'Actualizado: 23/11/2026 09:09:05'],
+        ['leer_torneo.html', 'ranking/', 'Actualizado: 29/03/2026 01:59:59'],
+        ['Verano.xlsx', 'del_arbitro/torneos/', 'Actualizado: 15/07/2026 23:59:59']]);
+      bien('archivos: «Actualizado: dd/mm/aaaa hh:mm:ss» en hora de Madrid (invierno +1, verano +2), del último commit; lo más reciente primero y, con el mismo nombre en dos carpetas, se distinguen por carpeta y segundo (la columna Fecha de DESCARGAS.md no cuenta)');
+      const texto2 = await e2.pg.textContent('#archivos-lista');
+      assert(!/2026-11-20|2026-12-31|2026-11-30|31\/12\/2026/.test(texto2), texto2);
+      bien('archivos: la fecha escrita a mano en DESCARGAS.md no se enseña');
+      assert.strictEqual(e2.api.graphql.length, 1);
+      assert.strictEqual(e2.api.graphql[0].auth, 'Bearer ' + TOKEN);
+      assert.deepStrictEqual(Object.values(e2.api.graphql[0].variables).sort(), ['entregables/del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx', 'entregables/del_arbitro/torneos/Verano.xlsx', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', 'entregables/ranking/leer_torneo.html']);
+      assert(!/entregables\//.test(e2.api.graphql[0].query), 'las rutas van como variables, no pegadas en la consulta');
+      const peticiones = e2.api.reqs.filter((r) => /programas-domino|graphql/.test(r.ruta)).map((r) => r.metodo + ' ' + r.ruta.replace(/[0-9a-f]{40}/, '<sha>'));
+      assert.deepStrictEqual(peticiones, ['GET /repos/JUGUEMOSDOMINO/programas-domino', 'GET /repos/JUGUEMOSDOMINO/programas-domino/git/trees/main', 'GET /repos/JUGUEMOSDOMINO/programas-domino/contents/entregables/DESCARGAS.md', 'POST /graphql']);
+      bien('archivos: una sola consulta GraphQL para todas las fechas (4 peticiones al abrir la lista, sin una por archivo), con el token del panel');
+      assert.deepStrictEqual(await e2.pg.evaluate(() => window.__csp), []); assert.deepStrictEqual(e2.errores, []);
+      await e2.ctx.close();
+      for (const fallo of [500, 403, 'errores']) {
+        const e3 = await escenario({ semilla: semilla2 });
+        e3.api.fallarGraphql = fallo;
+        await abrir(e3.pg);
+        await e3.pg.click('#archivos-ver');
+        await e3.pg.waitForSelector('#archivos-lista li.archivo');
+        const f3 = await e3.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-fecha').textContent]));
+        assert.strictEqual(f3.length, 4);
+        assert(f3.every((x) => x[1] === 'Fecha no disponible'), JSON.stringify(f3));
+        assert.deepStrictEqual(await e3.pg.$$eval('#archivos-lista li.archivo button', (l) => l.length), 4);
+        assert.strictEqual(await e3.pg.textContent('#archivos-estado'), '');
+        assert.deepStrictEqual(e3.errores, []);
+        await e3.ctx.close();
+      }
+      bien('archivos: si la consulta de fechas falla (500, sin permiso o con errores), la lista sale igual con «Fecha no disponible» y se puede descargar');
     }
   }
 

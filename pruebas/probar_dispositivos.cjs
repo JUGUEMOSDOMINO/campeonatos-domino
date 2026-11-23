@@ -255,6 +255,10 @@ function llegaAPuntC() {
     await mira('mesa · listas');
     await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo');
     await mira('mesa · archivos');
+    {
+      const f = await pg.$$eval('#archivos-lista li.archivo .archivo-fecha', (l) => l.map((x) => ({ t: x.textContent, ok: x.getBoundingClientRect().width > 0 && x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));
+      if (!f.length || f.some((x) => !/^Actualizado: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(x.t) || !x.ok)) throw new Error('mesa · archivos: la fecha no se lee entera: ' + JSON.stringify(f));
+    }
     await pg.click('#archivos-lista summary:has-text("Mantenimiento")'); await mira('mesa · archivos con Mantenimiento abierta');
     await pg.click('#archivos-lista summary:has-text("Ranking FVD")'); await mira('mesa · archivos con una categoría cerrada');
     await pg.setInputFiles('#archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });     // un archivo de ningún tipo conocido, con un nombre larguísimo
