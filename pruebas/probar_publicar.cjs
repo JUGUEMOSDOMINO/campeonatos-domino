@@ -48,6 +48,10 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
   {
     const { pg, api, errores } = await escenario({ token: false, semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
     await pg.goto(base + '/publicar.html');
+    await pg.waitForSelector('#token');
+    const aviso = await pg.textContent('#token-estado');
+    assert(/campeonatos-domino, campeonatos-borradores y programas-domino/.test(aviso) && /Contents: Read and write/.test(aviso) && /ningún chat ni correo/.test(aviso), aviso);
+    bien('paso 1: el aviso del token nombra los tres repositorios, con «Contents: Read and write» y el aviso de no pegarlo en chats ni correos');
     await pg.fill('#token', 'ghp_MAL'); await pg.click('text=Guardar y comprobar');
     await pg.waitForSelector('text=GitHub no acepta el token');
     bien('token incorrecto: mensaje en lenguaje llano');

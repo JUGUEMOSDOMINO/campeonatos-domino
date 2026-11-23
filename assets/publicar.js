@@ -39,14 +39,15 @@
       try {
         const web = await M.acceso('web');
         if (!web.ok) { M.token.borrar(); boton.disabled = false; nota.textContent = web.msg; nota.className = 'nota caja'; return; }
-        const borr = await M.acceso('borr');
+        const borr = await M.acceso('borr'), prog = await M.acceso('prog');
         const guardado = M.token.guardar(v);
-        pintarToken((guardado ? 'Token comprobado y guardado.' : 'El navegador no deja guardar el token (¿ventana privada?). Se usará solo hasta que cierres esta pestaña.') + (borr.ok ? '' : ' Ojo: este token no tiene acceso a campeonatos-borradores; la lista de borradores te dice qué falta.'), !guardado || !borr.ok);
+        const faltan = [borr.ok ? null : 'campeonatos-borradores', prog.ok ? null : 'programas-domino'].filter(Boolean);
+        pintarToken((guardado ? 'Token comprobado y guardado.' : 'El navegador no deja guardar el token (¿ventana privada?). Se usará solo hasta que cierres esta pestaña.') + (faltan.length ? ` Ojo: este token no tiene acceso a ${faltan.join(' ni a ')}. En GitHub, edítalo y añádelo en «Repository access»; mientras tanto, la parte de la página que lo usa no funcionará.` : ''), !guardado || faltan.length > 0);
         cargarTorneos();
       } catch (e) { M.token.borrar(); boton.disabled = false; nota.textContent = e.message; nota.className = 'nota caja'; }
     });
     poner($('#token-estado'),
-      el('p', null, 'La primera vez hace falta un token de GitHub con acceso a los repositorios campeonatos-domino y campeonatos-borradores (Contents: Read and write) y a nada más. Pégalo aquí. No lo escribas en ningún chat ni correo.'),
+      el('p', null, 'La primera vez hace falta un token de GitHub con acceso a tres repositorios: campeonatos-domino, campeonatos-borradores y programas-domino (las copias privadas y la sección «Archivos»). En los tres, el permiso «Contents: Read and write», y a nada más. Pégalo aquí. No lo escribas en ningún chat ni correo.'),
       campo, el('div', { class: 'acciones' }, boton), nota);
   }
 
