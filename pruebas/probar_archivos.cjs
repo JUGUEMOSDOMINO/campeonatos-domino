@@ -204,6 +204,37 @@ const lee = (md) => Ar.leerDescargas(md).map((f) => `${f.categoria} | ${f.ruta}`
     for (const [c, m] of [['web', 'POST'], ['borr', 'POST'], ['prog', 'GET'], ['prog', 'PUT']]) assert.ok(/no permitida/i.test(await prueba(c, '@graphql', m)), c + m);
     assert.deepStrictEqual(llamadas, []);
   });
+  await ok('GraphQL cerrado: desde fuera la marca no sirve (ni la cadena ni una mutation); la consulta se valida antes de enviar; nada sale a la red', async () => {
+    llamadas = [];
+    const mut = JSON.stringify({ query: 'mutation{createCommitOnBranch(input:{}){commit{oid}}}', variables: {} });
+    for (const marca of ['@graphql', '/graphql', Symbol('graphql')])
+      for (const c of ['prog', 'web', 'borr']) { const e = await M.llamar(c, marca, { method: 'POST', body: mut }).then(() => 'pasó', (x) => x.message); assert.ok(/no permitida/i.test(e), String(marca) + c + ' ' + e); }
+    assert.deepStrictEqual(llamadas, []);
+    // El validador (lo que corre dentro de llamar antes del fetch): solo vale lo que genera fechasEntregables.
+    let capt = null; global.fetch = async (u, o) => { capt = JSON.parse(o.body); return { ok: true, status: 200, json: async () => ({}) }; };
+    await M.fechasEntregables(['ranking/a.xlsx', 'x/b.xlsx']);
+    assert.ok(capt && M.graphqlPermitido(capt) && M.graphqlPermitido(JSON.stringify(capt)));
+    const malo = (o) => assert.strictEqual(M.graphqlPermitido(o), false, JSON.stringify(o).slice(0, 120));
+    malo({ query: 'mutation{createCommitOnBranch(input:{}){commit{oid}}}', variables: { p0: 'entregables/a' } });
+    malo({ query: capt.query.replace('query(', 'mutation('), variables: capt.variables });
+    malo({ query: capt.query + ' mutation{x}', variables: capt.variables });
+    malo({ query: capt.query + ' subscription{x}', variables: capt.variables });
+    malo({ query: capt.query.replace('first:1', 'first:100'), variables: capt.variables });
+    malo({ query: capt.query.replace('committedDate', 'author{email}'), variables: capt.variables });
+    malo({ query: capt.query.replace('programas-domino', 'otro-repo'), variables: capt.variables });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 'src/normativa.pdf' } });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 'entregables/../src/x' } });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 7 } });
+    malo({ query: capt.query, variables: { p0: 'entregables/a' } });
+    malo({ query: capt.query, variables: capt.variables, extra: 1 });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 'entregables/b', p2: 'entregables/c' } });
+    malo({ query: capt.query, variables: {} }); malo('no es json'); malo(null);
+    // fechasEntregables nunca deja pasar una ruta fuera de entregables/: no sale ninguna petición
+    llamadas = []; global.fetch = async (u, o) => { llamadas.push(String(u)); return { ok: true, status: 200, json: async () => ({}) }; };
+    await M.fechasEntregables(['../src/x.xlsx', 'a%2Fb', 'a\\b', '']);
+    assert.deepStrictEqual(llamadas, []);
+    global.fetch = async (u, o) => { llamadas.push([String(u), (o && o.method) || 'GET']); return { ok: true, status: 200, json: async () => ({}) }; };
+  });
   await ok('el token solo va a api.github.com y a /repos/JUGUEMOSDOMINO/programas-domino', async () => {
     llamadas = [];
     await prueba('prog', '/contents/entregables/DESCARGAS.md?ref=main');

@@ -22,7 +22,7 @@
   // Las carpetas de categoría son las de Archivos.carpetaDe(CATEGORIAS_SUBIR) (assets/archivos.js); «mantenimiento» no está: no se sube ahí. probar_archivos.cjs vigila que coincidan.
   const PROG_ESCRIBIR = /^entregables\/(del_arbitro\/(programas-de-campeonato|ranking-fvd|rankings-publicados|torneos|manuales-y-guias|otros)\/(?!\.{1,2}$)[^/\\?#%]+|DESCARGAS\.md)$/;
   const ARBOL_OK = '/git/trees/main?recursive=1';
-  const GRAFQL = '@graphql'; // marca interna: la única consulta GraphQL permitida (fechas de los archivos de programas-domino), por POST a /graphql
+  const GRAFQL = Symbol('graphql'); // marca privada (no sale de este archivo): la única consulta GraphQL permitida (fechas de los archivos de programas-domino), por POST a /graphql
   const POR_CONSULTA = 50;   // rutas por consulta GraphQL
   const BLOB_OK = /^\/git\/blobs\/[0-9a-f]{40}$/; // archivos de más de 1 MB: la API de contenidos no trae el contenido
   const ARCHIVO_DATOS = /^(jornada_\d{2}|actual)\.json$/;
@@ -46,12 +46,22 @@
     prog: 'Con este token no se puede usar el repositorio programas-domino. En GitHub, edita el token y, en «Repository access», añade programas-domino; en «Permissions», deja «Contents: Read and write». Esta página no pide ni guarda ningún otro token.',
     borr: 'Con este token no se puede usar el repositorio campeonatos-borradores. En GitHub, edita el token y, en «Repository access», añade campeonatos-borradores; en «Permissions», deja «Contents: Read and write».',
   };
+  // La consulta de fechas, siempre igual: solo lee history(first:1, path:$pN){nodes{committedDate}} de la rama main de programas-domino. N es el número de rutas.
+  const consultaFechas = (n) => { const k = Array.from({ length: n }, (_, i) => i); return `query(${k.map((i) => `$p${i}:String!`).join(',')}){repository(owner:"${DUENO}",name:"${REPOS.prog}"){ref(qualifiedName:"refs/heads/${RAMA}"){target{...on Commit{${k.map((i) => `f${i}:history(first:1,path:$p${i}){nodes{committedDate}}`).join(' ')}}}}}}`; };
+  // ¿Es este cuerpo exactamente la consulta de fechas, con solo rutas de entregables/ como variables? Nada de mutaciones ni de otra consulta.
+  function graphqlPermitido(cuerpo) {
+    let c; try { c = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo; } catch (e) { return false; }
+    if (!c || typeof c !== 'object' || Object.keys(c).sort().join() !== 'query,variables' || typeof c.query !== 'string' || !c.variables || typeof c.variables !== 'object') return false;
+    const n = Object.keys(c.variables).length;
+    if (n < 1 || n > POR_CONSULTA || /mutation|subscription/i.test(c.query) || !c.query.startsWith('query(') || c.query !== consultaFechas(n)) return false;
+    return Array.from({ length: n }, (_, i) => c.variables['p' + i]).every((v) => typeof v === 'string' && v.startsWith('entregables/') && PROG_LEER.test(v) && v !== 'entregables/');
+  }
   // Único punto por el que sale el token. `sufijo` es '' (el repositorio) o '/contents/<ruta>' con ruta permitida.
   async function llamar(clave, sufijo, opciones) {
     const nombre = Object.prototype.hasOwnProperty.call(REPOS, clave) ? REPOS[clave] : null; // «__proto__» o «constructor» no son repositorios
     if (!nombre) throw new ErrorGH(0, 'Repositorio no permitido: ' + clave);
     const metodo = (opciones && opciones.method) || 'GET';
-    if (sufijo === GRAFQL && (clave !== 'prog' || metodo !== 'POST')) throw new ErrorGH(0, 'Operación no permitida: ' + sufijo);
+    if ((typeof sufijo !== 'string' && sufijo !== GRAFQL) || sufijo === '@graphql' || (sufijo === GRAFQL && (clave !== 'prog' || metodo !== 'POST' || !graphqlPermitido(opciones && opciones.body)))) throw new ErrorGH(0, 'Operación no permitida: GraphQL');
     if (sufijo && sufijo !== GRAFQL && !BLOB_OK.test(sufijo) && !(clave === 'prog' && sufijo === ARBOL_OK)) {
       const ruta = sufijo.replace(/^\/contents\//, '');
       const limpia = quitarQuery(ruta);
@@ -112,7 +122,7 @@
     const validas = [...new Set(rutas)].filter((r) => typeof r === 'string' && PROG_LEER.test('entregables/' + r));
     for (let i = 0; i < validas.length; i += POR_CONSULTA) {
       const lote = validas.slice(i, i + POR_CONSULTA);
-      const consulta = `query(${lote.map((_, k) => `$p${k}:String!`).join(',')}){repository(owner:"${DUENO}",name:"${REPOS.prog}"){ref(qualifiedName:"refs/heads/${RAMA}"){target{...on Commit{${lote.map((_, k) => `f${k}:history(first:1,path:$p${k}){nodes{committedDate}}`).join(' ')}}}}}}`;
+      const consulta = consultaFechas(lote.length);
       const variables = Object.fromEntries(lote.map((r, k) => ['p' + k, 'entregables/' + r]));
       try {
         const r = await llamar('prog', GRAFQL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: consulta, variables }) });
@@ -455,7 +465,7 @@
     return (dirs || []).filter((x) => x.type === 'dir' && ID_OK.test(x.name) && !entradaDe(indice, x.name)).map((x) => x.name);
   }
 
-  const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, fechasEntregables, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
+  const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, graphqlPermitido, fechasEntregables, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
     rutaCopia, shaEntregable, planCopia, rankingDeEntregables, planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
     estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveAbierta() { return !!CL.clave; }, get claveJson() { return CL.cj; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = Mesa; else raiz.Mesa = Mesa;
