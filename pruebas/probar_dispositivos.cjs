@@ -54,6 +54,48 @@ function revisar() {
   return fallos;
 }
 
+// (g) en toda tabla .clasi de la web (ranking y campeonatos): cada título de columna va entero en una sola línea, sin perder letras, y las columnas
+// fijas (las tres primeras) tapan por completo lo que pasa por debajo al desplazar y quedan pegadas entre sí.
+function cabecerasEnteras() {
+  const f = [];
+  const tablas = [...document.querySelectorAll('.tabla-caja table.clasi')].filter((t) => t.querySelector('thead') && !t.closest('#revision, [hidden]') && t.id !== 'bloque-ranking' && t.closest('main, #contenido, body') && t.offsetParent && document.body.dataset.pagina !== 'publicar');
+  tablas.forEach((tabla, k) => {
+    const caja = tabla.closest('.tabla-caja'), donde = `tabla ${k + 1}`;
+    const ths = [...tabla.querySelectorAll('thead th')];
+    for (const th of ths) {
+      const t = th.textContent.trim();
+      const r = document.createRange(); r.selectNodeContents(th);
+      const lineas = new Set([...r.getClientRects()].filter((q) => q.width).map((q) => Math.round(q.top / 4)));
+      if (lineas.size > 1) f.push(`(g) ${donde}: el título «${t}» se parte en ${lineas.size} líneas`);
+      if (th.scrollWidth > th.clientWidth) f.push(`(g) ${donde}: el título «${t}» se corta (${th.scrollWidth} > ${th.clientWidth})`);
+    }
+    const fijas = (tr) => [...tr.children].slice(0, 3);
+    const filas = [...tabla.rows];
+    const cb = caja.getBoundingClientRect();
+    const hdr = fijas(tabla.rows[0]).map((c) => c.getBoundingClientRect());
+    if (Math.abs(hdr[0].left - cb.left) > 2) f.push(`(g) ${donde}: la primera columna fija no está pegada al borde (${Math.round(hdr[0].left - cb.left)} px)`);
+    for (let i = 0; i < 2; i++) if (hdr[i + 1].left > hdr[i].right + 0.5) f.push(`(g) ${donde}: queda un hueco de ${Math.round(hdr[i + 1].left - hdr[i].right)} px entre columnas fijas`);
+    const max = caja.scrollWidth - caja.clientWidth;
+    for (const x of [0, Math.round(max * 0.4), max]) {
+      caja.scrollLeft = x;
+      for (const tr of filas) {
+        for (const c of fijas(tr)) {
+          c.scrollIntoView({ block: 'nearest', inline: 'nearest' }); caja.scrollLeft = x;
+          const q = c.getBoundingClientRect();
+          if (!q.width || q.bottom < 0 || q.top > innerHeight) continue;
+          for (const [px, py] of [[q.left + 1, q.top + 1], [q.right - 1, q.top + 1], [q.left + 1, q.bottom - 1], [q.right - 1, q.bottom - 1], [q.left + q.width / 2, q.top + q.height / 2]]) {
+            if (py < 0 || py >= innerHeight) continue;
+            const e = document.elementFromPoint(px, py);
+            if (e && e !== c && !c.contains(e) && e.closest('td, th') && caja.contains(e)) { f.push(`(g) ${donde}: bajo «${c.textContent.trim().slice(0, 20)}» (desplazado ${x}) asoma «${e.closest('td, th').textContent.trim().slice(0, 20)}»`); break; }
+          }
+        }
+      }
+    }
+    caja.scrollLeft = 0;
+  });
+  return [...new Set(f)];
+}
+
 // (d') en el ranking se llega desplazando hasta la última columna (CE) y puesto, jugador y licencia siguen fijos y a la vista
 function llegaACE() {
   const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.rk');
@@ -108,7 +150,7 @@ function llegaAPuntC() {
     const pg = await ctx.newPage();
     const mira = async (donde, extra) => {
       n++;
-      const f = [...await pg.evaluate(revisar), ...(extra ? await pg.evaluate(extra) : [])];
+      const f = [...await pg.evaluate(revisar), ...await pg.evaluate(cabecerasEnteras), ...(extra ? await pg.evaluate(extra) : [])];
       for (const x of f) fallos.push(`${w}x${h} · ${donde} · ${x}`);
     };
 
