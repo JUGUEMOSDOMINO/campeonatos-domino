@@ -204,6 +204,7 @@
       }));
     }
     iniciarBuscador(ts);
+    const TXT_VER_LIBRO = '+ Ver libro JUGUEMOS DOMINÓ';
     const libro = anuncioLibro();
     libro.hidden = true;
 
@@ -212,9 +213,9 @@
       class: 'boton',
       onclick: () => {
         libro.hidden = !libro.hidden;
-        btnLibro.textContent = libro.hidden ? '+ Ver libro JUGUEMOS DOMINÖ' : '- Ocultar libro';
+        btnLibro.textContent = libro.hidden ? TXT_VER_LIBRO : '- Ocultar libro';
   }
-}, '+ Ver libro JUGUEMOS DOMINÓ');
+}, TXT_VER_LIBRO);
     lista.after(btnLibro, libro);
  }
   /* ---------- buscador de jugador ---------- */

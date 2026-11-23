@@ -376,6 +376,10 @@ const D = 'd=datos/_prueba';
     assert.strictEqual(await pg.locator('.libro').isHidden(), true);
     await pg.click('button:has-text("Ver libro")');
     assert.strictEqual(await pg.locator('.libro').isVisible(), true);
+    await pg.click('button:has-text("Ocultar libro")');
+    assert.strictEqual(await pg.locator('.libro').isHidden(), true);
+    assert.strictEqual((await pg.locator('#lista ~ button.boton').first().textContent()).trim(), '+ Ver libro JUGUEMOS DOMINÓ', 'al ocultar el libro, el botón vuelve a decir DOMINÓ');
+    await pg.click('button:has-text("Ver libro")');
     {
       const img = pg.locator('.libro img.libro-portada');
       assert.strictEqual(await img.getAttribute('src'), 'assets/libro-portada.jpg');
