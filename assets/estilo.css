@@ -28,8 +28,8 @@ button, input { font: inherit; color: inherit; }
 
 /* barra superior */
 .barra { background: var(--barra); color: var(--barra-texto); }
-.barra-in { max-width: 960px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.marca { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; font-size: 1.25rem; letter-spacing: -.01em; }
+.barra-in { max-width: 960px; margin: 0 auto; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; }
+.marca { min-width: 0; display: inline-flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; font-size: 1.25rem; letter-spacing: -.01em; }
 .marca small { font-weight: 500; font-size: .8rem; color: var(--barra-suave); letter-spacing: 0; }
 .ficha-icono { width: 17px; height: 30px; border: 2px solid currentColor; border-radius: 4px; position: relative; flex: none;
   background: radial-gradient(circle at 50% 25%, currentColor 1.5px, transparent 1.9px), radial-gradient(circle at 27% 61%, currentColor 1.5px, transparent 1.9px), radial-gradient(circle at 73% 61%, currentColor 1.5px, transparent 1.9px), radial-gradient(circle at 50% 75%, currentColor 1.5px, transparent 1.9px), radial-gradient(circle at 27% 89%, currentColor 1.5px, transparent 1.9px), radial-gradient(circle at 73% 89%, currentColor 1.5px, transparent 1.9px); }
