@@ -1,10 +1,12 @@
-/* Contrato de datos 1.3, tipo «ranking» (Ranking FVD Jaume I): lee la hoja WEB del Excel del ranking, valida (VR0 a VR6) y
+/* Contrato de datos 1.4, tipo «ranking» (Ranking FVD Jaume I): lee la hoja WEB del Excel del ranking, valida (VR0 a VR6) y
    construye el JSON. Es el mismo que escribe tools/ranking/web_export.py de programas-domino. No toca el contrato 1.0 de
    los campeonatos (assets/contrato.js). Sin dependencias del navegador: lo usan publicar.html y las pruebas en Node.
    Es el único JSON que lleva licencias, y a la web solo sube cifrado (assets/mesa.js). */
 (function (raiz) {
   'use strict';
 
+  // 1.4: cada jugador lleva `abandonos`: los torneos (posición en `torneos`, desde 0) en que no puntuó por abandono o expulsión (caso 9 del reglamento). Es opcional al leer: los rankings ya
+  // publicados en 1.3 no lo traen y se ven igual. Su compañero, que no abandonó, puntúa con normalidad.
   // 1.3: las plazas para el Campeonato de España por parejas son tres: SP (4 jugadores de las 2 primeras parejas), Open (2 de la pareja ganadora) y ranking (6, individuales). plaza_sp y
   // plaza_open valen 0, 0.5 (media plaza: la pareja que recibe una plaza suelta y en la que van los dos) o 1; plaza_ranking, sí o no. Una renuncia del SP o del Open deja la plaza suelta a la
   // siguiente pareja de ese torneo (hasta la 10.ª): por_repartir («sp» u «open») y pareja_n dicen que la pareja aún no ha decidido; plazas_vacias_sp y plazas_vacias_open, las que no quiso
@@ -15,17 +17,17 @@
   const BOOLEANOS = ['sp_jugado', 'open_jugado', 'plazas_provisionales'];
   const TOR = ['col', 'nombre', 'fecha', 'tipo', 'categoria', 'parejas', 'cargado'];
   const RK = ['puesto', 'empate', 'nombre', 'apellido1', 'licencia', 'licencia_ant', 'asociacion', 'total', 'plaza_ce', 'plaza_sp', 'plaza_open', 'plaza_ranking', 'por_repartir', 'pareja_n'];
-  const NT = 20, COL_TOR = 3, COL_RK = 11, COL_PUNTOS = 25, FILA_MAX = 603; // D, L y Z (base 0); 600 jugadores
+  const NT = 20, COL_TOR = 3, COL_RK = 11, COL_PUNTOS = 25, COL_ABANDONOS = 45, FILA_MAX = 603; // D, L, Z y AT (base 0); 600 jugadores
   const LIC = /^46\/ \d{4}$/;
   const ID = /^[a-z0-9][a-z0-9-]{2,59}$/;
 
   const letra = (c) => { let s = ''; c++; while (c > 0) { const r = (c - 1) % 26; s = String.fromCharCode(65 + r) + s; c = Math.floor((c - 1) / 26); } return s; };
   const ref = (c, f) => letra(c) + f;
 
-  // La hoja WEB es la del ranking si A1 dice 1.2 o 1.3 y su META, tipo «ranking».
+  // La hoja WEB es la del ranking si A1 dice 1.2, 1.3 o 1.4 y su META, tipo «ranking».
   function es(hoja) {
     const v = (a) => { const x = hoja && hoja[a]; return x ? String(x.v).trim() : ''; };
-    return (v('A1') === '1.2' || v('A1') === '1.3') && v('A6') === 'tipo' && v('B6') === 'ranking';
+    return ['1.2', '1.3', '1.4'].includes(v('A1')) && v('A6') === 'tipo' && v('B6') === 'ranking';
   }
 
   function leer(hoja) {
@@ -67,6 +69,7 @@
       x.empate = x.empate === 1; for (const k of ['plaza_ce', 'plaza_ranking']) x[k] = x[k] === 1;
       for (const k of ['plaza_sp', 'plaza_open']) x[k] = x[k] == null ? 0 : x[k];
       x.puntos = torneos.map((_, k) => valor(COL_PUNTOS + k, f));
+      x.abandonos = torneos.map((_, k) => k).filter((k) => valor(COL_ABANDONOS + k, f) === 1);
       ranking.push(x);
     }
     const a1 = valor(0, 1);
@@ -81,7 +84,7 @@
     pub = pub || {};
     const v = [], d = r.doc, t = d.torneo;
     const add = (cod, msg) => v.push({ cod, gravedad: 'bloquea', msg });
-    if (d.version !== '1.3' || t.tipo !== 'ranking') add('VR0', 'Esta hoja WEB no es la del Excel del ranking (versión 1.3). Pide el Excel del ranking actualizado.');
+    if (d.version !== '1.4' || t.tipo !== 'ranking') add('VR0', 'Esta hoja WEB no es la del Excel del ranking (versión 1.4). Pide el Excel del ranking actualizado.');
     if (r.estructura.length) add('VR0', `La hoja WEB no tiene el formato esperado: mira la celda ${r.estructura[0]}.`);
     if (r.celdasError.length) add('VR0', `Hay un error en la hoja WEB, en la celda ${r.celdasError[0]}${r.celdasError.length > 1 ? ' y otras ' + (r.celdasError.length - 1) : ''}.`);
     if (!ID.test(t.id || '')) add('VR0', 'El identificador del ranking no vale. Usa solo letras minúsculas, números y guiones (de 3 a 60 caracteres), en la hoja INICIO.');
@@ -98,6 +101,7 @@
       if (f.puntos.length !== d.torneos.length) add('VR0', `Fila ${n}: no hay una columna de puntos por torneo.`);
       for (const k of ['licencia', 'licencia_ant']) if (f[k] != null && !LIC.test(String(f[k]))) add('VR1', `Fila ${n}: la licencia no tiene la forma «46/ 0000».`);
       for (const k of ['nombre', 'apellido1', 'asociacion']) { const x = f[k]; if (x != null && (/\d|@/.test(String(x)) || String(x).length > 60)) add('VR2', `Fila ${n}: el nombre, el apellido o la asociación lleva cifras, «@» o más de 60 letras.`); }
+      for (const k of f.abandonos || []) if (!(Number.isInteger(k) && k >= 0 && k < d.torneos.length && d.torneos[k].cargado && f.puntos[k] === 0)) add('VR7', `Fila ${n}: la marca de abandono no es de un torneo jugado en el que puntuó 0.`);
       const mejores = f.puntos.map((p) => p || 0).sort((a, b) => b - a).slice(0, t.n_mejores).reduce((a, b) => a + b, 0);
       if (f.total !== mejores) add('VR3', `Fila ${n}: el total no es la suma de las ${t.n_mejores} mejores puntuaciones. ¿Se guardó el Excel después de calcular?`);
     });

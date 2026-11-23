@@ -217,6 +217,21 @@ const D = 'd=datos/_prueba';
       assert(vac.includes('4 plazas del ranking quedan vacías') && vac.includes('hasta el puesto 20'), vac);
       await sinDesborde('ranking con plazas vacías');
       bien('ranking con renuncias y nadie disponible hasta el puesto 20: las plazas que quedan vacías se avisan');
+      // caso 9 por jugador (contrato 1.4): Marta abandonó en el 2º torneo y no puntuó; su compañero Joan sí
+      await ir('ranking-abandono');
+      assert.strictEqual(await pg.locator('table.rk td.abandono').count(), 1);
+      const filaMarta = pg.locator('table.rk tbody tr', { hasText: 'Marta Puig' }).locator('td.abandono');
+      assert.strictEqual((await filaMarta.innerText()).replace(/\s+/g, ' ').trim(), '0 abandono');       // se dice con texto, no solo con color
+      assert.strictEqual(await pg.locator('#nota-abandono').count(), 1);
+      const fma = await ficha('Marta Puig');
+      assert(fma.includes('Abandonó o fue expulsado: no puntuó en este torneo'), fma);
+      const fjo = await ficha('Joan Ferrer');
+      assert(fjo.includes('700') && !fjo.includes('Abandonó'), fjo);
+      await sinDesborde('ranking con un abandono (caso 9 por jugador)');
+      bien('ranking con abandono: el jugador que abandonó sale con «abandono» al lado de su 0 y en su ficha «Abandonó o fue expulsado: no puntuó en este torneo»; su compañero puntúa con normalidad; sin cortar nada a 320 px');
+      await ir('ranking-v13');
+      assert.strictEqual(await pg.locator('table.rk td.abandono, #nota-abandono').count(), 0);
+      bien('ranking publicado con el contrato 1.3 (sin la marca de abandono): se sigue viendo igual');
       await ir('ranking-v12');
       assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 2, 6]);
       assert.strictEqual(await pg.locator('#plazas-sueltas, .plaza-por-repartir, #plazas-vacias-sp').count(), 0);

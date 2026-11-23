@@ -143,6 +143,8 @@ function llegaAPuntC() {
     await pg.click('table.rk .nombre-rk:text-is("Marta Puig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha con plaza por repartir');
     await pg.goto(`${base}/ranking.html?${D}&r=ranking-medias`); await pg.waitForSelector('.plaza-sp'); await mira('ranking con ½ plaza', llegaACE);
     await pg.goto(`${base}/ranking.html?${D}&r=ranking-vacias-sp-open`); await pg.waitForSelector('#plazas-vacias-sp'); await mira('ranking con plazas SP y Open vacías', llegaACE);
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-abandono`); await pg.waitForSelector('td.abandono'); await mira('ranking con un abandono (caso 9 por jugador)', llegaACE);
+    await pg.click('table.rk .nombre-rk:text-is("Marta Puig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha de quien abandonó');
 
     // páginas sueltas del árbitro: federación, casos del libro, retos y plataforma de juego
     for (const f of ['federacion-jaume-i', 'ejemplos-libro', 'retos', 'jugar']) {

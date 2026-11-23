@@ -260,7 +260,7 @@ console.log('\nVarias partidas de un mismo Excel (hojas _WEBC, _R1…_Rn y P.1�
   });
 }
 
-console.log('Ranking FVD (contrato 1.3, assets/ranking.js)');
+console.log('Ranking FVD (contrato 1.4, assets/ranking.js)');
 {
   const R = require('../assets/ranking.js');
   const RK = path.join(__dirname, 'datos', 'ranking-ejemplo', 'actual.json');
@@ -272,7 +272,9 @@ console.log('Ranking FVD (contrato 1.3, assets/ranking.js)');
   };
   const wb = libroRk(), ws = wb.Sheets.WEB;
   const sinPub = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.publicado; return c; };
-  ok('ranking: se reconoce por la hoja WEB (1.3, tipo ranking); los campeonatos no', () => {
+  const lee = (n) => { const x = path.join(tmp, n + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), path.join(__dirname, 'datos', n, 'actual.json'), x]);
+      const w = XLSX.read(fs.readFileSync(x), { type: 'buffer', sheets: 'WEB' }); return { rr: R.leer(w.Sheets.WEB), json: JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', n, 'actual.json'), 'utf8')) }; };
+  ok('ranking: se reconoce por la hoja WEB (1.4, tipo ranking); los campeonatos no', () => {
     assert.strictEqual(R.es(ws), true);
     assert.strictEqual(R.es(hoja('sp-ejemplo').ws), false);
   });
@@ -287,6 +289,15 @@ console.log('Ranking FVD (contrato 1.3, assets/ranking.js)');
     falla('VR0', (d) => { d.torneo.id = 'Ranking 2026'; });
     falla('VR0', (d) => { d.ranking[0].puntos.pop(); });
     falla('VR0', (d, x) => { x.estructura.push('L3'); });
+  });
+  ok('VR7: la marca de abandono es de un torneo jugado en el que puntuó 0; el Excel con la hoja WEB en 1.3 ya no se publica', () => {
+    falla('VR7', (d) => { d.ranking[0].abandonos = [0]; });                      // puntuó en ese torneo
+    falla('VR7', (d) => { d.ranking[0].abandonos = [99]; });
+    const ab = lee('ranking-abandono');
+    assert.deepStrictEqual(R.validar(ab.rr, {}), []);
+    assert.deepStrictEqual(sinPub(ab.rr.doc), sinPub(ab.json));                  // el Excel (hoja WEB) da el mismo JSON, con abandonos
+    assert.deepStrictEqual(ab.rr.doc.ranking.filter((f) => f.abandonos.length).map((f) => [f.nombre, f.abandonos]), [['Marta', [1]]]);
+    assert(R.validar(lee('ranking-v13').rr, {}).some((v) => v.cod === 'VR0'));
   });
   ok('VR0: el id ya lo usa un campeonato de otro tipo', () => falla('VR0', () => {}, { indice: { torneos: [{ id: 'ranking-ejemplo', tipo: 'sp' }] } }));
   ok('VR0: el id lleva el nombre o el apellido de un jugador (las carpetas no se cifran)', () => falla('VR0', (d) => { d.torneo.id = 'ranking-roig-2026'; }));
@@ -308,8 +319,6 @@ console.log('Ranking FVD (contrato 1.3, assets/ranking.js)');
     falla('VR5', (d) => { d.ranking[0].plaza_sp = 0.3; });                       // solo 0, ½ o entera
   });
   ok('ranking 1.3: ½ plaza (dos medias suman una), plaza por repartir y plazas vacías del SP y del Open; un Excel 1.2 ya no se publica', () => {
-    const lee = (n) => { const x = path.join(tmp, n + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), path.join(__dirname, 'datos', n, 'actual.json'), x]);
-      const w = XLSX.read(fs.readFileSync(x), { type: 'buffer', sheets: 'WEB' }); return { rr: R.leer(w.Sheets.WEB), json: JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', n, 'actual.json'), 'utf8')) }; };
     const m = lee('ranking-medias');
     assert.deepStrictEqual(R.validar(m.rr, {}), []);
     assert.deepStrictEqual(sinPub(m.rr.doc), sinPub(m.json));
