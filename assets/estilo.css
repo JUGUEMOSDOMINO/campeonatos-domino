@@ -110,6 +110,9 @@ table.clasi { --f1: 4.2rem; --f2: 3.4rem; width: 100%; border-collapse: separate
 .clasi td.pareja { text-align: left; white-space: normal; overflow-wrap: break-word; width: 99%; min-width: 6.5rem; }
 /* CLAS., PAREJA y NOMBRE fijos al desplazar: anchos exactos para que los desplazamientos (left) encajen */
 .clasi th:nth-child(-n+3), .clasi td:nth-child(-n+3) { position: sticky; z-index: 1; background-color: var(--papel); }
+/* cada columna fija tapa unas décimas de la siguiente: con otra fuente los anchos no suman exactos y no puede asomar la de debajo */
+.clasi th:nth-child(2), .clasi td:nth-child(2) { z-index: 2; }
+.clasi th:nth-child(1), .clasi td:nth-child(1) { z-index: 3; }
 .clasi th:nth-child(1), .clasi td:nth-child(1) { left: 0; width: var(--f1); min-width: var(--f1); padding-left: 6px; padding-right: 4px; text-align: left; }
 .clasi th:nth-child(2), .clasi td:nth-child(2) { left: var(--f1); width: var(--f2); min-width: var(--f2); padding-left: 4px; padding-right: 4px; text-align: center; }
 .clasi th:nth-child(3), .clasi td:nth-child(3) { left: calc(var(--f1) + var(--f2)); border-right: 1px solid var(--linea); text-align: left; }
