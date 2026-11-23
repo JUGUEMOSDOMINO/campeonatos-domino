@@ -469,3 +469,5 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 /* Mesa de control: dudas del bloque para el ranking (quién es cada jugador) */
 .pend { display: grid; gap: 6px; border-top: 1px solid var(--linea); padding: 8px 0; min-width: 0; overflow-wrap: anywhere; }
 .pend select { max-width: 100%; min-width: 0; }
+#copia, #copia-nota, #lectura p, #fuente-ranking, #pub-nota { overflow-wrap: anywhere; min-width: 0; }
+#copia textarea, #copia select { max-width: 100%; }

@@ -413,7 +413,7 @@
   /* ---------- la copia del original en programas-domino ---------- */
   const motivoSinCopia = () => (!E.prog || !E.prog.ok ? 'el token no llega a programas-domino (hay que añadirlo en «Repository access»).'
     : !E.prog.push ? 'el token solo puede leer programas-domino (falta «Contents: Read and write»).'
-      : !AR.nombreValido(E.orig.nombre) ? 'el nombre del archivo tiene algo que no vale (barras, dos puntos, comillas, «?», «#» o «%»).' : '');
+      : !AR.nombreValido(E.orig.nombre) ? 'el nombre del archivo no vale (más de 100 letras, o lleva barras, dos puntos, comillas, «?», «#» o «%», o empieza por un punto).' : '');
   // Monta los campos de la copia. `guardar`: el archivo no se publica, solo se guarda, y hay que elegir categoría y escribir qué es.
   async function montarCopia(guardar, propuesta, sugerida) {
     const c = E.copia = { motivo: motivoSinCopia(), categoria: guardar ? (sugerida ? sugerida.categoria : '') : CARPETA_COPIA[E.tipo], existe: false, guardar };
@@ -894,8 +894,7 @@
   const indiceDe = (bytes) => LP.leerJugadores(XLSX.read(bytes, { type: 'array', sheets: ['Jugadores', 'Licencias'], ...LEER }), XLSX);
   // El Excel del ranking sale de entregables/ (programas-domino) si está allí; si no, lo elige el árbitro. Se lee en este ordenador: nunca se publica.
   async function asegurarRanking() {
-    if (E.ix || E.ixIntentado) return;
-    E.ixIntentado = true;
+    if (E.ix) return;                                  // ya hay uno (el de otra subida o el que eligió el árbitro)
     if (!E.prog || !E.prog.ok) return;
     try {
       const r = await M.rankingDeEntregables();
@@ -916,7 +915,7 @@
     const g = { A: [], B: [] };
     for (const k of ['A', 'B']) for (const x of rs.grupos[k].slice().sort((a, z) => Number(a.puesto) - Number(z.puesto))) {
       const par = RS.pareja(x.pareja);
-      g[k].push({ puesto: Number(x.puesto), num: Number(x.num), nombres: par ? [par[0].completo, par[1].completo] : [String(x.pareja), ''], lic1: licNum(x.lic1), lic2: licNum(x.lic2) });
+      g[k].push({ puesto: Number(x.puesto), num: Number(x.num), pareja: x.pareja, nombres: par ? [par[0].completo, par[1].completo] : [String(x.pareja), ''], lic1: licNum(x.lic1), lic2: licNum(x.lic2) });
     }
     return { datos: rs.datos, grupos: g };
   }

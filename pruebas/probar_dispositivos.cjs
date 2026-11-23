@@ -182,7 +182,7 @@ function llegaAPuntC() {
     sembrar(api, 'web', 'sp-ejemplo', { normativa: true }); sembrar(api, 'web', 'nombres-largos');
     sembrar(api, 'borr', 'parejas-ejemplo-2026-11-14'); sembrar(api, 'borr', 'individual-ejemplo-2026-11-14');
     const XLSXW = require('../assets/xlsx.mini.min.js');
-    const NL = 'Ranking_FVD_2026-27_con_un_nombre_muy_largo_que_no_cabe_en_una_pantalla_de_telefono_pequena_copia_final_revisada.xlsx';
+    const NL = 'Ranking_FVD_2026-27_con_un_nombre_muy_largo_que_no_cabe_en_una_pantalla_de_telefono_copia_final.xlsx';
     api.poner('prog', 'entregables/DESCARGAS.md', ['# Descargas', '', '## Programas de campeonato', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
       `| \`del_arbitro/programas-de-campeonato/${NL}\` | Una descripción bastante larga para comprobar que en una pantalla de 320 píxeles no se corta ni se esconde nada, ni siquiera con palabras larguísimas como ${'x'.repeat(60)}. | 2026-11-22 |`, '',
       '## Ranking FVD', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `ranking/leer_torneo.html` | Página que se abre con doble clic. | 2026-11-22 |', '',
@@ -241,6 +241,7 @@ function llegaAPuntC() {
     await mira('publicar · Hoja de resumen: dudas de licencia con el Excel del ranking');
     await pg.selectOption('.pend select >> nth=0', { index: 1 });
     await mira('publicar · Hoja de resumen: una duda resuelta');
+    await pg.click('button:has-text("No federado") >> nth=0'); await pg.waitForSelector('#copiar-bloque');
     await pg.click('#revision summary'); await pg.waitForSelector('#bloque-ranking');
     await mira('publicar · Hoja de resumen: bloque del ranking abierto');
     // borrador visto por torneo.html: con token, sin token y con token de otro

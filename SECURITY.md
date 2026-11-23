@@ -124,11 +124,11 @@ Si el token no tiene acceso a `campeonatos-borradores`, la lista de borradores d
 
 ### La sección «Archivos» (programas-domino)
 
-Sirve para descargar lo que hay en `programas-domino/entregables/` sin entrar en GitHub, y para subir archivos del árbitro. `programas-domino` es privado y lo lleva el mismo token, en el navegador, con la API de GitHub. Lo hace `assets/archivos.js`; todo lo que sale hacia GitHub pasa por `Mesa.llamar` (`assets/mesa.js`), que solo manda el token a `api.github.com`.
+Sirve para descargar lo que hay en `programas-domino/entregables/` sin entrar en GitHub. Lo que sube el árbitro se hace con «Subir archivo» (paso 4 de `publicar.html`). `programas-domino` es privado y lo lleva el mismo token, en el navegador, con la API de GitHub. Lo hace `assets/archivos.js`; todo lo que sale hacia GitHub pasa por `Mesa.llamar` (`assets/mesa.js`), que solo manda el token a `api.github.com`.
 
 - Lee `entregables/DESCARGAS.md` (una línea por archivo: ruta, frase y fecha, bajo su categoría) y enseña por categorías los archivos que tienen línea. Descarga con la API (`/git/blobs/<sha>`): nada sale a otro dominio.
 - Solo se lee dentro de `entregables/` (sin `..`) y solo se escribe `entregables/del_arbitro/<categoría>/<archivo>` (la carpeta es una de seis fijas; «Mantenimiento» no se puede elegir) y `entregables/DESCARGAS.md`. No se borra nada. `probar_archivos.cjs` lo prueba.
-- «Subir archivo» va siempre a `programas-domino`, nunca a `campeonatos-domino`, y pide una descripción y una categoría; la línea se añade a `DESCARGAS.md`, en esa categoría. Ahí sí pueden ir Excel con datos de jugadores, porque el repositorio es privado.
+- «Subir archivo» (un solo campo para todo) reconoce el archivo por lo que lleva dentro, dice qué va a hacer y espera confirmación. El original del árbitro (Excel, PDF…) nunca va a `campeonatos-domino`: a la web solo llegan datos cifrados (lo de siempre). Su copia va siempre a `programas-domino`, a `entregables/del_arbitro/<categoría>/`, con su línea en `DESCARGAS.md` en esa categoría (los campeonatos, a `torneos/`; el ranking, a `ranking-fvd/`). Lo que no se publica (otro archivo, uno no reconocido o con errores) solo se guarda, con categoría y descripción (sugeridas si es un archivo de los de siempre). `probar_publicar.cjs` comprueba que a la web y a borradores solo van datos. Ahí sí pueden ir Excel con datos de jugadores, porque el repositorio es privado.
 - Si el token no tiene `programas-domino`, la sección lo dice y explica cómo añadirlo (edita el token, «Repository access», y «Contents: Read and write»). La página no pide ni guarda ningún otro token.
 
 ### Rotarlo

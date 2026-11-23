@@ -1340,6 +1340,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       assert((await pg.textContent('#fuente-ranking')).includes('Ranking_FVD_2026-27.xlsx') && (await pg.textContent('#fuente-ranking')).includes('entregables/'));
       assert(!(await pg.textContent('#fuente-ranking')).includes('plantilla'));
       assert((await pg.textContent('#revision')).includes('Faltan por identificar 2 jugadores'));
+      assert.strictEqual(await pg.locator('.pend:has-text("XXX")').count(), 0, 'la pareja XXX no queda pendiente: cuenta, sin licencias');
       assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0, 'con dudas sin resolver no se ofrece el bloque');
       assert.strictEqual(await pg.isDisabled('#publicar'), false, 'las dudas del bloque no impiden publicar la clasificación');
       await pg.click('button:text-is("Confirmar la propuesta de un solo candidato (puntúa con su licencia de Valencia)")');
@@ -1349,7 +1350,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       await pg.click('#copiar-bloque');
       await pg.waitForFunction(() => document.querySelector('#revision').textContent.includes('Copiado'));
       const tsv = await leerPortapapeles(pg), V = '\t\t\t\t\t\t';
-      assert.deepStrictEqual(tsv.split('\n'), ['A\t1\t921\tAna Roig Mas\t922\tPau Vidal Soler' + V, 'A\t2\t923\tMarta Puig\t5551\tToni Serra' + V, 'A\t3\t5553\tRosa Mas\t925\tVicent Vila Pons' + V, 'B\t1\t926\tNuria Pons\t927\tAlbert Mora' + V]);
+      assert.deepStrictEqual(tsv.split('\n'), ['A\t1\t921\tAna Roig Mas\t922\tPau Vidal Soler' + V, 'A\t2\t923\tMarta Puig\t5551\tToni Serra' + V, 'A\t3\t5553\tRosa Mas\t925\tVicent Vila Pons' + V, 'A\t4\tNO\tXXX XXX\tNO\tZZZ ZZZ' + V, 'B\t1\t926\tNuria Pons\t927\tAlbert Mora' + V]);
       bien('access: con el Excel del ranking de entregables/ comprueba las licencias, propone la doble licencia (confirmar uno, elegir entre dos) y deja el bloque A:L para copiar');
       await pg.check('input[name=destino][value=borr]');
       await pg.click('#publicar');
@@ -1402,6 +1403,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       await pg.waitForFunction(() => document.querySelector('#revision').textContent.includes('Copiado'));
       const filas = (await leerPortapapeles(pg)).split('\n');
       assert(filas[0].startsWith('A\t1\t921\tAna Roig\t922\tPau Vidal') && filas.some((x) => x.startsWith('A\t3\t5552\tRosa Mas')) && filas.some((x) => /^B\t2\tNO\tElena Roca\tNO\tHugo Sanz Vila/.test(x)), filas.join(' // '));
+      assert(filas.some((x) => /^A\t5\tNO\tXXX XXX\tNO\tZZZ ZZZ\t/.test(x)), 'la pareja XXX cuenta: la última del A, con licencias NO: ' + filas.join(' // '));
       bien('pdf: con el Excel del ranking elegido busca a los jugadores por su nombre, deja elegir o marcar «No federado» y da el bloque A:L');
       await pg.check('input[name=destino][value=borr]');
       await pg.click('#publicar');

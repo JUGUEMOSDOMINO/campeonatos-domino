@@ -77,6 +77,12 @@
     return m ? { lic: +m[1], otroAño: true } : { lic: null };
   }
 
+  // La pareja «XXX XXX - ZZZ ZZZ» (el descanso cuando hay número impar de parejas) CUENTA: es una pareja más, la última del grupo A, sin licencias. No puntúa
+  // y su puesto no da puntos a nadie (como un no federado). Nunca se busca en la lista del ranking ni queda pendiente.
+  const FICTICIA = /^X{2,}\s+X{2,}\s*-\s*Z{2,}\s+Z{2,}$/i;
+  const esFicticia = (x) => !!x.ficticia || FICTICIA.test(String(x.pareja == null ? '' : x.pareja).trim());
+  const AVISO_FICTICIA = 'ℹ La pareja de relleno «XXX XXX - ZZZ ZZZ» (el descanso cuando hay número impar) cuenta como una pareja más, la última del grupo A: va con licencia NO, no puntúa y su puesto no da puntos a nadie.';
+
   const dividir = (pareja) => String(pareja).split(/\s+[-–—]\s+/).map((x) => x.trim());
 
   /* r: lo que devuelve ClasifPdf.interpretar. decisiones: { 'A:9:1': 'J0008' | 'NO' | '?' }, con la clave grupo:Nº de pareja:jugador (1 o 2):
@@ -94,6 +100,7 @@
         const slots = dividir(x.pareja).map((texto, i) => {
           const clave = `${g}:${x.num}:${i + 1}`, d = dec[clave], s = { clave, grupo: g, puesto: x.puesto, num: x.num, quien: i + 1, texto };
           c.jugadores++;
+          if (esFicticia(x)) return Object.assign(s, { noFed: true, ficticia: true });
           if (d === 'NO') return Object.assign(s, { noFed: true });
           if (d && d !== '?' && porCodigo.has(d)) return Object.assign(s, { jug: porCodigo.get(d), elegido: true });
           const b = buscar(texto, indice);
@@ -115,6 +122,7 @@
     for (const { g, x, slots } of parejas) {
       const celdas = slots.map((s) => {
         if (s.pend) { out.pendientes.push(Object.assign({ clave: s.clave, grupo: s.grupo, puesto: s.puesto, num: s.num, quien: s.quien, texto: s.texto }, s.pend)); return [null, null]; }
+        if (s.ficticia) return ['NO', s.texto];
         if (s.noFed) { c.noFederados++; out.resueltos.push({ clave: s.clave, num: s.num, texto: s.texto, como: 'NO' }); return ['NO', s.texto]; }
         if (s.elegido) c.elegidos++; else { c.solos++; if (s.cortado) c.cortados++; }
         const l = licenciaEn(s.jug, fecha);
@@ -126,6 +134,7 @@
       });
       filas.push([g, x.puesto, celdas[0][0], celdas[0][1], celdas[1] ? celdas[1][0] : null, celdas[1] ? celdas[1][1] : null, null, null, null, null, null, null]);
     }
+    if (parejas.some((p) => esFicticia(p.x))) out.avisos.push(AVISO_FICTICIA);
     if (c.cortados) out.avisos.push(`ℹ ${c.cortados === 1 ? '1 nombre venía cortado' : c.cortados + ' nombres venían cortados'} en el PDF y se ha encontrado en la lista: mira que sea quien es.`);
     if (sinLic) out.avisos.push(`⚠ ${sinLic === 1 ? '1 jugador encontrado no tiene' : sinLic + ' jugadores encontrados no tienen'} licencia en el Excel del ranking (sin licencia): van como NO y no puntúan.`);
     if (otroAño) out.avisos.push(`ℹ ${otroAño === 1 ? '1 jugador no tenía' : otroAño + ' jugadores no tenían'} licencia en vigor en la fecha del torneo: se ha puesto la más reciente que consta.`);
@@ -148,9 +157,11 @@
     if (indice) for (const j of indice.jugadores) { porCodigo.set(j.codigo, j); for (const l of j.lics) if (typeof l.lic === 'number') (porLic.get(l.lic) || porLic.set(l.lic, []).get(l.lic)).push(j); }
     const vigente = (j) => { const l = licenciaEn(j, fecha); return typeof l.lic === 'number' && !l.otroAño ? l.lic : null; };
     const faltan = [], distintos = [], usadas = new Map(), pendientes = [], filas = [];
+    let ficticia = false;
     for (const g of ['A', 'B']) {
       for (const x of r.grupos[g]) {
         c.parejas++;
+        if (esFicticia(x)) { c.jugadores += 2; ficticia = true; filas.push([g, x.puesto, 'NO', x.nombres[0], 'NO', x.nombres[1], null, null, null, null, null, null]); continue; }
         const celdas = [x.lic1, x.lic2].map((lic, i) => {
           c.jugadores++;
           const texto = x.nombres[i], clave = `${g}:${x.num}:${i + 1}`, d = dec[clave];
@@ -175,6 +186,7 @@
       }
     }
     out.pendientes = pendientes;
+    if (ficticia) out.avisos.push(AVISO_FICTICIA);
     if (!indice) out.avisos.push(`ℹ ${c.fvd === 1 ? 'No se ha comprobado la licencia' : 'No se han comprobado las ' + c.fvd + ' licencias'} de la FVD contra el Excel del ranking: elígelo en el paso 1b si quieres comprobarlas.`);
     if (faltan.length) out.avisos.push(`⚠ ${faltan.length === 1 ? '1 licencia 46/ no está' : faltan.length + ' licencias 46/ no están'} en el Excel del ranking: ${faltan.slice(0, 8).join(', ')}${faltan.length > 8 ? '…' : ''}. El ranking las marcará; mira si falta dar de alta al jugador.`);
     for (const d of distintos.slice(0, 15)) out.avisos.push('⚠ ' + d);
