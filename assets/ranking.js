@@ -1,25 +1,29 @@
-/* Contrato de datos 1.1, tipo «ranking» (Ranking FVD Jaume I): lee la hoja WEB del Excel del ranking, valida (VR0 a VR6) y
+/* Contrato de datos 1.2, tipo «ranking» (Ranking FVD Jaume I): lee la hoja WEB del Excel del ranking, valida (VR0 a VR6) y
    construye el JSON. Es el mismo que escribe tools/ranking/web_export.py de programas-domino. No toca el contrato 1.0 de
    los campeonatos (assets/contrato.js). Sin dependencias del navegador: lo usan publicar.html y las pruebas en Node.
    Es el único JSON que lleva licencias, y a la web solo sube cifrado (assets/mesa.js). */
 (function (raiz) {
   'use strict';
 
-  const META = ['id', 'nombre', 'tipo', 'temporada', 'estado', 'fecha', 'n_torneos', 'n_mejores', 'plazas_ce', 'n_jugadores', 'contacto', 'normativa_url', 'errores'];
-  const ENTEROS = ['n_torneos', 'n_mejores', 'plazas_ce', 'n_jugadores'];
+  // 1.2: las plazas para el Campeonato de España por parejas (acta FVD 005/2026) son tres: SP, Open y ranking. plazas_ce son las del ranking (6); plazas_ranking, con las
+  // que pasan al ranking por renuncias del SP o el Open; sp_jugado y open_jugado, si esos torneos ya se han jugado; plazas_provisionales, si falta alguno; plazas_vacias, las que no se pudieron dar.
+  const META = ['id', 'nombre', 'tipo', 'temporada', 'estado', 'fecha', 'n_torneos', 'n_mejores', 'plazas_ce', 'plazas_ranking', 'sp_jugado', 'open_jugado', 'plazas_provisionales',
+    'plazas_vacias', 'n_jugadores', 'contacto', 'normativa_url', 'errores'];
+  const ENTEROS = ['n_torneos', 'n_mejores', 'plazas_ce', 'plazas_ranking', 'plazas_vacias', 'n_jugadores'];
+  const BOOLEANOS = ['sp_jugado', 'open_jugado', 'plazas_provisionales'];
   const TOR = ['col', 'nombre', 'fecha', 'tipo', 'categoria', 'parejas', 'cargado'];
-  const RK = ['puesto', 'empate', 'nombre', 'apellido1', 'licencia', 'licencia_ant', 'asociacion', 'total', 'plaza_ce'];
-  const NT = 20, COL_TOR = 3, COL_RK = 11, COL_PUNTOS = 20, FILA_MAX = 603; // D, L y U (base 0); 600 jugadores
+  const RK = ['puesto', 'empate', 'nombre', 'apellido1', 'licencia', 'licencia_ant', 'asociacion', 'total', 'plaza_ce', 'plaza_sp', 'plaza_open', 'plaza_ranking'];
+  const NT = 20, COL_TOR = 3, COL_RK = 11, COL_PUNTOS = 23, FILA_MAX = 603; // D, L y X (base 0); 600 jugadores
   const LIC = /^46\/ \d{4}$/;
   const ID = /^[a-z0-9][a-z0-9-]{2,59}$/;
 
   const letra = (c) => { let s = ''; c++; while (c > 0) { const r = (c - 1) % 26; s = String.fromCharCode(65 + r) + s; c = Math.floor((c - 1) / 26); } return s; };
   const ref = (c, f) => letra(c) + f;
 
-  // La hoja WEB es la del ranking si A1 dice 1.1 y su META, tipo «ranking».
+  // La hoja WEB es la del ranking si A1 dice 1.2 y su META, tipo «ranking».
   function es(hoja) {
     const v = (a) => { const x = hoja && hoja[a]; return x ? String(x.v).trim() : ''; };
-    return v('A1') === '1.1' && v('A6') === 'tipo' && v('B6') === 'ranking';
+    return v('A1') === '1.2' && v('A6') === 'tipo' && v('B6') === 'ranking';
   }
 
   function leer(hoja) {
@@ -42,6 +46,7 @@
     const torneo = {};
     META.forEach((k, i) => { torneo[k] = valor(1, 4 + i); });
     for (const k of ENTEROS) torneo[k] = torneo[k] == null ? 0 : torneo[k];
+    for (const k of BOOLEANOS) torneo[k] = torneo[k] === 1;
     r.errores = torneo.errores || 0;
     delete torneo.errores;
     const torneos = [];
@@ -57,7 +62,7 @@
     for (let f = 4; f <= FILA_MAX && valor(COL_RK, f) != null; f++) {
       const x = {};
       RK.forEach((k, i) => { x[k] = valor(COL_RK + i, f); });
-      x.empate = x.empate === 1; x.plaza_ce = x.plaza_ce === 1;
+      x.empate = x.empate === 1; for (const k of ['plaza_ce', 'plaza_sp', 'plaza_open', 'plaza_ranking']) x[k] = x[k] === 1;
       x.puntos = torneos.map((_, k) => valor(COL_PUNTOS + k, f));
       ranking.push(x);
     }
@@ -73,7 +78,7 @@
     pub = pub || {};
     const v = [], d = r.doc, t = d.torneo;
     const add = (cod, msg) => v.push({ cod, gravedad: 'bloquea', msg });
-    if (d.version !== '1.1' || t.tipo !== 'ranking') add('VR0', 'Esta hoja WEB no es la del Excel del ranking (versión 1.1). Pide el Excel del ranking actualizado.');
+    if (d.version !== '1.2' || t.tipo !== 'ranking') add('VR0', 'Esta hoja WEB no es la del Excel del ranking (versión 1.2). Pide el Excel del ranking actualizado.');
     if (r.estructura.length) add('VR0', `La hoja WEB no tiene el formato esperado: mira la celda ${r.estructura[0]}.`);
     if (r.celdasError.length) add('VR0', `Hay un error en la hoja WEB, en la celda ${r.celdasError[0]}${r.celdasError.length > 1 ? ' y otras ' + (r.celdasError.length - 1) : ''}.`);
     if (!ID.test(t.id || '')) add('VR0', 'El identificador del ranking no vale. Usa solo letras minúsculas, números y guiones (de 3 a 60 caracteres), en la hoja INICIO.');
@@ -96,10 +101,12 @@
     const pu = d.ranking.map((f) => f.puesto);
     if (pu.some((x, i) => i && x < pu[i - 1])) add('VR4', 'Los puestos del ranking no van en orden.');
     d.ranking.forEach((f, i) => { if (f.empate !== (pu.filter((x) => x === f.puesto).length > 1)) add('VR4', `Fila ${i + 1}: la marca de empate no cuadra con los puestos.`); });
-    const con = d.ranking.filter((f) => f.plaza_ce);
+    d.ranking.forEach((f, i) => { if (f.plaza_ce !== (f.plaza_sp || f.plaza_open || f.plaza_ranking)) add('VR5', `Fila ${i + 1}: la marca de plaza no es la suma de plaza SP, Open y ranking.`); });
+    for (const [k, tope, n] of [['plaza_sp', 4, 'SP'], ['plaza_open', 2, 'Open']]) if (d.ranking.filter((f) => f[k]).length > tope) add('VR5', `Hay más de ${tope} plazas ${n} para el Campeonato de España.`);
+    const con = d.ranking.filter((f) => f.plaza_ranking);
     if (con.length) {
-      const tope = t.plazas_ce + pu.filter((x) => x === con[con.length - 1].puesto).length - 1;
-      if (con.length > tope) add('VR5', `Hay ${con.length} plazas para el Campeonato de España y no pueden pasar de ${tope}.`);
+      const tope = t.plazas_ranking + pu.filter((x) => x === con[con.length - 1].puesto).length - 1;
+      if (con.length > tope) add('VR5', `Hay ${con.length} plazas del ranking para el Campeonato de España y no pueden pasar de ${tope}.`);
     }
     if (r.errores) add('VR6', `El Excel del ranking tiene ${r.errores} error${r.errores === 1 ? '' : 'es'} (✖). Arréglalos en el Excel, guárdalo y vuelve a elegirlo.`);
     return v;

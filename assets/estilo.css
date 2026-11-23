@@ -430,6 +430,14 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .plaza-ce span { display: grid; place-items: center; }
 .plaza-ce span + span { border-top: 1.5px solid var(--barra); }
 @media (prefers-color-scheme: dark) { .plaza-ce { border-color: var(--barra-suave); color: var(--barra-suave); } .plaza-ce span + span { border-top-color: var(--barra-suave); } }
+/* Plazas SP, Open y ranking: texto y forma de borde distintos (lleno, doble, discontinuo), no solo color */
+.plaza { --m: var(--barra); display: inline-block; margin: 1px 2px 1px 0; padding: 0 5px; border: 2px solid var(--m); border-radius: 4px; background: var(--papel); color: var(--m); font-size: .7rem; font-weight: 800; line-height: 1.25; white-space: nowrap; }
+.plaza-sp { background: var(--m); color: var(--papel); }
+.plaza-open { border-style: double; border-width: 4px; padding: 0 3px; }
+.plaza-ranking { border-style: dashed; }
+@media (prefers-color-scheme: dark) { .plaza { --m: var(--barra-suave); } }
+.plazas-ficha { display: grid; gap: 4px; }
+.plazas-ficha > span { overflow-wrap: anywhere; }
 .ficha-rk { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 12px 14px; margin: 0 0 14px; }
 .ficha-rk h2 { margin: 0 0 8px; font-size: 1.25rem; overflow-wrap: anywhere; }
 .datos-ficha { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0 0 10px; }

@@ -134,6 +134,10 @@ function llegaAPuntC() {
     await mira('ranking', llegaACE);
     await pg.click('.nombre-rk:text("Fernández-Villaverde")'); await pg.waitForSelector('#ficha:not([hidden])');
     await mira('ranking · ficha');
+    // las tres plazas (SP, Open y ranking), el ranking provisional y el de las plazas vacías, con la ficha de quien tiene SP u Open
+    await pg.click('table.rk .nombre-rk:text-is("Ana Roig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha con plaza SP');
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-provisional`); await pg.waitForSelector('#plazas-provisionales'); await mira('ranking provisional · frase y plazas', llegaACE);
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-vacias`); await pg.waitForSelector('#plazas-vacias'); await mira('ranking con plazas vacías', llegaACE);
 
     // páginas sueltas del árbitro: federación, casos del libro, retos y plataforma de juego
     for (const f of ['federacion-jaume-i', 'ejemplos-libro', 'retos', 'jugar']) {

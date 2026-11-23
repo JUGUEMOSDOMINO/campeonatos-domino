@@ -865,6 +865,23 @@
   const fichaCE = () => el('span', { class: 'plaza-ce', role: 'img', 'aria-label': 'Plaza para el Campeonato de España', title: 'Plaza para el Campeonato de España' },
     el('span', { 'aria-hidden': 'true' }, 'C'), el('span', { 'aria-hidden': 'true' }, 'E'));
   const nombreRk = (f) => [f.nombre, f.apellido1].filter(Boolean).join(' ');
+  /* Plazas del Campeonato de España por parejas (contrato 1.2): SP, Open y ranking. Cada una es una etiqueta con su texto y su forma de borde (lleno, doble, discontinuo):
+     se distinguen sin depender del color. Un ranking de antes (1.1) solo trae plaza_ce y se enseña con la ficha CE de siempre. */
+  const PLAZAS = { sp: ['SP', 'Plaza SP', 'por ser de las 2 primeras parejas del Súper Prestigio'], open: ['Open', 'Plaza Open', 'por ganar el Open de Valencia'],
+    ranking: ['Ranking', 'Plaza ranking', 'por su puesto en el ranking'] };
+  const marcasDe = (f) => (f.plaza_sp === undefined ? (f.plaza_ce ? ['ce'] : []) : ['sp', 'open', 'ranking'].filter((k) => f['plaza_' + k]));
+  const etiquetaPlaza = (k, prov) => (k === 'ce' ? fichaCE() : el('span', { class: 'plaza plaza-' + k, role: 'img', title: PLAZAS[k][1] + (prov && k === 'ranking' ? ' (provisional)' : ''),
+    'aria-label': PLAZAS[k][1] + (prov && k === 'ranking' ? ', provisional' : '') }, PLAZAS[k][0]));
+  // Lo que cuenta la página debajo de la tabla: qué es cada plaza, si son provisionales y si alguna queda vacía.
+  function notaPlazas(t) {
+    if (t.plazas_ranking === undefined) return [el('p', { class: 'nota' }, fichaCE(), ` plaza pagada para el Campeonato de España de Parejas: los ${t.plazas_ce} primeros, o el siguiente si alguno renuncia.`)];
+    const sin = [!t.sp_jugado && 'el Súper Prestigio', !t.open_jugado && 'el Open de Valencia'].filter(Boolean);
+    return [
+      el('p', { class: 'nota', id: 'plazas-leyenda' }, 'Plazas para el Campeonato de España de Parejas: ', etiquetaPlaza('sp'), ' los 4 jugadores de las 2 primeras parejas del Súper Prestigio; ', etiquetaPlaza('open'),
+        ' los 2 de la pareja ganadora del Open de Valencia; ', etiquetaPlaza('ranking'), ` los ${t.plazas_ce} primeros del ranking que no tengan ya plaza por el SP o el Open (si ya la tiene, pasa al siguiente), o el siguiente si alguien renuncia.`),
+      t.plazas_provisionales ? el('p', { class: 'nota caja', id: 'plazas-provisionales' }, `Plazas provisionales: todavía no se ha jugado ${sin.join(' ni ')}. Hasta entonces no hay plazas ${[!t.sp_jugado && 'SP', !t.open_jugado && 'Open'].filter(Boolean).join(' ni ')} y el ranking marca sus ${t.plazas_ranking}.`) : null,
+      t.plazas_vacias > 0 ? el('p', { class: 'nota caja', id: 'plazas-vacias' }, `${t.plazas_vacias === 1 ? 'Una plaza del ranking queda vacía' : t.plazas_vacias + ' plazas del ranking quedan vacías'}: no hay nadie sin plaza hasta el puesto 20.`) : null];
+  }
 
   function fichaJugador(f) {
     const a = RKE.a, t = a.torneo, caja = $('#ficha');
@@ -876,7 +893,9 @@
         fila('Puesto', `${f.puesto}.º${f.empate ? ' (empatado)' : ''}`),
         fila('Licencia', f.licencia), fila('Licencia anterior', f.licencia_ant), fila('Asociación', f.asociacion),
         fila('Total', `${f.total} puntos (suman sus ${t.n_mejores} mejores puntuaciones)`),
-        f.plaza_ce ? fila('Campeonato de España', 'Tiene plaza pagada') : null),
+        f.plaza_sp === undefined ? (f.plaza_ce ? fila('Campeonato de España', 'Tiene plaza pagada') : null)
+          : fila('Campeonato de España', marcasDe(f).length ? el('span', { class: 'plazas-ficha' }, marcasDe(f).map((k) => el('span', null, etiquetaPlaza(k, t.plazas_provisionales), ' ', PLAZAS[k][1] + (k === 'ranking' && t.plazas_provisionales ? ' provisional' : '') + ', ' + PLAZAS[k][2] + '.')))
+            : 'Sin plaza')),
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
       el('ul', { class: 'puntos-ficha' }, jugados.map(([x, p]) => el('li', null, el('span', null, x.nombre), el('b', null, p == null ? '—' : p)))),
       el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton sec', onclick: () => { caja.hidden = true; poner(caja); } }, 'Cerrar la ficha')));
@@ -898,16 +917,17 @@
       el('thead', null, el('tr', null,
         el('th', { scope: 'col' }, 'Puesto'), el('th', { scope: 'col', class: 'izq' }, 'Jugador'), el('th', { scope: 'col', class: 'izq' }, 'Licencia'),
         jugados.map(([x]) => el('th', { scope: 'col', class: 'tor' }, x.nombre)),
-        el('th', { scope: 'col' }, 'Total'), el('th', { scope: 'col' }, el('abbr', { title: 'Plaza para el Campeonato de España' }, 'CE')))),
+        el('th', { scope: 'col' }, 'Total'), el('th', { scope: 'col' }, el('abbr', { title: 'Plaza para el Campeonato de España' }, t.plazas_ranking === undefined ? 'CE' : 'Plaza')))),
       el('tbody', null, a.ranking.map((f) => el('tr', { class: f.plaza_ce ? 'con-plaza' : null },
         el('td', null, el('span', { class: 'puesto' + (f.puesto <= 3 ? ' p' + f.puesto : '') }, f.puesto), f.empate ? el('abbr', { class: 'empate', title: 'Empatado' }, '=') : null),
         el('td', { class: 'jug' }, el('button', { type: 'button', class: 'nombre-rk', onclick: () => fichaJugador(f) }, nombreRk(f))),
         el('td', { class: 'lic' }, f.licencia || '', f.licencia_ant ? el('span', { class: 'sub' }, `(${f.licencia_ant})`) : null),
         jugados.map(([, k]) => el('td', { class: f.puntos[k] === 0 ? 'cero' : null }, f.puntos[k] == null ? '' : f.puntos[k])),
-        el('td', { class: 'gan' }, f.total), el('td', { class: 'ce' }, f.plaza_ce ? fichaCE() : null)))));
+        el('td', { class: 'gan' }, f.total), el('td', { class: 'ce' }, marcasDe(f).map((k) => etiquetaPlaza(k, t.plazas_provisionales)),
+          t.plazas_provisionales && marcasDe(f).includes('ranking') ? el('span', { class: 'sub' }, 'provisional') : null)))));
     poner($('#contenido'),
-      el('p', { class: 'nota' }, `Suman las ${t.n_mejores} mejores puntuaciones de cada jugador. `, fichaCE(),
-        ` plaza pagada para el Campeonato de España de Parejas: los ${t.plazas_ce} primeros, o el siguiente si alguno renuncia. Pulsa un nombre para ver su ficha.`),
+      el('p', { class: 'nota' }, `Suman las ${t.n_mejores} mejores puntuaciones de cada jugador. Pulsa un nombre para ver su ficha.`),
+      notaPlazas(t),
       a.ranking.length ? marco(tabla) : el('p', { class: 'vacio' }, 'El ranking aparecerá cuando haya resultados del primer torneo.'),
       porJugar.length ? el('p', { class: 'leyenda' }, 'Por jugar: ' + porJugar.map((x) => x.nombre + (x.fecha ? ` (${corta(x.fecha)})` : '')).join(' · ')) : null);
   }

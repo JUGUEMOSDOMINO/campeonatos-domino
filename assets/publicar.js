@@ -798,11 +798,16 @@
       cuadro(t.n_jugadores, 'jugadores con puntos'), cuadro(d.ranking.filter((f) => f.plaza_ce).length, 'plazas para el Campeonato de España'));
     const vals = E.valsRk.length ? E.valsRk.map((x) => el('li', { class: x.gravedad }, el('span', { class: 'cod' }, x.cod), el('b', null, ETIQ[x.gravedad] + ': '), x.msg))
       : [el('li', { class: 'ok' }, 'Todo en orden: no hay nada que avisar.')];
+    // Las plazas para el Campeonato de España: lo provisional y lo que queda vacío se dice antes de publicar (no bloquea)
+    const sinJugar = [!t.sp_jugado && 'el SP', !t.open_jugado && 'el Open'].filter(Boolean);
+    if (t.plazas_provisionales) vals.push(el('li', { class: 'avisa' }, el('span', { class: 'cod' }, 'ℹ'), `Plazas provisionales: aún no se ha jugado ${sinJugar.join(' ni ')}. Hasta entonces no hay plazas ${sinJugar.map((x) => x.slice(3)).join(' ni ')} y el ranking marca sus ${t.plazas_ranking}.`));
+    if (t.plazas_vacias > 0) vals.push(el('li', { class: 'avisa' }, el('span', { class: 'cod' }, '⚠'), `${t.plazas_vacias === 1 ? 'Una plaza del ranking queda vacía' : t.plazas_vacias + ' plazas del ranking quedan vacías'}: no hay nadie sin plaza hasta el puesto 20.`));
+    if (vals.length > 1) { const i = vals.findIndex((x) => x.className === 'ok'); if (i >= 0) vals.splice(i, 1); }
     const tabla = el('div', { class: 'tabla-caja sep-12' }, el('table', { class: 'clasi' },
       el('caption', { class: 'solo-lector' }, 'Primeros puestos del ranking leídos del Excel'),
       el('thead', null, el('tr', null, el('th', null, '#'), el('th', null, 'Total'), el('th', { class: 'izq' }, 'Jugador'), el('th', null, 'Licencia'), el('th', null, 'Plaza CE'))),
       el('tbody', null, d.ranking.slice(0, 10).map((f) => el('tr', null, el('td', null, f.puesto), el('td', { class: 'gan' }, f.total),
-        el('td', { class: 'pareja' }, el('span', { class: 'nom' }, `${f.nombre || ''} ${f.apellido1 || ''}`)), el('td', null, f.licencia || ''), el('td', null, f.plaza_ce ? 'Sí' : ''))))));
+        el('td', { class: 'pareja' }, el('span', { class: 'nom' }, `${f.nombre || ''} ${f.apellido1 || ''}`)), el('td', null, f.licencia || ''), el('td', null, [f.plaza_sp && 'SP', f.plaza_open && 'Open', f.plaza_ranking && 'Ranking' + (t.plazas_provisionales ? ' (prov.)' : '')].filter(Boolean).join(' · ')))))));
     const bloquea = E.valsRk.some((x) => x.gravedad === 'bloquea');
     poner($('#revision'), resumen, el('ul', { class: 'vals' }, vals),
       el('p', { class: 'nota sep-12' }, 'Este Excel es el del ranking. Lleva las licencias de los jugadores: a la web solo suben cifradas con la contraseña, y en borradores se quedan en el repositorio privado.'),

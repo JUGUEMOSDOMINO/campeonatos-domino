@@ -158,6 +158,46 @@ const D = 'd=datos/_prueba';
     await pg.waitForSelector('table.clasi tbody tr');
     await sinDesborde('campeonato solo con clasificación');
     bien('campeonato de un organizador (Hoja de resumen, Excel o PDF de Access): pestañas Resumen, Clasificación, Parejas y Calendario (sin Partidas ni vacías); podio, «¿Quién eres?» con el puesto final y una frase de que no hay historial, clasificación con grupos A y B, parejas y fecha del torneo; los demás siguen con sus 6 pestañas');
+    // Ranking FVD: las tres plazas para el Campeonato de España por parejas (SP, Open y ranking), distinguibles sin color, con su frase si son provisionales o quedan vacías
+    {
+      const ir = async (r) => { await pg.goto(`${base}/ranking.html?${D}&r=${r}`); await pg.waitForSelector('table.rk tbody tr'); };
+      const chips = async (k) => pg.locator(`table.rk .plaza-${k}`).count();
+      await ir('ranking-ejemplo');
+      assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 2, 6]);
+      assert.strictEqual((await pg.locator('table.rk thead th').last().innerText()).toLowerCase(), 'plaza');
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza').evaluateAll((l) => [...new Set(l.map((x) => x.textContent))].sort()), ['Open', 'Ranking', 'SP']);
+      const borde = (k) => pg.locator(`table.rk .plaza-${k}`).first().evaluate((x) => getComputedStyle(x).borderTopStyle);
+      assert.deepStrictEqual([await borde('sp'), await borde('open'), await borde('ranking')], ['solid', 'double', 'dashed']);
+      const leyenda = await pg.locator('#plazas-leyenda').innerText();
+      assert(leyenda.includes('los 4 jugadores de las 2 primeras parejas del Súper Prestigio') && leyenda.includes('los 2 de la pareja ganadora del Open de Valencia') && leyenda.includes('si ya la tiene, pasa al siguiente'), leyenda);
+      assert.strictEqual(await pg.locator('#plazas-provisionales, #plazas-vacias').count(), 0);
+      await sinDesborde('ranking con las tres plazas');
+      const ficha = async (n) => { await pg.click(`table.rk .nombre-rk:text-is("${n}")`); await pg.waitForSelector('#ficha:not([hidden])'); return pg.locator('#ficha').innerText(); };
+      assert((await ficha('Ana Roig')).includes('Plaza SP, por ser de las 2 primeras parejas del Súper Prestigio'));
+      assert((await ficha('Marta Puig')).includes('Plaza Open, por ganar el Open de Valencia'));
+      assert((await ficha('Joan Ferrer')).includes('Plaza ranking, por su puesto en el ranking'));
+      assert((await ficha('Lola Soler')).includes('Sin plaza'));                        // renuncia
+      bien('ranking: plaza SP, Open y ranking con su texto y su borde (lleno, doble, discontinuo), la frase de qué es cada una y la ficha de cada jugador dice cuál tiene (o «Sin plaza»)');
+      await ir('ranking-provisional');
+      assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 0, 6]);
+      const prov = await pg.locator('#plazas-provisionales').innerText();
+      assert(prov.includes('todavía no se ha jugado el Open de Valencia') && prov.includes('no hay plazas Open') && prov.includes('el ranking marca sus 6'), prov);
+      assert.strictEqual(await pg.locator('table.rk td.ce .sub:text-is("provisional")').count(), 6);
+      assert((await ficha('Joan Ferrer')).includes('Plaza ranking provisional'));
+      await sinDesborde('ranking provisional');
+      bien('ranking provisional (el Open sin jugar): sin plazas Open, 6 del ranking marcadas «provisional» y una frase que lo explica');
+      await ir('ranking-vacias');
+      assert.strictEqual(await chips('ranking'), 2);
+      assert.strictEqual(await pg.locator('#plazas-provisionales').count(), 0);
+      const vac = await pg.locator('#plazas-vacias').innerText();
+      assert(vac.includes('4 plazas del ranking quedan vacías') && vac.includes('hasta el puesto 20'), vac);
+      await sinDesborde('ranking con plazas vacías');
+      bien('ranking con renuncias y nadie disponible hasta el puesto 20: las plazas que quedan vacías se avisan');
+      await ir('ranking-antiguo');
+      assert.strictEqual(await pg.locator('table.rk .plaza-ce').count(), 6); assert.strictEqual(await pg.locator('table.rk .plaza').count(), 0);
+      assert.strictEqual((await pg.locator('table.rk thead th').last().innerText()).toLowerCase(), 'ce');
+      bien('ranking publicado antes (contrato 1.1): se sigue viendo con la ficha CE de siempre');
+    }
     await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi tbody tr');
     const pendJ3 = JSON.parse(fs.readFileSync('pruebas/datos/sp-ejemplo/actual.json', 'utf8')).clasificacion.filter((r) => r.grupo === 'A' && r.pendiente).length;

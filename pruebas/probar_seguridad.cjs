@@ -90,7 +90,7 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
   bien('robots.txt se sirve');
   const casos = [['index.html', '#candado'], ['torneo.html?t=sp-2026-27', '#candado'], ['index.html?d=datos/_prueba', '#lista li'], ['torneo.html?t=sp-ejemplo&d=datos/_prueba', '#cab h1, #cab h2'],
     ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.normativa button'], ['index.html?d=datos/_prueba', '.libro img'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso'],
-    ['ranking.html?r=ranking-2026-27', '#candado'], ['ranking.html?r=ranking-ejemplo&d=datos/_prueba', 'table.rk .plaza-ce'], ['ranking.html?r=ranking-2026-27&borrador=1', '#contenido .aviso']];
+    ['ranking.html?r=ranking-2026-27', '#candado'], ['ranking.html?r=ranking-ejemplo&d=datos/_prueba', 'table.rk .plaza'], ['ranking.html?r=ranking-2026-27&borrador=1', '#contenido .aviso']];
   for (const [url, esperado] of casos) {
     const pg = await ctx.newPage();
     const malos = []; const externas = [];

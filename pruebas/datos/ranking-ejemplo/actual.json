@@ -1,5 +1,5 @@
 {
- "version": "1.1",
+ "version": "1.2",
  "publicado": "2027-01-20T19:30:00Z",
  "torneo": {
   "id": "ranking-ejemplo",
@@ -7,10 +7,15 @@
   "tipo": "ranking",
   "temporada": "2026-27",
   "estado": "en_juego",
-  "fecha": "2027-01-16",
-  "n_torneos": 4,
+  "fecha": "2027-01-23",
+  "n_torneos": 5,
   "n_mejores": 7,
   "plazas_ce": 6,
+  "plazas_ranking": 6,
+  "sp_jugado": true,
+  "open_jugado": true,
+  "plazas_provisionales": false,
+  "plazas_vacias": 0,
   "n_jugadores": 14,
   "contacto": "Jesús Eduardo Elián C.",
   "normativa_url": null
@@ -55,11 +60,11 @@
   {
    "col": 5,
    "nombre": "OPEN DE EJEMPLO",
-   "fecha": null,
+   "fecha": "2027-01-23",
    "tipo": "federacion",
-   "categoria": null,
-   "parejas": null,
-   "cargado": false
+   "categoria": 1000,
+   "parejas": 4,
+   "cargado": true
   }
  ],
  "ranking": [
@@ -71,19 +76,43 @@
    "licencia": "46/ 9201",
    "licencia_ant": "46/ 9101",
    "asociacion": "Asociación de ejemplo",
-   "total": 2700,
+   "total": 3600,
    "plaza_ce": true,
+   "plaza_sp": true,
+   "plaza_open": false,
+   "plaza_ranking": false,
    "puntos": [
     600,
     600,
     900,
     600,
-    null
+    900
    ]
   },
   {
    "puesto": 2,
-   "empate": true,
+   "empate": false,
+   "nombre": "Marta",
+   "apellido1": "Puig",
+   "licencia": "46/ 9105",
+   "licencia_ant": null,
+   "asociacion": "Asociación de ejemplo",
+   "total": 3460,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": true,
+   "plaza_ranking": false,
+   "puntos": [
+    525,
+    700,
+    710,
+    525,
+    1000
+   ]
+  },
+  {
+   "puesto": 3,
+   "empate": false,
    "nombre": "Joan",
    "apellido1": "Ferrer",
    "licencia": "46/ 9104",
@@ -91,30 +120,15 @@
    "asociacion": "Club de prueba",
    "total": 2460,
    "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": true,
    "puntos": [
     525,
     700,
     710,
     525,
-    null
-   ]
-  },
-  {
-   "puesto": 2,
-   "empate": true,
-   "nombre": "Marta",
-   "apellido1": "Puig",
-   "licencia": "46/ 9105",
-   "licencia_ant": null,
-   "asociacion": "Asociación de ejemplo",
-   "total": 2460,
-   "plaza_ce": true,
-   "puntos": [
-    525,
-    700,
-    710,
-    525,
-    null
+    0
    ]
   },
   {
@@ -127,12 +141,15 @@
    "asociacion": "Asociación Cultural y Recreativa de Dominó de Ejemplo",
    "total": 2000,
    "plaza_ce": true,
+   "plaza_sp": true,
+   "plaza_open": false,
+   "plaza_ranking": false,
    "puntos": [
     600,
     500,
     900,
     0,
-    null
+    0
    ]
   },
   {
@@ -145,16 +162,61 @@
    "asociacion": "Asociación de ejemplo",
    "total": 1860,
    "plaza_ce": false,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": false,
    "puntos": [
     550,
     800,
     510,
     0,
-    null
+    0
    ]
   },
   {
    "puesto": 6,
+   "empate": false,
+   "nombre": "Xavi",
+   "apellido1": "Bosch",
+   "licencia": "46/ 9110",
+   "licencia_ant": null,
+   "asociacion": "Club de prueba",
+   "total": 1565,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": true,
+   "plaza_ranking": false,
+   "puntos": [
+    145,
+    0,
+    0,
+    420,
+    1000
+   ]
+  },
+  {
+   "puesto": 7,
+   "empate": false,
+   "nombre": "Pep",
+   "apellido1": "Sala",
+   "licencia": "46/ 9112",
+   "licencia_ant": null,
+   "asociacion": "Club de prueba",
+   "total": 1500,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": true,
+   "puntos": [
+    0,
+    600,
+    0,
+    0,
+    900
+   ]
+  },
+  {
+   "puesto": 8,
    "empate": false,
    "nombre": "Toni",
    "apellido1": "Serra",
@@ -163,16 +225,19 @@
    "asociacion": null,
    "total": 1480,
    "plaza_ce": true,
+   "plaza_sp": true,
+   "plaza_open": false,
+   "plaza_ranking": false,
    "puntos": [
     480,
     0,
     1000,
     0,
-    null
+    0
    ]
   },
   {
-   "puesto": 7,
+   "puesto": 9,
    "empate": false,
    "nombre": "Vicent",
    "apellido1": "Vila",
@@ -181,16 +246,19 @@
    "asociacion": "Club de prueba",
    "total": 1400,
    "plaza_ce": true,
+   "plaza_sp": true,
+   "plaza_open": false,
+   "plaza_ranking": false,
    "puntos": [
     400,
     0,
     1000,
     0,
-    null
+    0
    ]
   },
   {
-   "puesto": 8,
+   "puesto": 10,
    "empate": false,
    "nombre": "Elena",
    "apellido1": "Camps",
@@ -198,17 +266,20 @@
    "licencia_ant": null,
    "asociacion": "Asociación de ejemplo",
    "total": 1220,
-   "plaza_ce": false,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": true,
    "puntos": [
     0,
     800,
     0,
     420,
-    null
+    0
    ]
   },
   {
-   "puesto": 9,
+   "puesto": 11,
    "empate": false,
    "nombre": "Rosa",
    "apellido1": "Mas",
@@ -216,17 +287,20 @@
    "licencia_ant": null,
    "asociacion": "Asociación de ejemplo",
    "total": 1080,
-   "plaza_ce": false,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": true,
    "puntos": [
     480,
     0,
     0,
     600,
-    null
+    0
    ]
   },
   {
-   "puesto": 10,
+   "puesto": 12,
    "empate": false,
    "nombre": "Nuria",
    "apellido1": "Pons",
@@ -234,49 +308,16 @@
    "licencia_ant": null,
    "asociacion": "Asociación de ejemplo",
    "total": 655,
-   "plaza_ce": false,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": true,
    "puntos": [
     145,
     0,
     510,
     0,
-    null
-   ]
-  },
-  {
-   "puesto": 11,
-   "empate": false,
-   "nombre": "Pep",
-   "apellido1": "Sala",
-   "licencia": "46/ 9112",
-   "licencia_ant": null,
-   "asociacion": "Club de prueba",
-   "total": 600,
-   "plaza_ce": false,
-   "puntos": [
-    0,
-    600,
-    0,
-    0,
-    null
-   ]
-  },
-  {
-   "puesto": 12,
-   "empate": false,
-   "nombre": "Xavi",
-   "apellido1": "Bosch",
-   "licencia": "46/ 9110",
-   "licencia_ant": null,
-   "asociacion": "Club de prueba",
-   "total": 565,
-   "plaza_ce": false,
-   "puntos": [
-    145,
-    0,
-    0,
-    420,
-    null
+    0
    ]
   },
   {
@@ -288,13 +329,16 @@
    "licencia_ant": null,
    "asociacion": "Asociación de ejemplo",
    "total": 500,
-   "plaza_ce": false,
+   "plaza_ce": true,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": true,
    "puntos": [
     0,
     500,
     0,
     0,
-    null
+    0
    ]
   },
   {
@@ -307,12 +351,15 @@
    "asociacion": "Club de prueba",
    "total": 88,
    "plaza_ce": false,
+   "plaza_sp": false,
+   "plaza_open": false,
+   "plaza_ranking": false,
    "puntos": [
     0,
     88,
     0,
     0,
-    null
+    0
    ]
   }
  ]
