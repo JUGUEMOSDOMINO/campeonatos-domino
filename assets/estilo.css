@@ -421,6 +421,7 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .rk td.jug { overflow-wrap: anywhere; }
 .rk th.tor { white-space: normal; min-width: 5rem; max-width: 7.5rem; vertical-align: bottom; overflow-wrap: anywhere; }
 .rk td.cero { color: var(--tinta2); }
+.rk td.abandono { cursor: help; }
 .rk td.ce { text-align: center; }
 .rk .empate { margin-left: 2px; font-weight: 800; text-decoration: none; cursor: help; }
 .rk .sub { display: block; font-size: .75rem; color: var(--tinta2); }
@@ -450,6 +451,7 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .puntos-ficha { list-style: none; padding: 0; margin: 0 0 6px; }
 .puntos-ficha li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--linea); }
 .puntos-ficha li span { overflow-wrap: anywhere; min-width: 0; }
+.puntos-ficha .sub { display: block; font-size: .8rem; color: var(--tinta2); }
 @media (max-width: 380px) { .datos-ficha { grid-template-columns: minmax(0, 1fr); gap: 0 0; } .datos-ficha dd { margin-bottom: 6px; } }
 @media (min-width: 720px) {
   .rk th:nth-child(2), .rk td:nth-child(2) { width: 12rem; min-width: 12rem; max-width: 12rem; }

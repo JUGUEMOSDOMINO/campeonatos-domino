@@ -9,4 +9,4 @@ Para verlos: abre la web con ?d=datos/_prueba al final de la dirección, por eje
 
 Rankings de prueba: ranking-ejemplo (SP y Open jugados, una plaza SP suelta que va entera), ranking-repartir (la pareja que recibe la suelta aún no ha contestado),
 ranking-medias (van los dos: ½ plaza cada uno), ranking-vacias y ranking-vacias-sp-open (plazas vacías; este último solo cambia las cifras del META a mano para
-probar los avisos), ranking-provisional (el Open sin jugar), ranking-v12 (contrato 1.2) y ranking-antiguo (1.1). Todos con licencias inventadas.
+probar los avisos), ranking-provisional (el Open sin jugar), ranking-abandono (caso 9 por jugador: una jugadora que abandonó no puntúa en ese torneo y su compañero sí; contrato 1.4), ranking-v13 (contrato 1.3, sin la marca de abandono), ranking-v12 (contrato 1.2) y ranking-antiguo (1.1). Todos con licencias inventadas.

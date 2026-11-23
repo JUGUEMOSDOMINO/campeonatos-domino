@@ -896,10 +896,13 @@
       v13 ? vacia(t.plazas_vacias_sp, 'SP', 'sp') : null, v13 ? vacia(t.plazas_vacias_open, 'Open', 'open') : null];
   }
 
+  // Caso 9 del reglamento (1.4): el jugador que abandona o es expulsado no puntúa en ese torneo; su compañero, sí. Los rankings publicados antes no traen `abandonos`.
+  const TEXTO_ABANDONO = 'Abandonó o fue expulsado: no puntuó en este torneo';
+  const seFue = (f, k) => Array.isArray(f.abandonos) && f.abandonos.includes(k);
+
   function fichaJugador(f) {
     const a = RKE.a, t = a.torneo, caja = $('#ficha');
     const fila = (k, v) => (v == null || v === '' ? null : [el('dt', null, k), el('dd', null, v)]);
-    const jugados = a.torneos.map((x, k) => [x, f.puntos[k]]).filter(([x]) => x.cargado);
     poner(caja,
       el('h2', { id: 't-ficha' }, nombreRk(f)),
       el('dl', { class: 'datos-ficha' },
@@ -912,7 +915,8 @@
             f.por_repartir ? el('span', null, etiquetaRepartir(f), ' ', `Su pareja ha recibido una plaza ${f.por_repartir === 'sp' ? 'del Súper Prestigio' : 'del Open'} que quedó suelta: todavía no han dicho si van.`) : null)
             : 'Sin plaza')),
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
-      el('ul', { class: 'puntos-ficha' }, jugados.map(([x, p]) => el('li', null, el('span', null, x.nombre), el('b', null, p == null ? '—' : p)))),
+      el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => el('li', null,
+        el('span', null, x.nombre, seFue(f, k) ? el('span', { class: 'sub' }, TEXTO_ABANDONO) : null), el('b', null, p == null ? '—' : p)))),
       el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton sec', onclick: () => { caja.hidden = true; poner(caja); } }, 'Cerrar la ficha')));
     caja.hidden = false;
     caja.scrollIntoView({ block: 'start' });
@@ -937,12 +941,15 @@
         el('td', null, el('span', { class: 'puesto' + (f.puesto <= 3 ? ' p' + f.puesto : '') }, f.puesto), f.empate ? el('abbr', { class: 'empate', title: 'Empatado' }, '=') : null),
         el('td', { class: 'jug' }, el('button', { type: 'button', class: 'nombre-rk', onclick: () => fichaJugador(f) }, nombreRk(f))),
         el('td', { class: 'lic' }, f.licencia || '', f.licencia_ant ? el('span', { class: 'sub' }, `(${f.licencia_ant})`) : null),
-        jugados.map(([, k]) => el('td', { class: f.puntos[k] === 0 ? 'cero' : null }, f.puntos[k] == null ? '' : f.puntos[k])),
+        jugados.map(([, k]) => (seFue(f, k)
+          ? el('td', { class: 'cero abandono', title: TEXTO_ABANDONO }, f.puntos[k], el('span', { class: 'sub' }, 'abandono'))
+          : el('td', { class: f.puntos[k] === 0 ? 'cero' : null }, f.puntos[k] == null ? '' : f.puntos[k]))),
         el('td', { class: 'gan' }, f.total), el('td', { class: 'ce' }, marcasDe(f).map(([k, v]) => etiquetaPlaza(k, t.plazas_provisionales, v)),
           f.por_repartir ? [etiquetaRepartir(f), el('span', { class: 'sub plaza-frase' }, fraseRepartir(f))] : null,
           t.plazas_provisionales && marcasDe(f).some(([k]) => k === 'ranking') ? el('span', { class: 'sub' }, 'provisional') : null)))));
     poner($('#contenido'),
       el('p', { class: 'nota' }, `Suman las ${t.n_mejores} mejores puntuaciones de cada jugador. Pulsa un nombre para ver su ficha.`),
+      a.ranking.some((f) => (f.abandonos || []).length) ? el('p', { class: 'nota', id: 'nota-abandono' }, '«abandono»: ese jugador abandonó o fue expulsado y no puntuó en ese torneo. Su compañero, que no abandonó, sí puntúa.') : null,
       notaPlazas(t),
       a.ranking.length ? marco(tabla) : el('p', { class: 'vacio' }, 'El ranking aparecerá cuando haya resultados del primer torneo.'),
       porJugar.length ? el('p', { class: 'leyenda' }, 'Por jugar: ' + porJugar.map((x) => x.nombre + (x.fecha ? ` (${corta(x.fecha)})` : '')).join(' · ')) : null);
