@@ -458,6 +458,14 @@ table.rk { --f1: 4.2rem; --f2: 7.4rem; --f3: 5.6rem; }
   table.rk { --f2: 12rem; --f3: 6.6rem; }
 }
 
+/* Mesa de control, paso 3: las listas «En la web» y «Borradores» se pliegan. El título (con el número) se lee entero, en varias líneas si hace falta. */
+.plegable { margin-top: 14px; }
+.plegable > summary { display: flex; align-items: center; min-height: 44px; padding: 8px 14px; cursor: pointer; list-style: none; min-width: 0; border: 2px solid var(--barra); border-radius: 12px; background: var(--barra); color: var(--barra-texto); font-weight: 800; }
+.plegable > summary::-webkit-details-marker { display: none; }
+.plegable[open] > summary { background: var(--papel); color: var(--tinta); }
+.plegable-titulo { min-width: 0; overflow-wrap: anywhere; }
+.plegable[open] > summary + .nota { margin-top: 10px; }
+@media (prefers-color-scheme: dark) { .plegable > summary { border-color: var(--barra-suave); } }
 /* Mesa de control: sección «Archivos» (descargar de programas-domino/entregables y subir a entregables/del_arbitro) */
 .categorias-archivos { display: grid; gap: 12px; margin-top: 8px; }
 /* Cada categoría es una ficha de dominó tumbada: el nombre en una mitad, el número de archivos en la otra, y la raya en medio.
