@@ -5,7 +5,8 @@
    - La fila ya viene ordenada por clasificación dentro de cada grupo (DET_GRUPO): el puesto es el orden de la fila en su grupo.
    - El Excel no dice cuántas partidas hubo: se deducen de ganadas + perdidas en el grupo A.
    - Licencia «46/0921» = FVD nº 921. Vacía o de otra provincia (02/, 08/, 30/…) = no federado FVD: NO. La original queda en licOrig.
-   - La pareja «XXX XXX - ZZZ ZZZ» es de relleno: se ignora y se cuenta.
+   - La pareja «XXX XXX - ZZZ ZZZ» (el descanso cuando hay número impar de parejas) CUENTA: es una pareja más, la última del grupo A, sin licencias (NO).
+     Nunca pasa al B, aunque el archivo la ponga allí; el grupo B empieza después de ella. No puntúa, y su puesto no da puntos a nadie.
    Lo que no encaja (cifra que no es número, fecha o nombre distinto en otra fila, grupo que no es A ni B, licencia mal escrita, jugador sin nombre) no se
    descarta: queda en lineasMalas y la validación lo bloquea. Sin dependencias del navegador: lo usan publicar.html, leer_torneo.html y las pruebas. */
 (function (raiz) {
@@ -53,26 +54,29 @@
     if (r.estructura.length) return r;
     const mala = (n, motivo) => r.lineasMalas.push({ pag: null, n, t: '', motivo });
     let fecha0 = null, nombre0 = null;
+    const ficticias = [];
     for (let i = 1; i < filas.length; i++) {
       const f = filas[i], n = i + 1, v = (k) => f[col[k]];
       if (f.every((x) => x === null || x === '')) continue;
       const nombres = [limpia(v('n1')), limpia(v('n2'))];
-      if (RELLENO.test(nombres.join(' - '))) { r.rellenos++; continue; }
-      const g = limpia(v('grupo')).toUpperCase();
+      const ficticia = RELLENO.test(nombres.join(' - '));
+      const g = ficticia ? 'A' : limpia(v('grupo')).toUpperCase();
       if (g !== 'A' && g !== 'B') { mala(n, `el grupo es «${limpia(v('grupo'))}»: solo caben el A y el B`); continue; }
       const cifras = {};
       const nm = [];
       for (const k of ['pg', 'pp', 'dif', 'pf', 'pc', 'num']) { cifras[k] = entero(v(k)); if (isNaN(cifras[k])) nm.push(COLS[k]); }
       if (nm.length) { mala(n, `${nm.join(', ')} no es un número entero`); continue; }
       if (!nombres[0] || !nombres[1]) { mala(n, 'falta el nombre de un jugador'); continue; }
-      const l1 = licencia(v('lic1')), l2 = licencia(v('lic2'));
+      const l1 = ficticia ? 'NO' : licencia(v('lic1')), l2 = ficticia ? 'NO' : licencia(v('lic2'));
       if (l1 === null || l2 === null) { mala(n, `la licencia «${limpia(l1 === null ? v('lic1') : v('lic2'))}» no tiene la forma 46/0921`); continue; }
       const iso = fechaIso(v('fecha')), nom = limpia(v('nombre'));
       if (fecha0 === null) { fecha0 = iso; nombre0 = nom; r.datos.fecha = iso || limpia(v('fecha')); r.datos.nombre = nom || null; }
       else if (iso !== fecha0 || nom !== nombre0) { mala(n, 'la fecha o el nombre del campeonato no es el de las otras filas'); continue; }
-      r.grupos[g].push({ _donde: `fila ${n}`, _ref: n, _hoja: HOJA, puesto: r.grupos[g].length + 1, num: cifras.num, pareja: nombres.join(' - '), nombres, zona: null, pg: cifras.pg,
-        pp: cifras.pp, dif: cifras.dif, pf: cifras.pf, pc: cifras.pc, lic1: l1, lic2: l2, licOrig: [limpia(v('lic1')), limpia(v('lic2'))], ret: null, caso: null });
+      const pareja = { _donde: `fila ${n}`, _ref: n, _hoja: HOJA, puesto: r.grupos[g].length + 1, num: cifras.num, pareja: nombres.join(' - '), nombres, zona: null, pg: cifras.pg,
+        pp: cifras.pp, dif: cifras.dif, pf: cifras.pf, pc: cifras.pc, lic1: l1, lic2: l2, licOrig: [limpia(v('lic1')), limpia(v('lic2'))], ret: null, caso: null };
+      if (ficticia) { r.rellenos++; pareja.ficticia = true; ficticias.push(pareja); } else r.grupos[g].push(pareja);
     }
+    for (const x of ficticias) { x.puesto = r.grupos.A.length + 1; r.grupos.A.push(x); }   // la última del A: el B empieza después
     // partidas: las que suman ganadas + perdidas en el grupo A (la cifra más repetida)
     const cuenta = new Map();
     for (const x of r.grupos.A) cuenta.set(x.pg + x.pp, (cuenta.get(x.pg + x.pp) || 0) + 1);

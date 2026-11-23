@@ -58,6 +58,7 @@
       grupos: { A: [], B: [] }, sust: [], lineasMalas: [], rellenos: 0, paginas: ls.reduce((m, l) => Math.max(m, l.pag), 0) };
     const mala = (l, motivo) => r.lineasMalas.push({ pag: l.pag, n: l.n, t: l.t.slice(0, 70), motivo });
     let grupo = null, primera = true;
+    const ficticias = [];
     for (const l of ls) {
       if (l.t === '') continue;
       const esPrimera = primera; primera = false;
@@ -68,7 +69,12 @@
       if ((m = GRUPO.exec(l.t))) { grupo = m[1].toUpperCase(); continue; }
       if (esPrimera && !FILA.test(l.t)) { r.datos.nombre = l.t; continue; }
       if ((m = FILA.exec(l.t))) {
-        if (RELLENO.test(m[3])) { r.rellenos++; continue; }
+        if (RELLENO.test(m[3])) {      // el descanso de una pareja: CUENTA, es una pareja más, la última del A (nunca pasa al B); sin licencias y sin puntos
+          r.rellenos++;
+          ficticias.push({ _donde: `página ${l.pag}, línea ${l.n}`, _ref: l.n, _hoja: 'PDF', puesto: +m[1], num: +m[2], pareja: limpia(m[3]), zona: null, pg: +m[4], pp: +m[5],
+            dif: m[6][0] === '-' ? -cifra(m[6].slice(1)) : cifra(m[6]), pf: cifra(m[7]), pc: cifra(m[8]), lic1: null, lic2: null, ret: null, caso: null, ficticia: true });
+          continue;
+        }
         if (grupo === null) { mala(l, 'es una fila de la clasificación, pero antes no sale ningún «Grupo»'); continue; }
         if (grupo !== 'A' && grupo !== 'B') { mala(l, `es del grupo ${grupo}: solo caben el grupo A y el B`); continue; }
         r.grupos[grupo].push({ _donde: `página ${l.pag}, línea ${l.n}`, _ref: l.n, _hoja: 'PDF', puesto: +m[1], num: +m[2], pareja: limpia(m[3]), zona: null, pg: +m[4], pp: +m[5],
@@ -77,6 +83,7 @@
       }
       mala(l, 'no es una fila de la clasificación ni una cabecera que conozcamos');
     }
+    r.grupos.A.push(...ficticias);   // el PDF trae su puesto (la última del A); el B empieza después
     return r;
   }
 

@@ -128,7 +128,7 @@
       const largas = [...A, ...B].filter((x) => String(x.pareja).length >= 50).map((x) => entero(x.num));
       if (largas.length) add('P04', 'avisa', `Access corta los nombres muy largos (acaban en «Ib» o «Prad», por ejemplo). Hay ${largas.length} ${largas.length === 1 ? 'pareja con nombre largo' : 'parejas con nombres largos'} (Nº ${rango(largas.map(String)).replace(/; /g, ', ')}): si alguno sale cortado, se publica cortado.`);
     }
-    if (pdf && r.rellenos) add('P02', 'avisa', `Se han saltado ${r.rellenos} ${r.rellenos === 1 ? 'fila de relleno' : 'filas de relleno'} («XXX XXX - ZZZ ZZZ»). No cuentan como parejas.`);
+    if (pdf && r.rellenos) add('P02', 'avisa', `${r.rellenos === 1 ? 'Hay una pareja de relleno' : `Hay ${r.rellenos} parejas de relleno`} («XXX XXX - ZZZ ZZZ», el descanso cuando el número de parejas es impar). ${r.rellenos === 1 ? 'Cuenta' : 'Cuentan'} como ${r.rellenos === 1 ? 'una pareja más' : 'parejas más'}: ${r.rellenos === 1 ? 'va la última' : 'van las últimas'} del grupo A, sin puntos, y el grupo B empieza después.`);
     // filas incompletas y nombres
     const inc = [], jug = new Map();
     for (const x of todas) {

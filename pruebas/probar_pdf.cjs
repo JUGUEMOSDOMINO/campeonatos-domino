@@ -52,9 +52,11 @@ ok('un grupo partido entre dos páginas (la segunda repite cabecera y «Grupo A�
   assert.deepStrictEqual(r.grupos.B.map((x) => x.puesto), [1, 2]);
   assert.deepStrictEqual(r.lineasMalas, []);
 });
-ok('la fila de relleno «XXX XXX - ZZZ ZZZ» se ignora y se cuenta', () => {
+ok('la fila de relleno «XXX XXX - ZZZ ZZZ» CUENTA: es una pareja más del grupo A, con su puesto y sin licencias', () => {
   const r = leer([...base.slice(0, 7), fila(4, 43, 'XXX XXX - ZZZ ZZZ', 0, 7, -2100, 0, 2100), ...base.slice(7)]);
-  assert.strictEqual(r.grupos.A.length, 3); assert.strictEqual(r.rellenos, 1); assert.deepStrictEqual(r.lineasMalas, []);
+  assert.strictEqual(r.grupos.A.length, 4); assert.strictEqual(r.rellenos, 1); assert.deepStrictEqual(r.lineasMalas, []);
+  const x = r.grupos.A.find((y) => y.ficticia);
+  assert.deepStrictEqual([x.puesto, x.num, x.pareja, x.pg, x.pp], [4, 43, 'XXX XXX - ZZZ ZZZ', 0, 7]);
 });
 ok('una línea que no es fila ni cabecera ni grupo no se descarta en silencio: queda en lineasMalas', () => {
   const r = leer([...base, 'Pareja sin cifras - Otra Cosa', '9 99 Fila Rota - Con Texto 4 3 sin diferencia 10 20']);
@@ -149,8 +151,8 @@ const espec = (extra = {}) => ({
   titulo: 'Campeonato de Ejemplo - Villa Inventada', fecha: '12/03/2027', partidas: 7, filas_por_pagina: 4,
   grupos: {
     A: [[1, 5, 'Ana Roig Mas - Pau Vidal Soler', 6, 1, 1500, 2100, 600], [2, 3, 'Marta Puig - Toni Serra Vila', 5, 2, -2100, 1994, 4094],
-      [3, 9, 'XXX XXX - ZZZ ZZZ', 0, 7, -2100, 0, 2100], [4, 7, 'Rosa Mas Gil - Vicent Vila Pons', 4, 3, 12, 1200, 1188],
-      [5, 2, 'Lola Soler Ruiz - Joan Ferrer Bosch', 3, 4, -5, 900, 905]],
+      [3, 7, 'Rosa Mas Gil - Vicent Vila Pons', 4, 3, 12, 1200, 1188], [4, 2, 'Lola Soler Ruiz - Joan Ferrer Bosch', 3, 4, -5, 900, 905],
+      [5, 9, 'XXX XXX - ZZZ ZZZ', 0, 7, -2100, 0, 2100]],
     B: [[1, 12, 'Nuria Pons - Albert Mora', 3, 0, 480, 900, 420], [2, 14, 'Elena Roca - Hugo Sanz Vila', 2, 1, -5, 700, 705]],
   }, ...extra,
 });
@@ -165,18 +167,20 @@ function pdf(e) {
   execFileSync('python3', ['-I', path.join(__dirname, 'hacer_pdf.py'), j, f]);
   return new Uint8Array(fs.readFileSync(f));
 }
-ok('lee un PDF de dos páginas: grupo A partido, relleno, diferencia negativa con miles; sin líneas malas', async () => {
+ok('lee un PDF de dos páginas: grupo A partido, relleno (cuenta, la última del A), diferencia negativa con miles; sin líneas malas', async () => {
   const r = await P.leerPdf(pdf(espec()), await pdfjs());
   assert.deepStrictEqual(r.datos, { nombre: 'Campeonato de Ejemplo - Villa Inventada', fecha: '2027-03-12', lugar: null, organizador: null, partidas: 7 });
   assert.deepStrictEqual(r.lineasMalas, []);
   assert.strictEqual(r.rellenos, 1);
   assert.deepStrictEqual(r.grupos.A.map((x) => [x.puesto, x.num, x.pg, x.pp, x.dif, x.pf, x.pc]),
-    [[1, 5, 6, 1, 1500, 2100, 600], [2, 3, 5, 2, -2100, 1994, 4094], [4, 7, 4, 3, 12, 1200, 1188], [5, 2, 3, 4, -5, 900, 905]]);
+    [[1, 5, 6, 1, 1500, 2100, 600], [2, 3, 5, 2, -2100, 1994, 4094], [3, 7, 4, 3, 12, 1200, 1188], [4, 2, 3, 4, -5, 900, 905], [5, 9, 0, 7, -2100, 0, 2100]]);
   assert.strictEqual(r.grupos.A[1].pareja, 'Marta Puig - Toni Serra Vila');
   assert.deepStrictEqual(r.grupos.B.map((x) => x.num), [12, 14]);
 });
-ok('el relleno en medio de la clasificación deja un salto de puestos y R05 lo dice (no se tapa)', async () => {
+ok('el relleno ocupa su puesto: no queda hueco y R05 no salta; si el PDF lo dejara en medio y se saltara un puesto, R05 lo diría', async () => {
   const r = await P.leerPdf(pdf(espec()), await pdfjs());
+  assert.ok(!cods(R.validar(r, {})).includes('R05:bloquea'));
+  r.grupos.A.splice(2, 1);                                              // sin la fila del 3.º: el hueco se nota
   assert.ok(cods(R.validar(r, {})).includes('R05:bloquea'));
 });
 ok('con acentos y eñes (Moñino, Muñoz) los nombres salen enteros', async () => {

@@ -58,9 +58,14 @@ ok('si falta una columna, lo dice por su nombre y R01 bloquea', () => {
   const v = R.validar(r, {});
   assert.ok(cods(v).includes('R01:bloquea')); assert.ok(msgs(v, 'R01').includes('SumaDeDET_PUNTOSC'));
 });
-ok('la pareja de relleno «XXX XXX - ZZZ ZZZ» se ignora y se cuenta, y no deja hueco en los puestos', () => {
+ok('la pareja de relleno «XXX XXX - ZZZ ZZZ» CUENTA: es una pareja más, la última del grupo A (aunque el archivo la ponga antes o en el B), sin licencias', () => {
   const r = leer([A1, RELLENO, A2, A3, B1, B2]);
-  assert.strictEqual(r.rellenos, 1); assert.deepStrictEqual(r.grupos.A.map((x) => x.puesto), [1, 2, 3]);
+  assert.strictEqual(r.rellenos, 1); assert.deepStrictEqual(r.grupos.A.map((x) => x.puesto), [1, 2, 3, 4]);
+  const x = r.grupos.A[3];
+  assert.deepStrictEqual([x.ficticia, x.pareja, x.lic1, x.lic2, x.num], [true, 'XXX XXX - ZZZ ZZZ', 'NO', 'NO', 43]);
+  assert.deepStrictEqual(r.grupos.B.map((y) => y.puesto), [1, 2]); assert.deepStrictEqual(r.lineasMalas, []);
+  const enB = leer([A1, A2, A3, B1, f('B', 0, 3, -900, 0, 900, 43, '46/xxxx', 'XXX XXX', '46/xxxx', 'ZZZ ZZZ'), B2]);
+  assert.deepStrictEqual([enB.grupos.A.length, enB.grupos.B.length], [4, 2]);       // nunca pasa al B
 });
 ok('licencias: «46/0921» es la 921; vacía u otra provincia es NO (no federado); la original se conserva para avisar', () => {
   const r = leer(base);
