@@ -41,7 +41,9 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
   }
   const sembrarWeb = (api) => { api.ponerCifrado('datos/indice.json', vacio()); sembrar(api, 'web', 'sp-ejemplo'); };
   const { sembrar } = require('./api_simulada.cjs');
-  const abrir = async (pg) => { await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]'); await pg.waitForSelector('#lista-borr[data-listo]'); };
+  const abrir = async (pg) => { await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' }); await desplegarListas(pg); };
+  // Las listas del paso 3 salen plegadas; los escenarios que pulsan sus botones las despliegan primero.
+  const desplegarListas = (pg) => pg.evaluate(() => document.querySelectorAll('#plegable-web, #plegable-borr').forEach((d) => { d.open = true; }));
   const nombres = (pg, lista) => pg.$$eval(`#lista-${lista} li.torneo`, (l) => l.map((x) => x.dataset.id));
 
   /* ============ 1. Token y lista de torneos ============ */
@@ -61,12 +63,27 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     bien('token guardado en localStorage');
     assert(api.reqs.some((r) => r.ruta === '/repos/JUGUEMOSDOMINO/campeonatos-domino') && api.reqs.some((r) => r.ruta === '/repos/JUGUEMOSDOMINO/campeonatos-borradores'));
     bien('al guardar, el token se comprueba contra los dos repositorios');
-    await pg.waitForSelector('#lista-web[data-listo]'); await pg.waitForSelector('#lista-borr[data-listo]');
+    await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' });
     assert.deepStrictEqual(await nombres(pg, 'web'), ['sp-ejemplo']);
     assert.deepStrictEqual(await nombres(pg, 'borr'), ['parejas-ejemplo-2026-11-14']);
-    const gr = await pg.$$eval('#paso-torneos h3', (h) => h.map((x) => x.textContent));
-    assert.deepStrictEqual(gr, ['En la web', 'Borradores']);
-    bien('dos grupos: «En la web» y «Borradores», cada uno con sus torneos');
+    const gr = await pg.$$eval('#paso-torneos details.plegable > summary', (h) => h.map((x) => x.textContent.trim()));
+    assert.deepStrictEqual(gr, ['En la web (1)', 'Borradores (1)']);
+    bien('dos grupos: «En la web (1)» y «Borradores (1)», cada uno con sus torneos');
+    const abierto = () => pg.$$eval('#paso-torneos details.plegable', (l) => l.map((d) => d.open));
+    assert.deepStrictEqual(await abierto(), [false, false]);
+    assert.strictEqual(await pg.isVisible('#lista-web li.torneo'), false); assert.strictEqual(await pg.isVisible('#lista-borr li.torneo'), false);
+    assert.strictEqual(await pg.isVisible('#actualizar'), true);
+    bien('paso 3: las dos listas salen plegadas, con el número en el título, y «Actualizar la lista» sigue a la vista');
+    await pg.click('#plegable-borr > summary');
+    assert.deepStrictEqual(await abierto(), [false, true]);
+    assert.strictEqual(await pg.isVisible('#lista-borr li.torneo'), true); assert.strictEqual(await pg.isVisible('#lista-web li.torneo'), false);
+    await pg.click('#plegable-web > summary');
+    assert.deepStrictEqual(await abierto(), [true, true]);
+    await pg.click('#plegable-borr > summary');
+    assert.deepStrictEqual(await abierto(), [true, false]);
+    await pg.focus('#plegable-borr > summary'); await pg.keyboard.press('Enter');
+    assert.deepStrictEqual(await abierto(), [true, true]);
+    bien('paso 3: cada lista se despliega y se pliega sola (con ratón y con el teclado) sin tocar la otra');
     const web = await pg.textContent('#lista-web li.torneo');
     assert(web.includes('CAMPEONATO SÚPER-PRESTIGIO DE EJEMPLO') && web.includes('Super-Prestigio') && /Jornada 3 de 14/.test(web) && web.includes(hora('2026-11-14T18:30:00Z')), web);
     const bor = await pg.textContent('#lista-borr li.torneo');
@@ -149,6 +166,76 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     assert.strictEqual(await pg.isDisabled('#publicar'), false);
     bien('al cambiar el destino a Web, el botón cambia de texto y se vuelve a validar');
     assert.deepStrictEqual(errores, []);
+  }
+
+  /* ============ 2b. Paso 3: listas plegables ============ */
+  {
+    const listas = async (pg) => { await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' }); };
+    const titulos = (pg) => pg.$$eval('#paso-torneos details.plegable > summary', (h) => h.map((x) => x.textContent.trim()));
+    const abiertos = (pg) => pg.$$eval('#paso-torneos details.plegable', (l) => l.map((d) => d.open));
+    {
+      const { pg, errores } = await escenario({ semilla: sembrarWeb });
+      await listas(pg);
+      assert.deepStrictEqual(await titulos(pg), ['En la web (1)', 'Borradores (0)']);
+      assert.deepStrictEqual(await abiertos(pg), [false, false]);
+      await pg.click('#plegable-borr > summary');
+      assert.strictEqual((await pg.textContent('#lista-borr')).trim(), 'No hay borradores.');
+      assert.strictEqual(await pg.isVisible('#lista-borr .vacio'), true);
+      assert.deepStrictEqual(await abiertos(pg), [false, true]);
+      assert.strictEqual(await pg.locator('#lista-borr li').count(), 0);
+      bien('paso 3: «Borradores (0)» plegada y, al abrirla, una línea «No hay borradores»; «En la web» sigue plegada');
+      assert.deepStrictEqual(errores, []);
+    }
+    for (const [caso, opc, preparar] of [['sin permiso sobre campeonatos-borradores', { acceso: { borr: false } }, null], ['con un error de GitHub al leer su índice', {}, (a) => { a.fallar = (m, c, r) => (c === 'borr' && r === 'datos/indice.json' ? 500 : null); }]]) {
+      const { pg, api } = await escenario({ ...opc, semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
+      if (preparar) preparar(api);
+      await listas(pg);
+      assert.deepStrictEqual(await titulos(pg), ['En la web (1)', 'Borradores: no se pudo cargar']);
+      assert.deepStrictEqual(await abiertos(pg), [false, false]);
+      assert.strictEqual(await pg.isVisible('#lista-borr .nota'), false);
+      await pg.click('#plegable-borr > summary');
+      assert.strictEqual(await pg.isVisible('#lista-borr .nota.caja'), true);
+      assert(/GitHub|campeonatos-borradores/.test(await pg.textContent('#lista-borr')));
+      assert.strictEqual(await pg.locator('#lista-web li.torneo').count(), 1);
+      bien(`paso 3: ${caso}, el título dice «Borradores: no se pudo cargar» y el motivo se ve al desplegar; la otra lista sigue bien`);
+    }
+    {
+      const { ctx, pg } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
+      await ctx.route('https://api.github.com/repos/JUGUEMOSDOMINO/campeonatos-borradores', async (r) => { await new Promise((x) => setTimeout(x, 1500)); await r.fallback(); });
+      await pg.goto(base + '/publicar.html');
+      await pg.waitForFunction(() => document.querySelector('#titulo-web').textContent === 'En la web (…)' && document.querySelector('#titulo-borr').textContent === 'Borradores (…)');
+      await pg.waitForFunction(() => document.querySelector('#titulo-borr').textContent === 'Borradores (1)');
+      bien('paso 3: mientras carga, los títulos dicen «(…)»; luego el número');
+    }
+    {
+      const { pg, api, errores } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
+      await listas(pg);
+      await pg.setInputFiles('#archivo', xlsx('individual-ejemplo-2026-11-14'));
+      await pg.waitForSelector('.tabla-caja');
+      assert.strictEqual(await pg.isChecked('input[name=destino][value=borr]'), true);
+      assert.deepStrictEqual(await abiertos(pg), [false, false]);
+      await pg.click('#publicar'); await pg.waitForSelector('text=Guardado como borrador');
+      await pg.waitForFunction(() => document.querySelector('#titulo-borr').textContent === 'Borradores (2)');
+      assert.deepStrictEqual(await abiertos(pg), [false, true]);
+      assert.strictEqual(await pg.isVisible('#lista-borr li.torneo[data-id="individual-ejemplo-2026-11-14"]'), true);
+      assert.strictEqual(await pg.isVisible('#lista-web li.torneo'), false);
+      bien('paso 3: tras guardar como borrador, «Borradores» se despliega sola y se ve lo recién guardado; «En la web» sigue plegada');
+      assert.deepStrictEqual(errores, []);
+    }
+    {
+      const { pg, errores } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
+      await listas(pg);
+      await pg.setInputFiles('#archivo', xlsx('individual-ejemplo-2026-11-14'));
+      await pg.waitForSelector('.tabla-caja');
+      await pg.click('input[name=destino][value=web]');
+      await pg.waitForFunction(() => document.querySelector('#publicar').textContent === 'Publicar en la web' && !document.querySelector('#publicar').disabled);
+      await pg.click('#publicar'); await pg.waitForSelector('text=Publicado');
+      await pg.waitForFunction(() => document.querySelector('#titulo-web').textContent === 'En la web (2)');
+      assert.deepStrictEqual(await abiertos(pg), [true, false]);
+      assert.strictEqual(await pg.isVisible('#lista-web li.torneo[data-id="individual-ejemplo-2026-11-14"]'), true);
+      bien('paso 3: tras publicar en la web, «En la web» se despliega sola y se ve lo publicado; «Borradores» sigue plegada');
+      assert.deepStrictEqual(errores, []);
+    }
   }
 
   /* ============ 3. Ver un borrador ============ */
@@ -857,7 +944,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     api.log.length = 0;
     await abrir(pg);
     await pg.waitForSelector('#registro-clave:has-text("ya está cifrado")');
-    await pg.waitForSelector('#lista-web[data-listo]');
+    await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' });
     assert(todasCon(api, 0)); assert.deepStrictEqual(api.enClaro, []);
     assert(!api.log.some((x) => cifrados.some((r) => x === 'PUT web ' + r)), 'lo que ya iba cifrado no se toca');
     assert(!api.log.includes('PUT web datos/clave.json'));
@@ -1111,7 +1198,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
     assert.strictEqual(await pg.locator('table.clasi tbody tr').count(), 5);
     bien('pdf: la web no enseña la columna Zona cuando ninguna pareja la tiene');
-    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]');
+    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' });
     // un PDF con una cuenta que no cuadra no se publica
     const roto = JSON.parse(JSON.stringify(espec)); roto.grupos.A[1][5] = -2000;
     await pg.setInputFiles('#archivo', pdf(roto, 'roto'));
@@ -1194,6 +1281,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       a.poner('prog', 'entregables/DESCARGAS.md', DESC); a.poner('prog', 'entregables/ranking/leer_torneo.html', '<html>hola</html>'); a.poner('prog', 'entregables/ranking/Ranking_FVD_plantilla.xlsx', 'vacio'); a.poner('prog', 'entregables/web/recortar.py', 'print()');
       a.poner('prog', 'entregables/sp/24_SP_sin_macros.xlsx', GRANDE); a.poner('prog', 'entregables/web/capturas/pub-01.png', Buffer.from([1, 2, 3]));
       a.poner('prog', 'entregables/sin_linea.txt', 'x'); a.poner('prog', 'entregables/.gitkeep', '');
+      a.ponerFecha('entregables/ranking/leer_torneo.html', '2026-11-22T14:05:09Z'); a.ponerFecha('entregables/ranking/Ranking_FVD_plantilla.xlsx', '2026-11-10T08:00:00Z');
     };
     const subida = (n, bytes) => ({ name: n, mimeType: 'application/octet-stream', buffer: bytes });
     const { ctx, pg, api, errores } = await escenario({ semilla });
@@ -1220,7 +1308,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), true);
     bien('archivos: cada categoría se abre y se cierra con un clic en su título');
     const txtA = await pg.textContent('#archivos-estado') + await pg.textContent('#archivos-lista');
-    assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('22/11/2026') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
+    assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('Actualizado: 22/11/2026 15:05:09') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
     assert(!txtA.includes('fantasma') && !txtA.includes('pub-01') && !txtA.includes('.gitkeep') && !txtA.includes('Capturas del manual'), txtA);
     bien('archivos: lista lo que tiene línea en DESCARGAS.md y existe (nombre, carpeta, frase, fecha y tamaño); no enseña carpetas, huérfanos ni sin línea, y cuenta los sin descripción');
     const [d1] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("24_SP_sin_macros.xlsx") button')]);
@@ -1256,6 +1344,62 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);
       bien('archivos: con un token de solo lectura se puede descargar');
       await lec.ctx.close();
+    }
+
+    /* ---- fecha y hora al segundo de cada archivo (último commit en programas-domino), con una sola consulta GraphQL ---- */
+    {
+      const DESC2 = ['# Descargas', '', '## Ranking FVD', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+        '| `ranking/Ranking_FVD_2026-27.xlsx` | El ranking de la temporada (copia del agente). | 2026-11-20 |',
+        '| `del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx` | El ranking que subió el árbitro. | 2026-01-01 |',
+        '| `ranking/leer_torneo.html` | Página de lectura. | 2026-11-30 |', '',
+        '## Torneos', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+        '| `del_arbitro/torneos/Verano.xlsx` | Lista de verano. | 2026-12-31 |', ''].join('\n');
+      const semilla2 = (a) => {
+        a.poner('prog', 'entregables/DESCARGAS.md', DESC2);
+        for (const r of ['ranking/Ranking_FVD_2026-27.xlsx', 'del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx', 'ranking/leer_torneo.html', 'del_arbitro/torneos/Verano.xlsx']) a.poner('prog', 'entregables/' + r, 'x');
+        a.ponerFecha('entregables/ranking/Ranking_FVD_2026-27.xlsx', '2026-11-23T08:09:05Z');                 // invierno (UTC+1): 09:09:05
+        a.ponerFecha('entregables/del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx', '2026-11-23T08:09:07Z');  // el mismo día, dos segundos después
+        a.ponerFecha('entregables/ranking/leer_torneo.html', '2026-03-29T00:59:59Z');                          // el último segundo antes del cambio de hora: 01:59:59
+        a.ponerFecha('entregables/del_arbitro/torneos/Verano.xlsx', '2026-07-15T21:59:59Z');                   // verano (UTC+2): 23:59:59
+      };
+      const e2 = await escenario({ semilla: semilla2 });
+      await abrir(e2.pg);
+      await e2.pg.click('#archivos-ver');
+      await e2.pg.waitForSelector('#archivos-lista li.archivo');
+      const fechas = await e2.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-ruta').textContent, x.querySelector('.archivo-fecha').textContent]));
+      assert.deepStrictEqual(fechas, [
+        ['Ranking_FVD_2026-27.xlsx', 'del_arbitro/ranking-fvd/', 'Actualizado: 23/11/2026 09:09:07'],
+        ['Ranking_FVD_2026-27.xlsx', 'ranking/', 'Actualizado: 23/11/2026 09:09:05'],
+        ['leer_torneo.html', 'ranking/', 'Actualizado: 29/03/2026 01:59:59'],
+        ['Verano.xlsx', 'del_arbitro/torneos/', 'Actualizado: 15/07/2026 23:59:59']]);
+      bien('archivos: «Actualizado: dd/mm/aaaa hh:mm:ss» en hora de Madrid (invierno +1, verano +2), del último commit; lo más reciente primero y, con el mismo nombre en dos carpetas, se distinguen por carpeta y segundo (la columna Fecha de DESCARGAS.md no cuenta)');
+      const texto2 = await e2.pg.textContent('#archivos-lista');
+      assert(!/2026-11-20|2026-12-31|2026-11-30|31\/12\/2026/.test(texto2), texto2);
+      bien('archivos: la fecha escrita a mano en DESCARGAS.md no se enseña');
+      assert.strictEqual(e2.api.graphql.length, 1);
+      assert.strictEqual(e2.api.graphql[0].auth, 'Bearer ' + TOKEN);
+      assert.deepStrictEqual(Object.values(e2.api.graphql[0].variables).sort(), ['entregables/del_arbitro/ranking-fvd/Ranking_FVD_2026-27.xlsx', 'entregables/del_arbitro/torneos/Verano.xlsx', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', 'entregables/ranking/leer_torneo.html']);
+      assert(!/entregables\//.test(e2.api.graphql[0].query), 'las rutas van como variables, no pegadas en la consulta');
+      const peticiones = e2.api.reqs.filter((r) => /programas-domino|graphql/.test(r.ruta)).map((r) => r.metodo + ' ' + r.ruta.replace(/[0-9a-f]{40}/, '<sha>'));
+      assert.deepStrictEqual(peticiones, ['GET /repos/JUGUEMOSDOMINO/programas-domino', 'GET /repos/JUGUEMOSDOMINO/programas-domino/git/trees/main', 'GET /repos/JUGUEMOSDOMINO/programas-domino/contents/entregables/DESCARGAS.md', 'POST /graphql']);
+      bien('archivos: una sola consulta GraphQL para todas las fechas (4 peticiones al abrir la lista, sin una por archivo), con el token del panel');
+      assert.deepStrictEqual(await e2.pg.evaluate(() => window.__csp), []); assert.deepStrictEqual(e2.errores, []);
+      await e2.ctx.close();
+      for (const fallo of [500, 403, 'errores']) {
+        const e3 = await escenario({ semilla: semilla2 });
+        e3.api.fallarGraphql = fallo;
+        await abrir(e3.pg);
+        await e3.pg.click('#archivos-ver');
+        await e3.pg.waitForSelector('#archivos-lista li.archivo');
+        const f3 = await e3.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-fecha').textContent]));
+        assert.strictEqual(f3.length, 4);
+        assert(f3.every((x) => x[1] === 'Fecha no disponible'), JSON.stringify(f3));
+        assert.deepStrictEqual(await e3.pg.$$eval('#archivos-lista li.archivo button', (l) => l.length), 4);
+        assert.strictEqual(await e3.pg.textContent('#archivos-estado'), '');
+        assert.deepStrictEqual(e3.errores, []);
+        await e3.ctx.close();
+      }
+      bien('archivos: si la consulta de fechas falla (500, sin permiso o con errores), la lista sale igual con «Fecha no disponible» y se puede descargar');
     }
   }
 

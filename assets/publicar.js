@@ -140,8 +140,13 @@
 
   /* ---------- paso 3: lista de campeonatos ---------- */
   const marcarListo = (id) => { $(id).dataset.listo = '1'; };
+  // El título de cada lista plegable lleva el número también plegada: «En la web (5)». n: número, '…' mientras carga, null sin número.
+  const NOMBRE_LISTA = { web: 'En la web', borr: 'Borradores' };
+  const titular = (clave, n, falla) => { $('#titulo-' + clave).textContent = falla ? `${NOMBRE_LISTA[clave]}: no se pudo cargar` : n == null ? NOMBRE_LISTA[clave] : `${NOMBRE_LISTA[clave]} (${n})`; };
+  const desplegar = (clave) => { $('#plegable-' + clave).open = true; }; // tras guardar o publicar: la lista se abre y se ve lo nuevo
   function limpiarListas() {
     for (const id of ['#lista-web', '#lista-borr']) { poner($(id), el('p', { class: 'nota' }, 'Pega el token en el paso 1 para ver la lista.')); marcarListo(id); }
+    titular('web', null); titular('borr', null);
     $('#restos').hidden = true;
   }
   async function cargarRepo(clave) {
@@ -166,6 +171,7 @@
   async function cargarListas() {
     if (!M.token.obtener()) { limpiarListas(); return; }
     for (const id of ['#lista-web', '#lista-borr']) { delete $(id).dataset.listo; poner($(id), el('p', { class: 'nota' }, 'Cargando…')); }
+    titular('web', '…'); titular('borr', '…');
     E.indices = { web: null, borr: null };
     let res;
     try { res = { web: await cargarRepo('web'), borr: await cargarRepo('borr') }; } catch (e) { if (!siCaduco(e)) { poner($('#estado-mesa'), e.message); } return; }
@@ -184,6 +190,7 @@
   }
   function pintarLista(clave, r) {
     const caja = $(clave === 'web' ? '#lista-web' : '#lista-borr');
+    titular(clave, r.estado === 'ok' ? r.torneos.length : null, r.estado !== 'ok');
     if (r.estado === 'sinAcceso') poner(caja, el('p', { class: 'nota caja' }, r.msg));
     else if (r.estado === 'error') poner(caja, el('p', { class: 'nota caja' }, r.msg));
     else {
@@ -754,6 +761,7 @@
       E.pub = await estadoPublicado(id, clave, E.partidas.map((p) => p.k)).catch(() => E.pub);
       repintar(); boton.disabled = true; // la lista pasa a decir «ya publicada»; para subir otra vez, se cambia algo
       refrescarArchivos();
+      desplegar(clave);
       await cargarTorneos();
     });
     if (!ok) boton.disabled = !M.token.obtener();
@@ -847,6 +855,7 @@
       poner($('#resultado'), el('a', { href: clave === 'web' ? `ranking.html?r=${encodeURIComponent(id)}` : `ranking.html?r=${encodeURIComponent(id)}&borrador=1`, target: '_blank', rel: 'noopener' },
         clave === 'web' ? 'Abrir el ranking en la web' : 'Ver el borrador'));
       $('#resultado').hidden = false;
+      desplegar(clave);
       await cargarTorneos();
     });
     if (!ok) boton.disabled = !M.token.obtener();
@@ -1076,6 +1085,7 @@
       refrescarArchivos();
       poner($('#resultado'), el('a', { href: clave === 'web' ? `torneo.html?t=${encodeURIComponent(id)}` : `torneo.html?t=${encodeURIComponent(id)}&borrador=1`, target: '_blank', rel: 'noopener' }, clave === 'web' ? 'Abrir el campeonato en la web' : 'Ver el borrador'));
       $('#resultado').hidden = false;
+      desplegar(clave);
       await cargarTorneos();
     });
     if (!ok) boton.disabled = !M.token.obtener();

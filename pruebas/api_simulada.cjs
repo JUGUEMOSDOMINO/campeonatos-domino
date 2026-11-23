@@ -39,6 +39,10 @@ async function instalar(ctx, opciones = {}) {
     acceso: { web: true, borr: true, prog: true, ...(opciones.acceso || {}) }, // false: GitHub contesta 404, como con un token sin ese repositorio
     soloLectura: { web: false, borr: false, prog: false },
     token: TOKEN,
+    graphql: [],           // consultas GraphQL recibidas (la de fechas de programas-domino): { variables, auth }
+    fallarGraphql: null,   // estado HTTP para que la consulta de fechas falle, o 'errores' para un 200 con errors
+    fechas: new Map(),     // ruta de prog -> fecha ISO del «último commit»; sin ella, una fija y creciente (2026-11-01T10:00:00Z + n segundos)
+    ponerFecha(ruta, iso) { this.fechas.set(ruta, iso); },
     fallar: null, // (metodo, clave, ruta) => estado HTTP o null
     n: 0,
     contrasenas: [CONTRASENA_WEB], claves: [WEB.clave], // las que la prueba conoce; la última es la de ahora
@@ -55,7 +59,7 @@ async function instalar(ctx, opciones = {}) {
     poner(clave, ruta, texto) {
       const sha = crypto.createHash('sha1').update(String(++this.n)).digest('hex');
       const plano = clave === 'web' && ruta !== 'datos/clave.json' ? this.descifrar(texto) : null;
-      this.repos[clave].set(ruta, { sha, texto, plano });
+      this.repos[clave].set(ruta, { sha, texto, plano, fecha: new Date(Date.UTC(2026, 10, 1, 10, 0, this.n)).toISOString().replace('.000Z', 'Z') });
     },
     ponerCifrado(ruta, datos) { this.poner('web', ruta, K.sobreTexto(this.clave(), datos) + '\n'); },
     // Descifrado perezoso: un archivo escrito con una clave que la simulación aún no conocía se abre en cuanto la aprende.
@@ -86,6 +90,20 @@ async function instalar(ctx, opciones = {}) {
     const metodo = req.method();
     api.reqs.push({ metodo, ruta: u.pathname, auth: req.headers().authorization });
     if (req.headers().authorization !== 'Bearer ' + api.token) return route.fulfill({ status: 401, body: '{"message":"Bad credentials"}' });
+    if (u.pathname === '/graphql') {
+      // Solo la consulta de fechas: ref(main) -> Commit -> alias fK: history(first:1, path:$pK){nodes{committedDate}} con las rutas como variables.
+      if (metodo !== 'POST' || !api.acceso.prog) return route.fulfill({ status: 404, body: '{"message":"Not Found"}' });
+      const c = JSON.parse(req.postData());
+      api.graphql.push({ variables: c.variables, query: c.query, auth: req.headers().authorization });
+      if (typeof api.fallarGraphql === 'number') return route.fulfill({ status: api.fallarGraphql, body: '{"message":"error simulado"}' });
+      if (api.fallarGraphql === 'errores') return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: null, errors: [{ message: 'error simulado' }] }) });
+      const t = {};
+      for (const [k, ruta] of Object.entries(c.variables || {})) {
+        const f = api.repos.prog.get(ruta);
+        t['f' + k.slice(1)] = { nodes: f ? [{ committedDate: api.fechas.get(ruta) || f.fecha }] : [] };
+      }
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ data: { repository: { ref: { target: t } } } }) });
+    }
     const m = /^\/repos\/JUGUEMOSDOMINO\/([^/]+)(?:\/contents\/(.*)|\/git\/blobs\/([0-9a-f]{40})|\/git\/trees\/(main))?$/.exec(u.pathname);
     const clave = m && NOMBRES[m[1]];
     if (!clave || !api.acceso[clave]) return route.fulfill({ status: 404, body: '{"message":"Not Found"}' });
