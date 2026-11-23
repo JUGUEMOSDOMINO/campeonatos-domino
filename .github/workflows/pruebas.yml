@@ -46,7 +46,8 @@ jobs:
             echo "::group::$f"
             if node "$f" >"$RUNNER_TEMP/salida.txt" 2>&1; then cat "$RUNNER_TEMP/salida.txt"; echo "::endgroup::"
             else cat "$RUNNER_TEMP/salida.txt"; echo "::endgroup::"; echo "::error::FALLA: $f"
-              echo "----- $f: últimas líneas -----"; tail -25 "$RUNNER_TEMP/salida.txt"; fallos="$fallos\n  - $f"; fi
+              { echo "----- $f: últimas líneas -----"; tail -25 "$RUNNER_TEMP/salida.txt"; } >>"$RUNNER_TEMP/resumen.txt"; fallos="$fallos\n  - $f"; fi
           done
+          [ -f "$RUNNER_TEMP/resumen.txt" ] && cat "$RUNNER_TEMP/resumen.txt"
           if [ -n "$fallos" ]; then printf "::error::Pruebas que fallan:$fallos\n"; exit 1; fi
           echo "Todas las pruebas en verde."
