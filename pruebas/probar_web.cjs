@@ -165,25 +165,49 @@ const D = 'd=datos/_prueba';
       await ir('ranking-ejemplo');
       assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 2, 6]);
       assert.strictEqual((await pg.locator('table.rk thead th').last().innerText()).toLowerCase(), 'plaza');
-      assert.deepStrictEqual(await pg.locator('table.rk .plaza').evaluateAll((l) => [...new Set(l.map((x) => x.textContent))].sort()), ['Open', 'Ranking', 'SP']);
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza').evaluateAll((l) => [...new Set(l.map((x) => x.textContent))].sort()), ['Plaza Open', 'Plaza SP', 'Plaza ranking']);
       const borde = (k) => pg.locator(`table.rk .plaza-${k}`).first().evaluate((x) => getComputedStyle(x).borderTopStyle);
       assert.deepStrictEqual([await borde('sp'), await borde('open'), await borde('ranking')], ['solid', 'double', 'dashed']);
       const leyenda = await pg.locator('#plazas-leyenda').innerText();
-      assert(leyenda.includes('los 4 jugadores de las 2 primeras parejas del Súper Prestigio') && leyenda.includes('los 2 de la pareja ganadora del Open de Valencia') && leyenda.includes('si ya la tiene, pasa al siguiente'), leyenda);
+      assert(leyenda.includes('los 4 jugadores de las 2 primeras parejas del Súper Prestigio') && leyenda.includes('los 2 de la pareja ganadora del Open de Valencia') && leyenda.includes('hasta el puesto 20'), leyenda);
+      const sueltas = await pg.locator('#plazas-sueltas').innerText();
+      assert(sueltas.includes('pasa a la siguiente pareja de ese torneo') && sueltas.includes('hasta la 10.ª') && sueltas.includes('cada uno tiene ½ plaza') && sueltas.includes('nunca va al ranking'), sueltas);
+      assert.strictEqual(await pg.locator('table.rk .plaza-por-repartir').count(), 0);
       assert.strictEqual(await pg.locator('#plazas-provisionales, #plazas-vacias').count(), 0);
       await sinDesborde('ranking con las tres plazas');
       const ficha = async (n) => { await pg.click(`table.rk .nombre-rk:text-is("${n}")`); await pg.waitForSelector('#ficha:not([hidden])'); return pg.locator('#ficha').innerText(); };
-      assert((await ficha('Ana Roig')).includes('Plaza SP, por ser de las 2 primeras parejas del Súper Prestigio'));
-      assert((await ficha('Marta Puig')).includes('Plaza Open, por ganar el Open de Valencia'));
-      assert((await ficha('Joan Ferrer')).includes('Plaza ranking, por su puesto en el ranking'));
-      assert((await ficha('Lola Soler')).includes('Sin plaza'));                        // renuncia
-      bien('ranking: plaza SP, Open y ranking con su texto y su borde (lleno, doble, discontinuo), la frase de qué es cada una y la ficha de cada jugador dice cuál tiene (o «Sin plaza»)');
+      assert((await ficha('Ana Roig')).includes('Plaza SP, del Súper Prestigio'));
+      assert((await ficha('Marta Puig')).includes('Plaza Open, del Open de Valencia'));
+      assert((await ficha('Pep Sala')).includes('Plaza ranking, por su puesto en el ranking'));
+      assert((await ficha('Lola Soler')).includes('Sin plaza'));                        // renuncia al ranking
+      assert((await ficha('María de los Ángeles Fernández-Villaverde')).includes('Sin plaza'));      // renuncia a la del SP: no pasa al ranking
+      bien('ranking: «Plaza SP», «Plaza Open» y «Plaza ranking» con su texto y su borde (lleno, doble, discontinuo), la frase de qué es cada una y de las plazas sueltas, y la ficha de cada jugador dice cuál tiene (o «Sin plaza»)');
+      // una plaza suelta del SP que la pareja que la recibe todavía no ha aceptado ni rechazado
+      await ir('ranking-repartir');
+      assert.deepStrictEqual([await chips('sp') - await chips('por-repartir'), await chips('por-repartir')], [3, 2]);
+      assert.strictEqual(await pg.locator('table.rk .plaza-por-repartir').first().evaluate((x) => getComputedStyle(x).borderTopStyle), 'dotted');
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza-frase').allInnerTexts(), ['1 plaza para la pareja N.º 6 (por repartir)', '1 plaza para la pareja N.º 6 (por repartir)']);
+      assert.strictEqual(await pg.locator('table.rk td.ce .plaza-por-repartir').first().innerText(), 'Plaza SP · por repartir');
+      const fr = await ficha('Marta Puig');
+      assert(fr.includes('Plaza SP · por repartir') && fr.includes('todavía no han dicho si van') && !fr.includes('Sin plaza'), fr);
+      await sinDesborde('ranking con una plaza por repartir');
+      // los dos de la pareja que recibe dicen «Va»: ½ plaza cada uno
+      await ir('ranking-medias');
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza-sp:not(.plaza-por-repartir)').allInnerTexts().then((l) => l.sort()), ['Plaza SP', 'Plaza SP', 'Plaza SP', '½ Plaza SP', '½ Plaza SP']);
+      assert((await ficha('Joan Ferrer')).includes('Media plaza del Súper Prestigio: la comparte con su pareja, que también va'));
+      await sinDesborde('ranking con medias plazas');
+      // nadie quiere la plaza hasta la 10.ª pareja
+      await ir('ranking-vacias-sp-open');
+      assert.strictEqual(await pg.locator('#plazas-vacias-sp').innerText().then((x) => x.includes('Una plaza del SP queda vacía') && x.includes('hasta la 10.ª')), true);
+      assert.strictEqual(await pg.locator('#plazas-vacias-open').innerText().then((x) => x.includes('2 plazas del Open quedan vacías')), true);
+      await sinDesborde('ranking con plazas SP y Open vacías');
+      bien('ranking con plaza suelta: «Plaza SP · por repartir» con la frase «1 plaza para la pareja N.º 6 (por repartir)», ½ plaza cuando van los dos y aviso de las plazas SP y Open que queda vacías; sin cortar nada a 320 px');
       await ir('ranking-provisional');
       assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 0, 6]);
       const prov = await pg.locator('#plazas-provisionales').innerText();
       assert(prov.includes('todavía no se ha jugado el Open de Valencia') && prov.includes('no hay plazas Open') && prov.includes('el ranking marca sus 6'), prov);
       assert.strictEqual(await pg.locator('table.rk td.ce .sub:text-is("provisional")').count(), 6);
-      assert((await ficha('Joan Ferrer')).includes('Plaza ranking provisional'));
+      assert((await ficha('Marta Puig')).includes('Plaza ranking provisional'));
       await sinDesborde('ranking provisional');
       bien('ranking provisional (el Open sin jugar): sin plazas Open, 6 del ranking marcadas «provisional» y una frase que lo explica');
       await ir('ranking-vacias');
@@ -193,6 +217,10 @@ const D = 'd=datos/_prueba';
       assert(vac.includes('4 plazas del ranking quedan vacías') && vac.includes('hasta el puesto 20'), vac);
       await sinDesborde('ranking con plazas vacías');
       bien('ranking con renuncias y nadie disponible hasta el puesto 20: las plazas que quedan vacías se avisan');
+      await ir('ranking-v12');
+      assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 2, 6]);
+      assert.strictEqual(await pg.locator('#plazas-sueltas, .plaza-por-repartir, #plazas-vacias-sp').count(), 0);
+      bien('ranking publicado con el contrato 1.2 (plazas como sí o no): se sigue viendo, sin lo de plazas sueltas');
       await ir('ranking-antiguo');
       assert.strictEqual(await pg.locator('table.rk .plaza-ce').count(), 6); assert.strictEqual(await pg.locator('table.rk .plaza').count(), 0);
       assert.strictEqual((await pg.locator('table.rk thead th').last().innerText()).toLowerCase(), 'ce');

@@ -6,3 +6,7 @@ de prueba «datos de prueba de la mesa». Tras cambiar algo aquí: node pruebas/
 No están en datos/indice.json: la portada real no los enseña.
 Para verlos: abre la web con ?d=datos/_prueba al final de la dirección, por ejemplo
   index.html?d=datos/_prueba
+
+Rankings de prueba: ranking-ejemplo (SP y Open jugados, una plaza SP suelta que va entera), ranking-repartir (la pareja que recibe la suelta aún no ha contestado),
+ranking-medias (van los dos: ½ plaza cada uno), ranking-vacias y ranking-vacias-sp-open (plazas vacías; este último solo cambia las cifras del META a mano para
+probar los avisos), ranking-provisional (el Open sin jugar), ranking-v12 (contrato 1.2) y ranking-antiguo (1.1). Todos con licencias inventadas.

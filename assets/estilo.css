@@ -436,6 +436,10 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .plaza-open { border-style: double; border-width: 4px; padding: 0 3px; }
 .plaza-ranking { border-style: dashed; }
 @media (prefers-color-scheme: dark) { .plaza { --m: var(--barra-suave); } }
+/* plaza suelta que la pareja aún no ha aceptado: etiqueta hueca, de borde punteado, y su frase debajo (se parte en líneas: con 320 px no se corta) */
+.plaza.plaza-por-repartir { background: var(--papel); color: var(--m); border-style: dotted; border-width: 2px; padding: 0 5px; white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.rk td.ce { min-width: 8.5rem; white-space: normal; }
+.rk .plaza-frase { width: 8.5rem; max-width: 100%; margin: 2px auto 0; white-space: normal; overflow-wrap: anywhere; }
 .plazas-ficha { display: grid; gap: 4px; }
 .plazas-ficha > span { overflow-wrap: anywhere; }
 .ficha-rk { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 12px 14px; margin: 0 0 14px; }

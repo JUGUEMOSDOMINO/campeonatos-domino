@@ -940,7 +940,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     bien('«Quitar normativa» la borra de la web');
   }
 
-  /* ============ Ranking FVD: el Excel del ranking (hoja WEB 1.1) se publica como tipo «ranking», cifrado ============ */
+  /* ============ Ranking FVD: el Excel del ranking (hoja WEB 1.3) se publica como tipo «ranking», cifrado ============ */
   {
     const RKJ = path.join(__dirname, 'datos', 'ranking-ejemplo', 'actual.json');
     const libroRk = (extra = []) => { const f = path.join(tmp, 'ranking' + extra.join('') + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), RKJ, f, ...extra]); return f; };
@@ -964,6 +964,18 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     await pg.setInputFiles('#archivo', libroDe('ranking-vacias'));
     await pg.waitForSelector('#revision li.avisa:has-text("quedan vacías")');
     assert((await pg.textContent('#revision')).includes('4 plazas del ranking quedan vacías: no hay nadie sin plaza hasta el puesto 20'));
+    // plaza suelta por repartir, ½ plaza y plazas SP y Open vacías (el ejemplo con vacías de SP y Open se construye con los mismos datos y su META)
+    await pg.setInputFiles('#archivo', libroDe('ranking-repartir'));
+    await pg.waitForSelector('#revision li.avisa:has-text("por repartir")');
+    const rep = await pg.textContent('#revision');
+    assert(rep.includes('Plaza SP por repartir: la pareja N.º 6 la ha recibido y todavía no ha dicho si va') && rep.includes('SP por repartir'), rep);
+    await pg.setInputFiles('#archivo', libroDe('ranking-medias'));
+    await pg.waitForSelector('#revision li.avisa:has-text("Plaza Open por repartir")');
+    assert((await pg.textContent('#revision')).includes('½ SP'));
+    await pg.setInputFiles('#archivo', libroDe('ranking-vacias-sp-open'));
+    await pg.waitForSelector('#revision li.avisa:has-text("del SP queda vacía")');
+    const vsp = await pg.textContent('#revision');
+    assert(vsp.includes('Una plaza del SP queda vacía: ninguna pareja de ese torneo, hasta la 10.ª, la quiere') && vsp.includes('2 plazas del Open quedan vacías'), vsp);
     await pg.setInputFiles('#archivo', libroRk());
     await pg.waitForSelector('#revision .resumen');
     bien('ranking: antes de publicar avisa de las plazas provisionales (SP u Open sin jugar) y de las que quedan vacías; enseña SP, Open y Ranking en la tabla');

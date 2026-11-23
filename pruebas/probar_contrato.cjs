@@ -260,7 +260,7 @@ console.log('\nVarias partidas de un mismo Excel (hojas _WEBC, _R1…_Rn y P.1�
   });
 }
 
-console.log('Ranking FVD (contrato 1.2, assets/ranking.js)');
+console.log('Ranking FVD (contrato 1.3, assets/ranking.js)');
 {
   const R = require('../assets/ranking.js');
   const RK = path.join(__dirname, 'datos', 'ranking-ejemplo', 'actual.json');
@@ -272,7 +272,7 @@ console.log('Ranking FVD (contrato 1.2, assets/ranking.js)');
   };
   const wb = libroRk(), ws = wb.Sheets.WEB;
   const sinPub = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.publicado; return c; };
-  ok('ranking: se reconoce por la hoja WEB (1.2, tipo ranking); los campeonatos no', () => {
+  ok('ranking: se reconoce por la hoja WEB (1.3, tipo ranking); los campeonatos no', () => {
     assert.strictEqual(R.es(ws), true);
     assert.strictEqual(R.es(hoja('sp-ejemplo').ws), false);
   });
@@ -303,8 +303,24 @@ console.log('Ranking FVD (contrato 1.2, assets/ranking.js)');
   ok('VR5: más plazas del ranking de las que tocan, la marca de plaza que no es la suma de las tres y más de 4 plazas SP o 2 plazas Open', () => {
     falla('VR5', (d) => { d.torneo.plazas_ranking = 2; });
     falla('VR5', (d) => { d.ranking[0].plaza_ce = false; });
-    falla('VR5', (d) => { for (const f of d.ranking.slice(0, 5)) { f.plaza_sp = true; f.plaza_ce = true; } });
-    falla('VR5', (d) => { for (const f of d.ranking.slice(0, 3)) { f.plaza_open = true; f.plaza_ce = true; } });
+    falla('VR5', (d) => { for (const f of d.ranking.slice(0, 5)) { f.plaza_sp = 1; f.plaza_ce = true; } });
+    falla('VR5', (d) => { for (const f of d.ranking.slice(0, 3)) { f.plaza_open = 1; f.plaza_ce = true; } });
+    falla('VR5', (d) => { d.ranking[0].plaza_sp = 0.3; });                       // solo 0, ½ o entera
+  });
+  ok('ranking 1.3: ½ plaza (dos medias suman una), plaza por repartir y plazas vacías del SP y del Open; un Excel 1.2 ya no se publica', () => {
+    const lee = (n) => { const x = path.join(tmp, n + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), path.join(__dirname, 'datos', n, 'actual.json'), x]);
+      const w = XLSX.read(fs.readFileSync(x), { type: 'buffer', sheets: 'WEB' }); return { rr: R.leer(w.Sheets.WEB), json: JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', n, 'actual.json'), 'utf8')) }; };
+    const m = lee('ranking-medias');
+    assert.deepStrictEqual(R.validar(m.rr, {}), []);
+    assert.deepStrictEqual(sinPub(m.rr.doc), sinPub(m.json));
+    assert.deepStrictEqual(m.rr.doc.ranking.filter((f) => f.plaza_sp === 0.5).length, 2);
+    const p = lee('ranking-repartir');
+    assert.deepStrictEqual(R.validar(p.rr, {}), []);
+    assert.deepStrictEqual(sinPub(p.rr.doc), sinPub(p.json));
+    const pend = p.rr.doc.ranking.filter((f) => f.por_repartir);
+    assert.deepStrictEqual(pend.map((f) => [f.por_repartir, f.pareja_n]), [['sp', 6], ['sp', 6]]);      // los dos jugadores de la pareja 6 del SP: nada dicho aún
+    const v12 = lee('ranking-v12');                               // un Excel con la hoja WEB de antes: se reconoce, pero se pide el actualizado
+    assert(R.validar(v12.rr, {}).some((v) => v.cod === 'VR0'));
   });
   ok('ranking: las tres marcas de plaza y lo que dicen del SP y el Open (ejemplo con los dos jugados, con el Open sin jugar y con renuncias)', () => {
     const cuenta = (d, k) => d.ranking.filter((f) => f[k]).length, t = r.doc.torneo;

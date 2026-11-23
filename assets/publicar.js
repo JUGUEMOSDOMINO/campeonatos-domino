@@ -758,7 +758,7 @@
     if (!ok) boton.disabled = !M.token.obtener();
   }
 
-  /* ---------- el Excel del ranking (contrato 1.1, assets/ranking.js) ---------- */
+  /* ---------- el Excel del ranking (contrato 1.3, assets/ranking.js) ---------- */
   // Solo su hoja WEB. Es el único JSON con licencias: a la web sube cifrado (mesa.js no deja subir nada en claro); en borradores, privado.
   async function revisarRanking(ws) {
     try {
@@ -802,12 +802,18 @@
     const sinJugar = [!t.sp_jugado && 'el SP', !t.open_jugado && 'el Open'].filter(Boolean);
     if (t.plazas_provisionales) vals.push(el('li', { class: 'avisa' }, el('span', { class: 'cod' }, 'ℹ'), `Plazas provisionales: aún no se ha jugado ${sinJugar.join(' ni ')}. Hasta entonces no hay plazas ${sinJugar.map((x) => x.slice(3)).join(' ni ')} y el ranking marca sus ${t.plazas_ranking}.`));
     if (t.plazas_vacias > 0) vals.push(el('li', { class: 'avisa' }, el('span', { class: 'cod' }, '⚠'), `${t.plazas_vacias === 1 ? 'Una plaza del ranking queda vacía' : t.plazas_vacias + ' plazas del ranking quedan vacías'}: no hay nadie sin plaza hasta el puesto 20.`));
+    for (const [n, de] of [[t.plazas_vacias_sp, 'SP'], [t.plazas_vacias_open, 'Open']]) if (n > 0) vals.push(el('li', { class: 'avisa' }, el('span', { class: 'cod' }, '⚠'), `${n === 1 ? 'Una plaza del ' + de + ' queda vacía' : n + ' plazas del ' + de + ' quedan vacías'}: ninguna pareja de ese torneo, hasta la 10.ª, la quiere.`));
+    // plazas sueltas que la pareja aún no ha aceptado ni rechazado (una línea por pareja)
+    const pend = [...new Set(d.ranking.filter((f) => f.por_repartir).map((f) => `${f.por_repartir}|${f.pareja_n}`))];
+    for (const x of pend) { const [k, n] = x.split('|'); vals.push(el('li', { class: 'avisa' }, el('span', { class: 'cod' }, 'ℹ'), `Plaza ${k === 'sp' ? 'SP' : 'Open'} por repartir: la pareja N.º ${n} la ha recibido y todavía no ha dicho si va. La web lo enseña así.`)); }
     if (vals.length > 1) { const i = vals.findIndex((x) => x.className === 'ok'); if (i >= 0) vals.splice(i, 1); }
+    const marcas = (f) => [f.plaza_sp && (f.plaza_sp === 0.5 ? '½ ' : '') + 'SP', f.plaza_open && (f.plaza_open === 0.5 ? '½ ' : '') + 'Open', f.plaza_ranking && 'Ranking' + (t.plazas_provisionales ? ' (prov.)' : ''),
+      f.por_repartir && `${f.por_repartir === 'sp' ? 'SP' : 'Open'} por repartir`].filter(Boolean).join(' · ');
     const tabla = el('div', { class: 'tabla-caja sep-12' }, el('table', { class: 'clasi' },
       el('caption', { class: 'solo-lector' }, 'Primeros puestos del ranking leídos del Excel'),
       el('thead', null, el('tr', null, el('th', null, '#'), el('th', null, 'Total'), el('th', { class: 'izq' }, 'Jugador'), el('th', null, 'Licencia'), el('th', null, 'Plaza CE'))),
       el('tbody', null, d.ranking.slice(0, 10).map((f) => el('tr', null, el('td', null, f.puesto), el('td', { class: 'gan' }, f.total),
-        el('td', { class: 'pareja' }, el('span', { class: 'nom' }, `${f.nombre || ''} ${f.apellido1 || ''}`)), el('td', null, f.licencia || ''), el('td', null, [f.plaza_sp && 'SP', f.plaza_open && 'Open', f.plaza_ranking && 'Ranking' + (t.plazas_provisionales ? ' (prov.)' : '')].filter(Boolean).join(' · ')))))));
+        el('td', { class: 'pareja' }, el('span', { class: 'nom' }, `${f.nombre || ''} ${f.apellido1 || ''}`)), el('td', null, f.licencia || ''), el('td', null, marcas(f)))))));
     const bloquea = E.valsRk.some((x) => x.gravedad === 'bloquea');
     poner($('#revision'), resumen, el('ul', { class: 'vals' }, vals),
       el('p', { class: 'nota sep-12' }, 'Este Excel es el del ranking. Lleva las licencias de los jugadores: a la web solo suben cifradas con la contraseña, y en borradores se quedan en el repositorio privado.'),

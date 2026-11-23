@@ -138,6 +138,11 @@ function llegaAPuntC() {
     await pg.click('table.rk .nombre-rk:text-is("Ana Roig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha con plaza SP');
     await pg.goto(`${base}/ranking.html?${D}&r=ranking-provisional`); await pg.waitForSelector('#plazas-provisionales'); await mira('ranking provisional · frase y plazas', llegaACE);
     await pg.goto(`${base}/ranking.html?${D}&r=ranking-vacias`); await pg.waitForSelector('#plazas-vacias'); await mira('ranking con plazas vacías', llegaACE);
+    // plaza suelta por repartir (con su frase), ½ plaza y plazas SP y Open vacías: nada cortado desde 320 px
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-repartir`); await pg.waitForSelector('.plaza-por-repartir'); await mira('ranking con plaza por repartir', llegaACE);
+    await pg.click('table.rk .nombre-rk:text-is("Marta Puig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha con plaza por repartir');
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-medias`); await pg.waitForSelector('.plaza-sp'); await mira('ranking con ½ plaza', llegaACE);
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-vacias-sp-open`); await pg.waitForSelector('#plazas-vacias-sp'); await mira('ranking con plazas SP y Open vacías', llegaACE);
 
     // páginas sueltas del árbitro: federación, casos del libro, retos y plataforma de juego
     for (const f of ['federacion-jaume-i', 'ejemplos-libro', 'retos', 'jugar']) {
