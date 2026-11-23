@@ -1242,7 +1242,10 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       ['J0009', 'Albert', 'Mora', 'Roca', '927'], ['J0010', 'Lola', 'Soler', 'Gil', '9001'], ['J0011', 'Joan', 'Ferrer', 'Pla', '7001']];
     const LIC = [[921, 'J0001', 2020, null], [922, 'J0002', 2020, null], [923, 'J0003', 2020, null], [5551, 'J0004', 2026, null], [5552, 'J0005', 2026, null], [5553, 'J0006', 2025, null],
       [925, 'J0007', 2020, null], [926, 'J0008', 2020, null], [927, 'J0009', 2020, null], [9001, 'J0010', 2020, null], [7001, 'J0011', 2026, null]];
-    const rankingXlsx = () => XLSX.write({ SheetNames: ['Jugadores', 'Licencias'], Sheets: {
+    // `torneos`: filas ya cargadas en el Excel del ranking (hojas Torneos y Resultados, con el bloque del torneo 1 desde la fila 6)
+    const rankingXlsx = (torneos) => XLSX.write({ SheetNames: ['Jugadores', 'Licencias', ...(torneos ? ['Torneos', 'Resultados'] : [])], Sheets: { ...(torneos ? {
+      Torneos: XLSX.utils.aoa_to_sheet([[], [], [1, torneos.nombre, torneos.fecha]]),
+      Resultados: XLSX.utils.aoa_to_sheet([[], [], [], [], [], ...Array.from({ length: torneos.filas }, (_, i) => [i < 5 ? 'A' : 'B', i + 1, 'NO', 'Nombre inventado', 'NO', 'Otro nombre inventado'])]) } : {}),
       Jugadores: XLSX.utils.aoa_to_sheet([[], ['Código', 'Nombre', '1er apellido', '2º apellido', 'Licencia vigente'], ...JUG]),
       Licencias: XLSX.utils.aoa_to_sheet([[], ['Licencia', 'Código de jugador', 'Asociación', 'Año desde', 'Año hasta'], ...LIC.map((l) => [l[0], l[1], 'Asociación de ejemplo', l[2], l[3]])]) } }, { type: 'buffer', bookType: 'xlsx' });
     const semilla = (conRanking = true) => (a) => {
@@ -1359,6 +1362,41 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       assert(!JSON.stringify(api.json('borr', 'datos/torneo-de-access-de-ejemplo-2026-11-22/actual.json')).includes('5553'), 'las licencias no van a lo publicado');
       assert(soloDatos(api));
       bien('access: publica la clasificación sin licencias y guarda copia del original en torneos/');
+      await ctx.close();
+    }
+    // --- Torneo que ya está en el Excel del ranking (mismo nombre y fecha): avisa y ofrece «Sustituir las filas de ese torneo»; nunca se duplica
+    {
+      const { ctx, pg } = await escenario({ semilla: (a) => { semilla()(a); a.poner('prog', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', rankingXlsx({ nombre: '7º ACCESS EJEMPLO', fecha: 46348, filas: 8 })); } });
+      await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: new URL(base).origin });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', accesoXlsx());
+      await pg.waitForSelector('#torneo-cargado');
+      const aviso = await pg.textContent('#torneo-cargado');
+      assert(aviso.includes('ya está en el Excel del ranking') && aviso.includes('columna 1') && aviso.includes('22/11/2026') && aviso.includes('8 filas') && aviso.includes('No lo añadas como un torneo nuevo'), aviso);
+      await pg.waitForSelector('#revision :text("Faltan por identificar")');
+      await pg.click('button:has-text("Confirmar la propuesta de un solo candidato")');
+      await pg.selectOption('.pend select', 'J0006');
+      await pg.waitForSelector('#sustituir-bloque');
+      assert.strictEqual(await pg.locator('#copiar-bloque').count(), 0, 'con el torneo ya cargado no se ofrece copiar el bloque como nuevo');
+      assert.strictEqual(await pg.textContent('#sustituir-bloque'), 'Sustituir las filas de ese torneo');
+      await pg.click('#sustituir-bloque');
+      await pg.waitForFunction(() => document.querySelector('#revision').textContent.includes('Copiado'));
+      const filas = (await leerPortapapeles(pg)).split('\n');
+      assert.strictEqual(filas.length, 8, 'las 5 filas del bloque y 3 vacías para cubrir las 8 que tenía el torneo');
+      assert(filas.slice(5).every((f) => f === '\t'.repeat(11)) && filas[0].startsWith('A\t1\t921\tAna Roig'), filas.join(' // '));
+      const msg = await pg.textContent('#revision');
+      assert(msg.includes('3 vacías') && msg.includes('Bloque t01') && msg.includes('No crees otro torneo'), msg);
+      bien('torneo ya cargado: avisa (columna, nombre, fecha y filas), ofrece «Sustituir las filas de ese torneo» y copia el bloque con filas vacías hasta cubrir las que tenía, para no duplicar');
+      await ctx.close();
+    }
+    // el mismo Excel del ranking sin ese torneo cargado: se ofrece copiar el bloque como siempre
+    {
+      const { ctx, pg } = await escenario({ semilla: (a) => { semilla()(a); a.poner('prog', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', rankingXlsx({ nombre: '3º OTRO TORNEO', fecha: 46348, filas: 8 })); } });
+      await abrir(pg);
+      await pg.setInputFiles('#archivo', accesoXlsx());
+      await pg.waitForSelector('#revision :text("Faltan por identificar")');
+      assert.strictEqual(await pg.locator('#torneo-cargado').count(), 0);
+      bien('torneo ya cargado: otro nombre con la misma fecha no se confunde con el que se sube');
       await ctx.close();
     }
     // --- Hoja de resumen: A a F se comprueban contra el ranking; G a L (retiradas y sustituciones) son de la hoja

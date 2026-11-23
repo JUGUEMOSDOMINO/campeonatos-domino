@@ -118,6 +118,14 @@ const lee = (md) => Ar.leerDescargas(md).map((f) => `${f.categoria} | ${f.ruta}`
     assert.deepStrictEqual(Ar.agrupar([]), []);
   });
 
+  console.log('Copia de leer_pdf.js');
+  await ok('assets/leerpdf.js es idéntico a tools/ranking/leer_pdf.js de programas-domino (si está al lado): si uno cambia, hay que copiarlo al otro', () => {
+    const fs = require('fs'), path = require('path');
+    const otro = path.join(__dirname, '..', '..', 'programas-domino', 'tools', 'ranking', 'leer_pdf.js');
+    if (!fs.existsSync(otro)) { console.log('       (no está ../programas-domino: no se compara)'); return; }
+    assert.ok(fs.readFileSync(path.join(__dirname, '..', 'assets', 'leerpdf.js')).equals(fs.readFileSync(otro)), 'assets/leerpdf.js y programas-domino/tools/ranking/leer_pdf.js ya no son idénticos');
+  });
+
   console.log('Nombre y descripción');
   await ok('el nombre del archivo: sin rutas, sin puntos delante, sin caracteres raros', () => {
     for (const bien of ['Lista.xlsx', 'Ranking FVD 2026-27 (copia).xlsx', 'Año nuevo ñ.pdf']) assert.strictEqual(Ar.nombreValido(bien), true, bien);

@@ -198,6 +198,38 @@
     return out;
   }
 
-  const API = { leerJugadores, buscar, armar, armarAccess, licenciaEn, norm };
+  /* Torneos que ya están en el Excel del ranking: hoja Torneos (fila 3 en adelante: B nombre corto, C fecha) y las filas de su bloque en Resultados
+     (A:L; 200 filas por torneo, el del torneo k empieza en la fila 6 + 203·(k − 1)). `filas` llega hasta la última fila con algo. */
+  const NT = 20, BL = 203, NP = 200;
+  function fechaIso(x) {
+    if (x instanceof Date && !isNaN(x)) return x.toISOString().slice(0, 10);
+    if (typeof x === 'number' && x > 20000 && x < 80000) return new Date(Math.round((x - 25569) * 864e5)).toISOString().slice(0, 10);
+    const m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(String(x == null ? '' : x).trim());
+    if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+    return /^\d{4}-\d{2}-\d{2}/.test(String(x)) ? String(x).slice(0, 10) : null;
+  }
+  function leerTorneos(wb) {
+    const T = wb.Sheets && wb.Sheets.Torneos, R = wb.Sheets && wb.Sheets.Resultados, out = [];
+    if (!T) return out;
+    const v = (ws, a) => { const c = ws[a]; if (!c || c.v === undefined || c.v === null || (typeof c.v === 'string' && c.v.trim() === '')) return null; return c.v; };
+    for (let k = 1; k <= NT; k++) {
+      const nombre = v(T, 'B' + (2 + k));
+      if (nombre === null) continue;
+      let filas = 0;
+      if (R) { const d1 = 3 + (k - 1) * BL + 3; for (let i = 0; i < NP; i++) if ('ABCDEFGHIJKL'.split('').some((c) => v(R, c + (d1 + i)) !== null)) filas = i + 1; }
+      out.push({ col: k, nombre: String(nombre).trim(), fecha: fechaIso(v(T, 'C' + (2 + k))), filas });
+    }
+    return out;
+  }
+  // ¿Es el mismo torneo? Misma fecha y el mismo nombre, o uno contenido en el otro (el Excel del ranking lleva un nombre corto: «9º TORRENT»; el organizador, el oficial).
+  const palabras = (t) => norm(t).split(' ').filter((w) => w.length >= 4 && !/^\d/.test(w) && !['torneo', 'campeonato', 'domino', 'ciudad', 'popular'].includes(w));
+  function mismoTorneo(a, b) {
+    if (!a.fecha || !b.fecha || a.fecha !== b.fecha) return false;
+    if (norm(a.nombre) === norm(b.nombre)) return true;
+    const x = palabras(a.nombre), y = palabras(b.nombre);
+    return x.length > 0 && y.length > 0 && (x.every((w) => y.includes(w)) || y.every((w) => x.includes(w)));
+  }
+
+  const API = { leerJugadores, leerTorneos, mismoTorneo, buscar, armar, armarAccess, licenciaEn, norm };
   if (typeof module !== 'undefined' && module.exports) module.exports = API; else raiz.LeerPdf = API;
 })(typeof window !== 'undefined' ? window : globalThis);

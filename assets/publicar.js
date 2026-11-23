@@ -884,14 +884,24 @@
     if (E.dest === 'web' && !enWeb(id)) v.push({ cod: 'M02', gravedad: 'avisa', msg: 'Este campeonato todavía no está en la web: se publica ahora y lo ve todo el mundo.' });
     return v;
   }
-  function copiarBloque(b, aviso) {
-    const ok = () => { aviso.textContent = `Copiado: ${b.filas.length} filas. En el Excel del ranking, pincha en «▸ Bloque» del torneo, ponte en la primera celda amarilla y pega con «Pegar valores».`; };
+  function copiarBloque(b, aviso, ya) {
+    // Sustituir las filas de un torneo que ya está: se copian también filas vacías hasta cubrir las que tenía, para que no sobre ninguna al pegar encima.
+    const vacias = ya ? Math.max(0, ya.filas - b.filas.length) : 0;
+    const texto = b.tsv + (vacias ? '\n' + Array.from({ length: vacias }, () => '\t'.repeat(11)).join('\n') : '');
+    const ok = () => {
+      aviso.textContent = ya ? `Copiado: ${b.filas.length} filas${vacias ? ` y ${vacias} vacías, para borrar las que sobraban` : ''}. En el Excel del ranking, pincha en «▸ Bloque t${String(ya.col).padStart(2, '0')}» (el de ese torneo, columna ${ya.col}), ponte en la primera celda amarilla y pega con «Pegar valores». No crees otro torneo.`
+        : `Copiado: ${b.filas.length} filas. En el Excel del ranking, pincha en «▸ Bloque» del torneo, ponte en la primera celda amarilla y pega con «Pegar valores».`;
+    };
     const mal = () => { aviso.textContent = 'No se ha podido copiar. Selecciona la tabla de abajo y cópiala a mano.'; };
-    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(b.tsv).then(ok, mal); else mal();
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(texto).then(ok, mal); else mal();
   }
 
   /* ---------- el bloque para el ranking: lo mismo que leer_torneo.html (assets/leerpdf.js) ---------- */
-  const indiceDe = (bytes) => LP.leerJugadores(XLSX.read(bytes, { type: 'array', sheets: ['Jugadores', 'Licencias'], ...LEER }), XLSX);
+  const indiceDe = (bytes) => {
+    const wb = XLSX.read(bytes, { type: 'array', sheets: ['Jugadores', 'Licencias', 'Torneos', 'Resultados'], ...LEER }), ix = LP.leerJugadores(wb, XLSX);
+    ix.torneos = LP.leerTorneos(wb);              // los que ya están cargados: para no repetir uno
+    return ix;
+  };
   // El Excel del ranking sale de entregables/ (programas-domino) si está allí; si no, lo elige el árbitro. Se lee en este ordenador: nunca se publica.
   async function asegurarRanking() {
     if (E.ix) return;                                  // ya hay uno (el de otra subida o el que eligió el árbitro)
@@ -973,6 +983,8 @@
     const fuente = !ix ? 'No hay ningún Excel del ranking en entregables/ de programas-domino. Elígelo para comprobar las licencias' + (E.rs.origen === 'pdf' ? ' y buscar a los jugadores del PDF por su nombre.' : '.')
       : ix.errores.length ? ix.errores.join(' ')
         : `Licencias comprobadas con el Excel del ranking «${E.ixNombre}»${E.ixDe === 'entregables' ? ' (el que hay en entregables/ de programas-domino)' : ' (el que has elegido)'}. Se lee en este ordenador y no se publica.`;
+    // ¿El torneo ya está en el Excel del ranking (mismo nombre y fecha)? Entonces no se añade otro: se sustituyen sus filas.
+    const ya = ix && !ix.errores.length && b ? (ix.torneos || []).find((t) => LP.mismoTorneo({ nombre: E.rs.datos.nombre, fecha: E.rs.datos.fecha }, t)) : null;
     const campo = el('input', { type: 'file', id: 'ranking-excel', accept: '.xlsx,.xlsm', 'aria-label': 'Elegir otro Excel del ranking' });
     campo.addEventListener('change', alElegirRanking);
     const msgs = b ? [...b.errores, ...b.avisos.map((t) => t.replace('en el paso 1b', 'aquí abajo'))].map((t) => el('li', { class: t.startsWith('✖') ? 'bloquea' : t.startsWith('⚠') ? 'avisa' : 'ok' }, t)) : [];
@@ -980,11 +992,13 @@
     const fila = (f) => el('tr', null, f.map((x, i) => el('td', { class: i === 3 || i === 5 || i === 8 ? 'txt' : null }, x === '' || x === null ? '' : String(x))));
     const tabla = b && b.tsv ? [
       el('p', { class: 'nota sin-margen' }, `El bloque tiene ${b.filas.length} filas (${b.cuentas.parejas} parejas). Lleva las licencias: se copia en este ordenador y no se sube a ningún sitio.`),
-      el('div', { class: 'acciones' }, el('button', { class: 'boton', id: 'copiar-bloque', type: 'button', onclick: () => copiarBloque(b, aviso) }, 'Copiar el bloque'), aviso),
+      el('div', { class: 'acciones' }, ya ? el('button', { class: 'boton', id: 'sustituir-bloque', type: 'button', onclick: () => copiarBloque(b, aviso, ya) }, 'Sustituir las filas de ese torneo')
+        : el('button', { class: 'boton', id: 'copiar-bloque', type: 'button', onclick: () => copiarBloque(b, aviso) }, 'Copiar el bloque'), aviso),
       el('details', { class: 'sep-10' }, el('summary', null, 'Ver el bloque'), el('div', { class: 'tabla-caja sep-12' }, el('table', { class: 'clasi', id: 'bloque-ranking' },
         el('caption', { class: 'solo-lector' }, 'Bloque para pegar en el Excel del ranking'), el('thead', null, el('tr', null, cab.map((t) => el('th', { scope: 'col' }, t)))), el('tbody', null, b.filas.map(fila)))))] : null;
     return [el('h3', { class: 'subtitulo' }, 'Para el ranking'),
       el('p', { class: 'nota sin-margen', id: 'fuente-ranking' }, fuente), el('div', { class: 'acciones' }, campo),
+      ya ? el('p', { class: 'nota caja', id: 'torneo-cargado' }, `⚠ Este torneo ya está en el Excel del ranking: columna ${ya.col}, «${ya.nombre}», ${ya.fecha.split('-').reverse().join('/')}, con ${ya.filas} ${ya.filas === 1 ? 'fila' : 'filas'}. No lo añadas como un torneo nuevo: se sustituyen las filas de ese torneo.`) : null,
       msgs.length ? el('ul', { class: 'vals' }, msgs) : null,
       b && b.pendientes.length ? pendientesUI(b) : null, b && b.resueltos.length ? resueltosUI(b) : null, tabla];
   }
