@@ -6,19 +6,22 @@ Este repositorio es público y lo sirve GitHub Pages. Aquí se explica qué se p
 
 En `datos/` van los JSON de cada campeonato: nombre, organizador, temporada, fechas, y por cada pareja o jugador el nombre de pila, el primer apellido y un nombre corto (por ejemplo «Fontan-Ródenas»). También van la zona, las mesas de cada jornada con su resultado, la clasificación y el calendario. Cada jornada queda guardada con los nombres que tenía ese día. Si la mesa la sube, va también la normativa del campeonato en PDF.
 
+El Ranking FVD Jaume I va en su propio JSON (`datos/<id>/actual.json`, tipo `ranking`): por cada jugador, el puesto, el nombre de pila, el primer apellido, la licencia federativa (y la anterior, si cambió en enero), la asociación, los puntos de cada torneo, el total y si tiene plaza para el Campeonato de España. Las licencias salen en la web porque lo pidió el árbitro (decisión aprobada el 22/11/2026). Es el único JSON con licencias y solo puede ir cifrado.
+
 Todo eso va cifrado con la contraseña de la web (ver «La contraseña de la web»). En el repositorio, en la web servida, en las cachés y en cualquier copia que hagan buscadores o archivos de internet solo hay sobres cifrados. Sin la contraseña no se lee ni un nombre.
 
 Nunca entran en el repositorio:
 
-- teléfonos, números de licencia, segundos apellidos, direcciones de correo ni cuentas bancarias;
+- teléfonos, segundos apellidos, direcciones de correo ni cuentas bancarias;
+- números de licencia, salvo dentro del JSON cifrado del ranking;
 - ningún Excel (el `.gitignore` deja fuera `*.xlsx`, `*.xlsm` y `*.xls`);
 - el token de GitHub.
 
-Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas de datos de las partidas (`_WEBC`, `_R1`… y `P.1`…, más la celda de cada semilla de sorteo), nunca `Licencias`, `PAREJAS`, `JUGADORES` ni `SUSTITUCIONES`, en el ordenador de la mesa, y su validación V06 bloquea cualquier nombre con cifras o con arroba y cualquier texto libre que parezca un teléfono. Además, `pruebas/probar_contrato.cjs` comprueba esa validación. Si un dato personal llegara a publicarse por error, hay que borrarlo del repositorio y avisar a la persona afectada; el historial de Git conserva las versiones anteriores, así que quitar el archivo no basta.
+Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas de datos de las partidas (`_WEBC`, `_R1`… y `P.1`…, más la celda de cada semilla de sorteo), nunca `Licencias`, `PAREJAS`, `JUGADORES` ni `SUSTITUCIONES`, en el ordenador de la mesa, y su validación V06 bloquea cualquier nombre con cifras o con arroba y cualquier texto libre que parezca un teléfono. De la Hoja de resumen de un organizador lee todas sus hojas (Campeonato, Grupo A, Grupo B y Sustituciones) en el ordenador de la mesa: a la web sube solo la clasificación (nombre y primer apellido, zona, puesto y cifras, sin licencias), y el bloque con licencias para el ranking se copia al portapapeles y no sale de ese ordenador. Del Excel del ranking lee solo su hoja WEB (`assets/ranking.js`, validaciones VR0 a VR6). Además, `pruebas/probar_contrato.cjs` comprueba esas validaciones y `pruebas/probar_licencias.cjs`, que ningún JSON lleva licencias salvo el del ranking y que en `datos/` no hay ninguna legible. Si un dato personal llegara a publicarse por error, hay que borrarlo del repositorio y avisar a la persona afectada; el historial de Git conserva las versiones anteriores, así que quitar el archivo no basta.
 
 ## Cómo se publica
 
-`publicar.html` es la mesa de control. Trabaja con dos repositorios: `campeonatos-domino` (público, la web) y `campeonatos-borradores` (privado, con la misma estructura `datos/`).
+`publicar.html` es la mesa de control. Trabaja con dos repositorios para los campeonatos: `campeonatos-domino` (público, la web) y `campeonatos-borradores` (privado, con la misma estructura `datos/`). Para la sección «Archivos» toca también `programas-domino` (privado), solo dentro de `entregables/`.
 
 1. La mesa abre `publicar.html` y elige el Excel guardado. La página lo lee en el navegador; el Excel no se sube a ningún sitio. Rechaza archivos de más de 25 MB y hojas WEB con más de 300 filas o 80 columnas, y los textos de más de 300 caracteres.
 2. La mesa elige el destino: borrador o web. Por defecto es la web si el torneo ya está en ella y borrador si es nuevo.
@@ -111,13 +114,22 @@ Límites que conviene conocer:
 
 Es un token fine-grained de GitHub con este alcance:
 
-- los dos repositorios, `JUGUEMOSDOMINO/campeonatos-domino` y `JUGUEMOSDOMINO/campeonatos-borradores`, y ningún otro, en «Repository access» (Only select repositories);
+- los repositorios `JUGUEMOSDOMINO/campeonatos-domino` y `JUGUEMOSDOMINO/campeonatos-borradores`, y ningún otro salvo `JUGUEMOSDOMINO/programas-domino` si se quiere usar la sección «Archivos», en «Repository access» (Only select repositories);
 - permiso «Contents: Read and write» y ningún otro;
 - caduca en noviembre de 2027.
 
 Se pega una vez en `publicar.html`, en el equipo de la mesa, y se queda en el `localStorage` de ese navegador. No se manda por WhatsApp ni por correo, ni se escribe en el Excel o en el repositorio. Con el token se ven los borradores desde ese navegador. El token y la contraseña de la web son cosas distintas: la contraseña se reparte a los jugadores, el token no sale nunca del equipo de la mesa.
 
 Si el token no tiene acceso a `campeonatos-borradores`, la lista de borradores dice que falta «Repository access» y el resto de la página sigue funcionando: se puede subir a la web, ver, editar y eliminar lo que ya está en ella. Ocultar necesita los dos repositorios y se detiene en el primer paso, sin cambiar nada. Si solo puede leer, avisa de que falta «Contents: Read and write».
+
+### La sección «Archivos» (programas-domino)
+
+Sirve para descargar lo que hay en `programas-domino/entregables/` sin entrar en GitHub. Lo que sube el árbitro se hace con «Subir archivo» (paso 4 de `publicar.html`). `programas-domino` es privado y lo lleva el mismo token, en el navegador, con la API de GitHub. Lo hace `assets/archivos.js`; todo lo que sale hacia GitHub pasa por `Mesa.llamar` (`assets/mesa.js`), que solo manda el token a `api.github.com`.
+
+- Lee `entregables/DESCARGAS.md` (una línea por archivo: ruta, frase y fecha, bajo su categoría) y enseña por categorías los archivos que tienen línea. Descarga con la API (`/git/blobs/<sha>`): nada sale a otro dominio.
+- Solo se lee dentro de `entregables/` (sin `..`) y solo se escribe `entregables/del_arbitro/<categoría>/<archivo>` (la carpeta es una de seis fijas; «Mantenimiento» no se puede elegir) y `entregables/DESCARGAS.md`. No se borra nada. `probar_archivos.cjs` lo prueba.
+- «Subir archivo» (un solo campo para todo) reconoce el archivo por lo que lleva dentro, dice qué va a hacer y espera confirmación. El original del árbitro (Excel, PDF…) nunca va a `campeonatos-domino`: a la web solo llegan datos cifrados (lo de siempre). Su copia va siempre a `programas-domino`, a `entregables/del_arbitro/<categoría>/`, con su línea en `DESCARGAS.md` en esa categoría (los campeonatos, a `torneos/`; el ranking, a `ranking-fvd/`). Lo que no se publica (otro archivo, uno no reconocido o con errores) solo se guarda, con categoría y descripción (sugeridas si es un archivo de los de siempre). `probar_publicar.cjs` comprueba que a la web y a borradores solo van datos. Ahí sí pueden ir Excel con datos de jugadores, porque el repositorio es privado.
+- Si el token no tiene `programas-domino`, la sección lo dice y explica cómo añadirlo (edita el token, «Repository access», y «Contents: Read and write»). La página no pide ni guarda ningún otro token.
 
 ### Rotarlo
 

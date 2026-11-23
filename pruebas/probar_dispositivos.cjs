@@ -1,5 +1,6 @@
 // Prueba de que la web se ve entera en cualquier dispositivo: nada se oculta, nada se corta, la página no se desplaza en horizontal.
 // Regla fija del plan (Anexo A, «Web en cualquier dispositivo»). Uso: node pruebas/probar_dispositivos.cjs [url-base] [carpeta-de-capturas]
+const assert = require('assert');
 const fs = require('fs'), os = require('os'), path = require('path');
 const { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
@@ -53,16 +54,34 @@ function revisar() {
   return fallos;
 }
 
-// (d) en la clasificación se llega hasta la última columna (SP: PUNT. C.; parejas e individual: Desempate)
+// (d') en el ranking se llega desplazando hasta la última columna (CE) y puesto, jugador y licencia siguen fijos y a la vista
+function llegaACE() {
+  const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.rk');
+  if (!tabla) return ["(d') no hay tabla del ranking"];
+  const f = [];
+  const cab = [...tabla.querySelectorAll('thead th')];
+  if (cab.slice(0, 3).map((t) => t.textContent.trim()).join('|') !== 'Puesto|Jugador|Licencia') f.push("(d') las tres primeras columnas no son Puesto, Jugador y Licencia");
+  caja.scrollLeft = 1e6;
+  const b = caja.getBoundingClientRect();
+  const ce = cab[cab.length - 1].getBoundingClientRect();
+  if (ce.right > b.right + 1 || ce.left < b.left) f.push("(d') la columna CE no se ve al desplazar hasta el final");
+  for (const th of cab.slice(0, 3)) { const r = th.getBoundingClientRect(); if (r.left < b.left - 1 || r.right > b.right + 1) f.push(`(d') ${th.textContent.trim()} no queda fija`); }
+  caja.scrollLeft = 0;
+  return f;
+}
+// (d) en la clasificación se llega hasta la última columna (SP: PUNT. C.; parejas e individual: Dif., sin Desempate)
 function llegaAPuntC() {
   const caja = document.querySelector('.tabla-caja'); const tabla = caja && caja.querySelector('table.clasi');
   if (!tabla) return ['(d) no hay tabla de clasificación'];
   const f = [];
   const cab = [...tabla.querySelectorAll('thead th')].map((t) => t.textContent.trim());
   const sp = cab.includes('ENC.J');
-  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.', 'Desempate'];
+  const sinZona = !!window.__sinZona;                // el PDF de Access no trae zona: la columna vacía no se enseña
+  const esperadas = sp ? ['ENC.J', 'P. G.', 'P. P.', 'PUNT. C.'] : sinZona ? ['Puesto', 'Nº', 'P.G.', 'P.F.', 'P.C.', 'Dif.'] : ['Puesto', 'Nº', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.'];
+  if (sinZona && cab.includes('Zona')) f.push('(d) la columna Zona no tiene que salir si ninguna pareja la tiene');
+  if (!sp && cab.includes('Desempate')) f.push('(d) la columna Desempate no tiene que salir');
   for (const c of esperadas) if (!cab.includes(c)) f.push('(d) falta la columna ' + c);
-  const ultima = sp ? 'PUNT. C.' : 'Desempate';
+  const ultima = sp ? 'PUNT. C.' : 'Dif.';
   caja.scrollLeft = 1e6;
   const tc = [...tabla.querySelectorAll('thead th')].find((t) => t.textContent.trim() === ultima);
   if (!tc) return f;
@@ -81,6 +100,8 @@ function llegaAPuntC() {
   execFileSync('python3', [path.join(__dirname, 'hacer_xlsx.py'), path.join(__dirname, 'datos/nombres-largos/actual.json'), excel]);
   const variasPartidas = path.join(xl, 'partidas.xlsx'); // parejas con las partidas 1 y 2 en las hojas de datos
   execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_partidas.py'), path.join(__dirname, 'datos/parejas-ejemplo-2026-11-14'), '2', variasPartidas]);
+  const resumenOrg = path.join(xl, 'organizador.xlsx'); // Hoja de resumen de un organizador (datos inventados)
+  execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_organizador.py'), resumenOrg]);
 
   for (const [w, h] of TAMANOS) {
     const ctx = await b.newContext({ viewport: { width: w, height: h } });
@@ -108,6 +129,21 @@ function llegaAPuntC() {
     await mira('portada · buscador');
     await pg.fill('#buscar', 'zzzz'); await pg.waitForSelector('text=No hay nadie'); await mira('portada · sin resultados');
 
+    // ranking FVD: la tabla (puesto, jugador y licencia fijos; hasta la columna CE) y la ficha de un jugador con nombre y asociación largos
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-ejemplo`); await pg.waitForSelector('table.rk');
+    await mira('ranking', llegaACE);
+    await pg.click('.nombre-rk:text("Fernández-Villaverde")'); await pg.waitForSelector('#ficha:not([hidden])');
+    await mira('ranking · ficha');
+    // las tres plazas (SP, Open y ranking), el ranking provisional y el de las plazas vacías, con la ficha de quien tiene SP u Open
+    await pg.click('table.rk .nombre-rk:text-is("Ana Roig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha con plaza SP');
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-provisional`); await pg.waitForSelector('#plazas-provisionales'); await mira('ranking provisional · frase y plazas', llegaACE);
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-vacias`); await pg.waitForSelector('#plazas-vacias'); await mira('ranking con plazas vacías', llegaACE);
+    // plaza suelta por repartir (con su frase), ½ plaza y plazas SP y Open vacías: nada cortado desde 320 px
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-repartir`); await pg.waitForSelector('.plaza-por-repartir'); await mira('ranking con plaza por repartir', llegaACE);
+    await pg.click('table.rk .nombre-rk:text-is("Marta Puig")'); await pg.waitForSelector('#ficha:not([hidden])'); await mira('ranking · ficha con plaza por repartir');
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-medias`); await pg.waitForSelector('.plaza-sp'); await mira('ranking con ½ plaza', llegaACE);
+    await pg.goto(`${base}/ranking.html?${D}&r=ranking-vacias-sp-open`); await pg.waitForSelector('#plazas-vacias-sp'); await mira('ranking con plazas SP y Open vacías', llegaACE);
+
     // páginas sueltas del árbitro: federación, casos del libro, retos y plataforma de juego
     for (const f of ['federacion-jaume-i', 'ejemplos-libro', 'retos', 'jugar']) {
       await pg.goto(`${base}/${f}.html`); await pg.waitForTimeout(400);
@@ -133,18 +169,56 @@ function llegaAPuntC() {
       }
     }
 
+    // campeonato publicado desde la Hoja de resumen de un organizador: solo Clasificación, con sus dos grupos
+    await pg.goto(`${base}/torneo.html?${D}&t=1-campeonato-de-ejemplo-de-parejas-2027-02-06&ver=clasificacion`); await pg.waitForSelector('table.clasi');
+    await mira('organizador · clasificación grupo A', llegaAPuntC);
+    await pg.click('.grupos button:has-text("Grupo B")'); await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 2);
+    await mira('organizador · clasificación grupo B');
+    // y lo demás que se saca de la clasificación final: Resumen (podio y ficha), Parejas y Calendario
+    const OD = `${base}/torneo.html?${D}&t=1-campeonato-de-ejemplo-de-parejas-2027-02-06`;
+    await pg.goto(OD + '&ver=resumen'); await pg.waitForSelector('.podio-tarjeta'); await mira('organizador · resumen con el podio');
+    await pg.fill('#quien', 'Vicent'); await pg.waitForSelector('#quien-res .ficha'); await mira('organizador · ficha con el puesto final y sin historial');
+    await pg.goto(OD + '&ver=parejas'); await pg.waitForSelector('table.lista-parejas'); await mira('organizador · parejas');
+    await pg.goto(OD + '&ver=folleto'); await pg.waitForSelector('.dia-unico'); await mira('organizador · calendario con la fecha del torneo');
+
+    // campeonato publicado desde el PDF de Access: sin zona (la columna no se enseña), con nombres cortados por Access y el grupo B con 3 partidas
+    await pg.goto(`${base}/torneo.html?${D}&t=torneo-de-ejemplo-villa-inventada-2027-03-12&ver=clasificacion`); await pg.waitForSelector('table.clasi');
+    assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
+    await pg.evaluate(() => { window.__sinZona = true; });
+    await mira('pdf · clasificación grupo A', llegaAPuntC);
+    await pg.click('.grupos button:has-text("Grupo B")'); await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 3);
+    await mira('pdf · clasificación grupo B');
+    await pg.evaluate(() => { window.__sinZona = false; });
+
     // mesa de control: listas de la web y de borradores (con nombres largos), cada panel de acción, el Excel con destino, un fallo a mitad y un borrador
     const api = await instalar(ctx);
     await recordarWeb(ctx);
     api.ponerCifrado('datos/indice.json', JSON.stringify({ version: '1.0', publicado: '2026-01-01T00:00:00Z', torneos: [] }));
     sembrar(api, 'web', 'sp-ejemplo', { normativa: true }); sembrar(api, 'web', 'nombres-largos');
     sembrar(api, 'borr', 'parejas-ejemplo-2026-11-14'); sembrar(api, 'borr', 'individual-ejemplo-2026-11-14');
+    const XLSXW = require('../assets/xlsx.mini.min.js');
+    const NL = 'Ranking_FVD_2026-27_con_un_nombre_muy_largo_que_no_cabe_en_una_pantalla_de_telefono_copia_final.xlsx';
+    api.poner('prog', 'entregables/DESCARGAS.md', ['# Descargas', '', '## Programas de campeonato', '', '| Archivo | Qué es | Fecha |', '|---|---|---|',
+      `| \`del_arbitro/programas-de-campeonato/${NL}\` | Una descripción bastante larga para comprobar que en una pantalla de 320 píxeles no se corta ni se esconde nada, ni siquiera con palabras larguísimas como ${'x'.repeat(60)}. | 2026-11-22 |`, '',
+      '## Ranking FVD', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `ranking/leer_torneo.html` | Página que se abre con doble clic. | 2026-11-22 |', '',
+      '## Mantenimiento', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `web/hacer_capturas_mesa.cjs` | Programa que hace las capturas de la mesa de control para el manual. Solo lo usa quien mantiene la web. | 2026-11-22 |', ''].join('\n'));
+    api.poner('prog', `entregables/del_arbitro/programas-de-campeonato/${NL}`, Buffer.from('x')); api.poner('prog', 'entregables/ranking/leer_torneo.html', '<html></html>'); api.poner('prog', 'entregables/web/hacer_capturas_mesa.cjs', 'x');
     await pg.goto(`${base}/publicar.html`);
     await pg.waitForSelector('#lista-web');
     await mira('mesa · sin token');
     await pg.fill('#token', TOKEN); await pg.click('text=Guardar y comprobar'); await pg.waitForSelector('text=Hay un token guardado');
     await pg.waitForSelector('#lista-web[data-listo]'); await pg.waitForSelector('#lista-borr[data-listo]');
     await mira('mesa · listas');
+    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo');
+    await mira('mesa · archivos');
+    await pg.click('#archivos-lista summary:has-text("Mantenimiento")'); await mira('mesa · archivos con Mantenimiento abierta');
+    await pg.click('#archivos-lista summary:has-text("Ranking FVD")'); await mira('mesa · archivos con una categoría cerrada');
+    await pg.setInputFiles('#archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });     // un archivo de ningún tipo conocido, con un nombre larguísimo
+    await pg.waitForSelector('#subir-cat');
+    await mira('mesa · subir archivo: no reconocido, sin sugerencia');
+    await pg.fill('#subir-desc', 'Una frase que explica qué es el archivo que se va a subir a programas-domino'); await pg.selectOption('#subir-cat', 'Programas de campeonato');
+    await pg.waitForSelector('#subir-pisar', { state: 'visible' }); await pg.check('#subir-pisar');
+    await mira('mesa · subir archivo: categoría, descripción y sustituir');
     await pg.click('#clave-estado button:text-is("Cambiar la contraseña")'); await pg.waitForSelector('#nueva-clave');
     await mira('mesa · cambiar la contraseña');
     await pg.fill('#nueva-clave', 'corta'); await mira('mesa · contraseña demasiado corta');
@@ -172,6 +246,19 @@ function llegaAPuntC() {
     await pg.setInputFiles('#archivo', variasPartidas); await pg.waitForSelector('#partidas input[data-k="2"]');
     await pg.check('#partidas input[data-k="1"]'); await pg.waitForSelector('.vals li.confirma, .vals li.avisa');
     await mira('publicar · varias partidas: casillas, avisos y botón');
+    await pg.setInputFiles('#archivo', resumenOrg); await pg.waitForSelector('#copiar-bloque');
+    await mira('publicar · Hoja de resumen: clasificación y botón del bloque');
+    // con el Excel del ranking en entregables/: dudas de doble licencia y la frase de confirmar
+    api.poner('prog', 'entregables/ranking/Ranking_FVD_2026-27.xlsx', Buffer.from(XLSXW.write({ SheetNames: ['Jugadores', 'Licencias'], Sheets: {
+      Jugadores: XLSXW.utils.aoa_to_sheet([[], ['Código', 'Nombre', '1er apellido', '2º apellido', 'Licencia vigente'], ['J1', 'Joan', 'Ferrer', 'Pla con un segundo apellido bastante largo', '7001'], ['J2', 'Joan', 'Ferrer', 'Roca', '7002'], ['J3', 'Vicent', 'Vila', 'Pons', '925']]),
+      Licencias: XLSXW.utils.aoa_to_sheet([[], ['Licencia', 'Código de jugador', 'Asociación', 'Año desde', 'Año hasta'], [7001, 'J1', 'Asociación de ejemplo', 2026, null], [7002, 'J2', 'Asociación de ejemplo', 2026, null], [925, 'J3', 'Asociación de ejemplo', 2020, null]]) } }, { type: 'buffer', bookType: 'xlsx' })));
+    await pg.setInputFiles('#archivo', resumenOrg); await pg.waitForSelector('.pend');
+    await mira('publicar · Hoja de resumen: dudas de licencia con el Excel del ranking');
+    await pg.selectOption('.pend select >> nth=0', { index: 1 });
+    await mira('publicar · Hoja de resumen: una duda resuelta');
+    await pg.click('button:has-text("No federado") >> nth=0'); await pg.waitForSelector('#copiar-bloque');
+    await pg.click('#revision summary'); await pg.waitForSelector('#bloque-ranking');
+    await mira('publicar · Hoja de resumen: bloque del ranking abierto');
     // borrador visto por torneo.html: con token, sin token y con token de otro
     await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&borrador=1&ver=clasificacion`); await pg.waitForSelector('table.clasi');
     await mira('borrador · clasificación');

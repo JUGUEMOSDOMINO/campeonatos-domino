@@ -1,12 +1,14 @@
 /* Mesa de control: el único código que habla con la API de GitHub. Lo cargan publicar.html y torneo.html (para ver borradores).
-   Reglas (SECURITY.md): el token solo viaja al servidor de la API de GitHub; solo se toca campeonatos-domino y campeonatos-borradores;
-   solo se escribe en datos/indice.json, datos/clave.json y datos/<id>/(jornada_NN|actual).json o normativa.pdf.cifrado, con id validado.
+   Reglas (SECURITY.md): el token solo viaja al servidor de la API de GitHub; solo se toca campeonatos-domino, campeonatos-borradores y, para la sección
+   «Archivos», programas-domino (privado) en entregables/. En campeonatos-domino y borradores solo se escribe en datos/indice.json, datos/clave.json y
+   datos/<id>/(jornada_NN|actual).json o normativa.pdf.cifrado, con id validado. En programas-domino solo se lee entregables/ y solo se escribe
+   entregables/del_arbitro/<archivo> y entregables/DESCARGAS.md; no se borra nada.
    Todo lo que va a campeonatos-domino (público) sale cifrado con la contraseña de la web (assets/cifra.js); los borradores, en claro. */
 (function (raiz) {
   'use strict';
   const API = 'https://api.github.com';
   const DUENO = 'JUGUEMOSDOMINO';
-  const REPOS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores' };
+  const REPOS = { web: 'campeonatos-domino', borr: 'campeonatos-borradores', prog: 'programas-domino' };
   const RAMA = 'main';
   const CLAVE = 'tumesa.token';
   // Correo noreply de la cuenta (id de /users/JUGUEMOSDOMINO): así los commits no enseñan el correo real.
@@ -15,6 +17,11 @@
   const ID_OK = new RegExp('^' + ID + '$');
   const RUTA_OK = new RegExp('^datos/(indice\\.json|clave\\.json|' + ID + '/((jornada_\\d{2}|actual)\\.json|normativa\\.pdf\\.cifrado))$');
   const DIR_OK = new RegExp('^datos(/' + ID + ')?$');
+  // programas-domino: leer cualquier ruta de entregables/ (sin «.» ni «..» ni barras invertidas, «?», «#» o «%»); escribir solo del_arbitro/<categoría>/ y DESCARGAS.md
+  const PROG_LEER = /^entregables(\/(?!\.{1,2}(\/|$))[^/\\?#%]+)*$/;
+  // Las carpetas de categoría son las de Archivos.carpetaDe(CATEGORIAS_SUBIR) (assets/archivos.js); «mantenimiento» no está: no se sube ahí. probar_archivos.cjs vigila que coincidan.
+  const PROG_ESCRIBIR = /^entregables\/(del_arbitro\/(programas-de-campeonato|ranking-fvd|rankings-publicados|torneos|manuales-y-guias|otros)\/(?!\.{1,2}$)[^/\\?#%]+|DESCARGAS\.md)$/;
+  const ARBOL_OK = '/git/trees/main?recursive=1';
   const BLOB_OK = /^\/git\/blobs\/[0-9a-f]{40}$/; // archivos de más de 1 MB: la API de contenidos no trae el contenido
   const ARCHIVO_DATOS = /^(jornada_\d{2}|actual)\.json$/;
   const NORMATIVA = 'normativa.pdf.cifrado', CLAVE_JSON = 'datos/clave.json';
@@ -34,16 +41,23 @@
   const quitarQuery = (r) => r.split('?')[0];
   const SIN_ACCESO = {
     web: 'Con este token no se puede usar el repositorio campeonatos-domino. Comprueba que el token tiene ese repositorio en «Repository access» y el permiso «Contents: Read and write».',
+    prog: 'Con este token no se puede usar el repositorio programas-domino. En GitHub, edita el token y, en «Repository access», añade programas-domino; en «Permissions», deja «Contents: Read and write». Esta página no pide ni guarda ningún otro token.',
     borr: 'Con este token no se puede usar el repositorio campeonatos-borradores. En GitHub, edita el token y, en «Repository access», añade campeonatos-borradores; en «Permissions», deja «Contents: Read and write».',
   };
   // Único punto por el que sale el token. `sufijo` es '' (el repositorio) o '/contents/<ruta>' con ruta permitida.
   async function llamar(clave, sufijo, opciones) {
     const nombre = Object.prototype.hasOwnProperty.call(REPOS, clave) ? REPOS[clave] : null; // «__proto__» o «constructor» no son repositorios
     if (!nombre) throw new ErrorGH(0, 'Repositorio no permitido: ' + clave);
-    if (sufijo && !BLOB_OK.test(sufijo)) {
+    const metodo = (opciones && opciones.method) || 'GET';
+    if (sufijo && !BLOB_OK.test(sufijo) && !(clave === 'prog' && sufijo === ARBOL_OK)) {
       const ruta = sufijo.replace(/^\/contents\//, '');
-      if (!sufijo.startsWith('/contents/') || !(RUTA_OK.test(quitarQuery(ruta)) || DIR_OK.test(quitarQuery(ruta)))) throw new ErrorGH(0, 'Ruta no permitida: ' + sufijo);
+      const limpia = quitarQuery(ruta);
+      const decodificada = (() => { try { return decodeURIComponent(limpia); } catch (e) { return '%'; } })();
+      const permitida = clave === 'prog' ? !/%2f|%5c/i.test(limpia) && PROG_LEER.test(decodificada) : RUTA_OK.test(limpia) || DIR_OK.test(limpia);
+      if (!sufijo.startsWith('/contents/') || !permitida) throw new ErrorGH(0, 'Ruta no permitida: ' + sufijo);
+      if (clave === 'prog' && metodo !== 'GET' && (metodo !== 'PUT' || !PROG_ESCRIBIR.test(decodificada))) throw new ErrorGH(0, 'En programas-domino solo se escribe en entregables/del_arbitro/<categoría>/ y entregables/DESCARGAS.md: ' + sufijo);
     }
+    if (clave === 'prog' && metodo !== 'GET' && !(sufijo || '').startsWith('/contents/')) throw new ErrorGH(0, 'Operación no permitida en programas-domino.');
     const t = token.obtener();
     if (!t) throw new ErrorGH(401, 'Falta el token de GitHub. Pégalo en el paso 1.', clave);
     const ruta = `/repos/${DUENO}/${nombre}${sufijo}`;
@@ -177,6 +191,63 @@
       if (!f) return false;
       try { await borrar(clave, ruta, f.sha, mensaje); return true; } catch (e) { if (!choque(e) || intento) throw e; }
     }
+  }
+
+  /* ---------- programas-domino: copia del original y Excel del ranking ---------- */
+  // El Excel o PDF que sube el árbitro nunca va a la web: a campeonatos-domino solo llegan datos cifrados. Su copia va aquí, al repositorio privado.
+  const AR = () => raiz.Archivos;
+  const aBase64Bytes = (u) => { let bin = ''; for (let i = 0; i < u.length; i += 0x8000) bin += String.fromCharCode.apply(null, u.subarray(i, i + 0x8000)); return btoa(bin); };
+  const urlRuta = (r) => r.split('/').map(encodeURIComponent).join('/');
+  const rutaCopia = (categoria, nombre) => `del_arbitro/${AR().carpetaDe(categoria)}/${nombre}`;
+  const pasajero = (e) => e.estado === 0 || e.estado >= 500 || choque(e);
+  const espera = (ms) => new Promise((r) => setTimeout(r, ms));
+  // sha del archivo de entregables/ (o null si no existe), sin bajar su contenido más que lo que GitHub trae solo
+  async function shaEntregable(ruta) {
+    try { const r = await llamar('prog', `/contents/entregables/${urlRuta(ruta)}?ref=${RAMA}`); return (r && r.sha) || null; } catch (e) { if (noEncontrado(e)) return null; throw e; }
+  }
+  // Un fallo de conexión o de GitHub no deja nada a medias: cada escritura se intenta hasta tres veces. El permiso o el token no se arreglan repitiendo.
+  async function conReintentos(fn) {
+    for (let i = 0; ; i++) { try { return await fn(); } catch (e) { if (!pasajero(e) || i >= 2) throw e; await espera(choque(e) ? 0 : 400 * (i + 1)); } }
+  }
+  async function guardarCopia(ruta, bytes, mensaje) {
+    const contenido = aBase64Bytes(bytes);
+    return conReintentos(async () => {
+      const sha = await shaEntregable(ruta);
+      const cuerpo = { message: mensaje, content: contenido, branch: RAMA, author: AUTOR, committer: AUTOR };
+      if (sha) cuerpo.sha = sha;
+      return llamar('prog', `/contents/entregables/${urlRuta(ruta)}`, { method: 'PUT', body: JSON.stringify(cuerpo) });
+    });
+  }
+  async function anotarLinea(l) {
+    return conReintentos(async () => {
+      const d = await leerArchivo('prog', 'entregables/DESCARGAS.md');
+      const texto = AR().conLinea(d && d.texto, l.ruta, l.descripcion, l.fecha, l.categoria);
+      const cuerpo = { message: `Descargas: línea de ${l.ruta}`, content: aBase64(texto), branch: RAMA, author: AUTOR, committer: AUTOR };
+      if (d) cuerpo.sha = d.sha;
+      return llamar('prog', '/contents/entregables/DESCARGAS.md', { method: 'PUT', body: JSON.stringify(cuerpo) });
+    });
+  }
+  /* Plan para guardar el original en entregables/del_arbitro/<categoría>/ y añadir su línea a DESCARGAS.md, en su categoría. */
+  function planCopia(bytes, nombre, categoria, descripcion) {
+    const A = AR();
+    if (!A.nombreValido(nombre)) throw new ErrorGH(0, 'El nombre del archivo no vale: sin barras, dos puntos, comillas, «?», «#» ni «%», y sin empezar por un punto.', 'prog');
+    if (!bytes.length || bytes.length > A.MAX_SUBIDA) throw new ErrorGH(0, 'Ese archivo está vacío o es demasiado grande.', 'prog');
+    if (!A.CATEGORIAS_SUBIR.includes(categoria)) throw new ErrorGH(0, 'Elige la categoría del archivo: es obligatoria.', 'prog');
+    if (!A.descripcionValida(descripcion)) throw new ErrorGH(0, 'Escribe qué es el archivo: la descripción es obligatoria.', 'prog');
+    const ruta = rutaCopia(categoria, nombre), linea = { ruta, descripcion, fecha: A.fechaHoy(), categoria };
+    return { ruta, pasos: [
+      paso(`Guardar ${nombre} en programas-domino (privado)`, () => guardarCopia(ruta, bytes, `Subir ${nombre} (del árbitro)`)),
+      paso('Añadir su línea a DESCARGAS.md', () => anotarLinea(linea)),
+    ] };
+  }
+  /* El Excel del ranking de la temporada más reciente que haya en entregables/ranking/ → { nombre, bytes } o null. */
+  async function rankingDeEntregables() {
+    const arbol = await llamar('prog', ARBOL_OK);
+    const cand = ((arbol && arbol.tree) || []).filter((t) => t.type === 'blob').map((t) => ({ t, m: /^entregables\/ranking\/Ranking_FVD_(\d{4})-(\d{2})\.xlsx$/.exec(t.path) }))
+      .filter((x) => x.m).sort((a, b) => (b.m[1] + b.m[2]).localeCompare(a.m[1] + a.m[2]));
+    if (!cand.length) return null;
+    const r = await llamar('prog', `/git/blobs/${cand[0].t.sha}`);
+    return { nombre: cand[0].t.path.split('/').pop(), bytes: bytesDe((r && r.content) || '') };
   }
 
   /* ---------- torneos ---------- */
@@ -362,7 +433,7 @@
   }
 
   const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
-    planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
-    estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveJson() { return CL.cj; } };
+    rutaCopia, shaEntregable, planCopia, rankingDeEntregables, planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
+    estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveAbierta() { return !!CL.clave; }, get claveJson() { return CL.cj; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = Mesa; else raiz.Mesa = Mesa;
 })(typeof window !== 'undefined' ? window : globalThis);

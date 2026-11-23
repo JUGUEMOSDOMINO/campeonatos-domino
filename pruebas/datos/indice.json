@@ -3,6 +3,18 @@
  "publicado": "2026-11-14T18:30:00Z",
  "torneos": [
   {
+   "id": "ranking-ejemplo",
+   "nombre": "Ranking FVD Jaume I",
+   "tipo": "ranking",
+   "temporada": "2026-27",
+   "fecha": "2027-01-16",
+   "estado": "en_juego",
+   "jornada_actual": 4,
+   "n_jornadas": 5,
+   "n_participantes": 14,
+   "ganador": null
+  },
+  {
    "id": "parejas-ejemplo-2026-11-14",
    "nombre": "CAMPEONATO DE PAREJAS DE EJEMPLO",
    "tipo": "parejas",
@@ -51,6 +63,36 @@
    "ganador": {
     "id": 3,
     "corto": "Pons-Giner"
+   }
+  },
+  {
+   "id": "1-campeonato-de-ejemplo-de-parejas-2027-02-06",
+   "nombre": "1º CAMPEONATO DE EJEMPLO DE PAREJAS",
+   "tipo": "parejas",
+   "temporada": null,
+   "fecha": "2027-02-06",
+   "estado": "terminado",
+   "jornada_actual": 7,
+   "n_jornadas": 7,
+   "n_participantes": 6,
+   "ganador": {
+    "id": 7,
+    "corto": "Soler-Serra"
+   }
+  },
+  {
+   "id": "torneo-de-ejemplo-villa-inventada-2027-03-12",
+   "nombre": "Torneo de Ejemplo - Villa Inventada",
+   "tipo": "parejas",
+   "temporada": null,
+   "fecha": "2027-03-12",
+   "estado": "terminado",
+   "jornada_actual": 7,
+   "n_jornadas": 7,
+   "n_participantes": 8,
+   "ganador": {
+    "id": 5,
+    "corto": "Mas-Soler"
    }
   }
  ]

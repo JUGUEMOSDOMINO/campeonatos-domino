@@ -139,7 +139,9 @@ const NOMBRES_PRUEBA = nombresDe(path.join(__dirname, 'datos')).filter((x) => !h
       const t = await r.text();
       if (f === 'clave.json') { const cj = JSON.parse(t); assert.deepStrictEqual(Object.keys(cj), ['version', 'kdf', 'iteraciones', 'sal', 'verificador']); continue; }
       assert(K.esSobre(t), f + ' no es un sobre cifrado');
-      for (const x of [...NOMBRES_PRUEBA, ...PROHIBIDO]) assert(!(x instanceof RegExp ? x.test(t) : t.includes(x)), `${f} deja leer ${x}`);
+      // dentro de iv y ct solo hay base64 al azar: un apellido de cuatro letras («Nava») puede salir por casualidad. Se busca en el resto del archivo.
+      const legible = t.replace(/"(iv|ct)"\s*:\s*"[A-Za-z0-9+/=]*"/g, '');
+      for (const x of [...NOMBRES_PRUEBA, ...PROHIBIDO]) assert(!(x instanceof RegExp ? x.test(legible) : legible.includes(x)), `${f} deja leer ${x}`);
       assert(!/[a-záéíóúñ]{4,}[ -][a-záéíóúñ]{4,}/i.test(t.replace(/"(v|iv|ct)"/g, '')), f + ': parece texto legible');
       assert(!NOMBRES_PRUEBA.some((x) => f.toLowerCase().includes(x.toLowerCase())), f + ': el nombre del archivo delata a alguien');
     }

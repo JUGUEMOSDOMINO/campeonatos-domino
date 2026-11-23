@@ -412,3 +412,74 @@ footer.pie { background: var(--barra); color: var(--barra-suave); font-size: .88
 .dia-unico { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 14px 16px; margin: 0; font-size: 1.1rem; overflow-wrap: anywhere; }
 .dia-unico b { display: block; }
 .dia-unico span { display: block; color: var(--tinta2); font-size: .95rem; margin-top: 2px; }
+
+/* ranking FVD (ranking.html): puesto, jugador y licencia fijos al desplazar; una columna por torneo jugado */
+.rk th:nth-child(1), .rk td:nth-child(1) { left: 0; width: 50px; min-width: 50px; max-width: 50px; padding-left: 6px; padding-right: 2px; text-align: left; white-space: nowrap; }
+.rk th:nth-child(2), .rk td:nth-child(2) { left: 50px; width: 7.4rem; min-width: 7.4rem; max-width: 7.4rem; padding-left: 4px; padding-right: 4px; text-align: left; white-space: normal; }
+.rk th:nth-child(3), .rk td:nth-child(3) { left: calc(50px + 7.4rem); width: 5.4rem; min-width: 5.4rem; max-width: 5.4rem; padding-left: 4px; padding-right: 6px; text-align: left; white-space: normal; border-right: 1px solid var(--linea); font-size: .82rem; }
+.rk th:nth-child(-n+3) { font-size: .66rem; }
+.rk td.jug { overflow-wrap: anywhere; }
+.rk th.tor { white-space: normal; min-width: 5rem; max-width: 7.5rem; vertical-align: bottom; overflow-wrap: anywhere; }
+.rk td.cero { color: var(--tinta2); }
+.rk td.ce { text-align: center; }
+.rk .empate { margin-left: 2px; font-weight: 800; text-decoration: none; cursor: help; }
+.rk .sub { display: block; font-size: .75rem; color: var(--tinta2); }
+.nombre-rk { background: none; border: 0; padding: 0; margin: 0; font: inherit; font-weight: 700; color: inherit; text-align: left; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; overflow-wrap: anywhere; }
+/* la plaza CE es una ficha de dominó: C arriba, E abajo */
+.plaza-ce { display: inline-grid; grid-template-rows: 1fr 1fr; width: 1.15rem; height: 2rem; border: 2px solid var(--barra); border-radius: 4px; background: var(--papel); color: var(--barra); font-size: .62rem; font-weight: 800; line-height: 1; vertical-align: middle; }
+.plaza-ce span { display: grid; place-items: center; }
+.plaza-ce span + span { border-top: 1.5px solid var(--barra); }
+@media (prefers-color-scheme: dark) { .plaza-ce { border-color: var(--barra-suave); color: var(--barra-suave); } .plaza-ce span + span { border-top-color: var(--barra-suave); } }
+/* Plazas SP, Open y ranking: texto y forma de borde distintos (lleno, doble, discontinuo), no solo color */
+.plaza { --m: var(--barra); display: inline-block; margin: 1px 2px 1px 0; padding: 0 5px; border: 2px solid var(--m); border-radius: 4px; background: var(--papel); color: var(--m); font-size: .7rem; font-weight: 800; line-height: 1.25; white-space: nowrap; }
+.plaza-sp { background: var(--m); color: var(--papel); }
+.plaza-open { border-style: double; border-width: 4px; padding: 0 3px; }
+.plaza-ranking { border-style: dashed; }
+@media (prefers-color-scheme: dark) { .plaza { --m: var(--barra-suave); } }
+/* plaza suelta que la pareja aún no ha aceptado: etiqueta hueca, de borde punteado, y su frase debajo (se parte en líneas: con 320 px no se corta) */
+.plaza.plaza-por-repartir { background: var(--papel); color: var(--m); border-style: dotted; border-width: 2px; padding: 0 5px; white-space: normal; overflow-wrap: anywhere; max-width: 100%; }
+.rk td.ce { min-width: 8.5rem; white-space: normal; }
+.rk .plaza-frase { width: 8.5rem; max-width: 100%; margin: 2px auto 0; white-space: normal; overflow-wrap: anywhere; }
+.plazas-ficha { display: grid; gap: 4px; }
+.plazas-ficha > span { overflow-wrap: anywhere; }
+.ficha-rk { background: var(--papel); border: 1px solid var(--linea); border-radius: var(--radio); padding: 12px 14px; margin: 0 0 14px; }
+.ficha-rk h2 { margin: 0 0 8px; font-size: 1.25rem; overflow-wrap: anywhere; }
+.datos-ficha { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 12px; margin: 0 0 10px; }
+.datos-ficha dt { color: var(--tinta2); }
+.datos-ficha dd { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.puntos-ficha { list-style: none; padding: 0; margin: 0 0 6px; }
+.puntos-ficha li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; border-bottom: 1px solid var(--linea); }
+.puntos-ficha li span { overflow-wrap: anywhere; min-width: 0; }
+@media (max-width: 380px) { .datos-ficha { grid-template-columns: minmax(0, 1fr); gap: 0 0; } .datos-ficha dd { margin-bottom: 6px; } }
+@media (min-width: 720px) {
+  .rk th:nth-child(2), .rk td:nth-child(2) { width: 12rem; min-width: 12rem; max-width: 12rem; }
+  .rk th:nth-child(3), .rk td:nth-child(3) { left: calc(50px + 12rem); width: 6.6rem; min-width: 6.6rem; max-width: 6.6rem; }
+}
+
+/* Mesa de control: sección «Archivos» (descargar de programas-domino/entregables y subir a entregables/del_arbitro) */
+.categorias-archivos { display: grid; gap: 12px; margin-top: 8px; }
+/* Cada categoría es una ficha de dominó tumbada: el nombre en una mitad, el número de archivos en la otra, y la raya en medio.
+   Cerrada está boca abajo (oscura); abierta, boca arriba (clara). */
+.categoria > summary { display: flex; align-items: stretch; cursor: pointer; list-style: none; min-width: 0; border: 2px solid var(--barra); border-radius: 12px; background: var(--barra); color: var(--barra-texto); }
+.categoria > summary::-webkit-details-marker { display: none; }
+.categoria[open] > summary { background: var(--papel); color: var(--tinta); }
+.cat-nombre { flex: 1 1 auto; min-width: 0; padding: 10px 14px; font-weight: 800; overflow-wrap: anywhere; }
+.cat-n { flex: none; display: flex; align-items: center; padding: 10px 14px; border-left: 2px solid currentColor; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.categoria[open] > .lista-archivos { margin-top: 10px; }
+@media (prefers-color-scheme: dark) { .categoria > summary { border-color: var(--barra-suave); } }
+.lista-archivos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
+.lista-archivos .archivo { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; justify-content: space-between; background: var(--fondo); border: 1px solid var(--linea); border-radius: var(--radio); padding: 10px 12px; min-width: 0; }
+.archivo-datos { flex: 1 1 14rem; min-width: 0; }
+.archivo-nombre, .archivo-ruta, .archivo-desc, .archivo-meta { display: block; overflow-wrap: anywhere; }
+.archivo-ruta, .archivo-meta { color: var(--tinta2); font-size: .85rem; }
+.archivo-desc { margin: 4px 0; }
+.lista-archivos .archivo .boton { padding: 8px 14px; flex: 0 0 auto; }
+.etiqueta-campo { display: block; margin: 12px 0 4px; font-weight: bold; }
+.casilla-pisar { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 0; }
+.casilla-pisar[hidden] { display: none; }
+
+/* Mesa de control: dudas del bloque para el ranking (quién es cada jugador) */
+.pend { display: grid; gap: 6px; border-top: 1px solid var(--linea); padding: 8px 0; min-width: 0; overflow-wrap: anywhere; }
+.pend select { max-width: 100%; min-width: 0; }
+#copia, #copia-nota, #lectura p, #fuente-ranking, #pub-nota { overflow-wrap: anywhere; min-width: 0; }
+#copia textarea, #copia select { max-width: 100%; }

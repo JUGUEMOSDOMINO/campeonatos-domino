@@ -11,6 +11,7 @@ Cualquiera puede descargar cualquier archivo y todo su historial, sin contraseñ
 - Excel ni hojas de cálculo: `.xlsx`, `.xlsm`, `.xls`, `.ods`, `.csv`.
 - Documentos con datos de jugadores: Word, PDF sin cifrar, fotos de actas, capturas de pantalla.
 - Licencias federativas, teléfonos, correos, DNI ni direcciones de personas.
+  - **Única excepción:** las licencias del Ranking FVD pueden ir dentro del JSON cifrado de tipo «ranking» que genera `publicar.html`, y en ningún otro sitio. En los campeonatos (SP, parejas, individual), nunca: ni en su JSON, ni en el HTML, ni en las pruebas con datos reales.
 - Contraseñas, tokens o claves (la contraseña de la web tampoco, ni en un comentario).
 - Archivos en `datos/` que no estén cifrados (salvo `datos/clave.json` y `.gitkeep`).
 
@@ -28,6 +29,10 @@ Si ves que ya se ha subido algo de esto: no lo borres tú sin más. Avisa ensegu
 - No cambies `assets/cifra.js`, `assets/contrato.js`, `datos/clave.json` ni la frase interna «tu mesa» del verificador: romperías la contraseña de la web.
 - Las pruebas de `pruebas/` tienen que pasar (sobre todo `probar_dispositivos.cjs` y `probar_seguridad.cjs`).
 - Datos para pruebas: siempre inventados.
+
+## Entregables (en programas-domino)
+
+Cada archivo nuevo o actualizado en `entregables/` lleva su línea en `entregables/DESCARGAS.md`, en su categoría. Esa carpeta está en el repositorio privado `programas-domino`; la sección «Archivos» de `publicar.html` la lee para que el árbitro descargue sin entrar en GitHub. Lo que sube el árbitro desde allí va siempre a `programas-domino` (`entregables/del_arbitro/<categoría>/`), nunca a este repositorio.
 
 ## Si no estás seguro
 

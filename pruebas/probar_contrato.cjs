@@ -260,6 +260,84 @@ console.log('\nVarias partidas de un mismo Excel (hojas _WEBC, _R1…_Rn y P.1�
   });
 }
 
+console.log('Ranking FVD (contrato 1.3, assets/ranking.js)');
+{
+  const R = require('../assets/ranking.js');
+  const RK = path.join(__dirname, 'datos', 'ranking-ejemplo', 'actual.json');
+  const esperado = JSON.parse(fs.readFileSync(RK, 'utf8'));
+  const libroRk = (extra = []) => {
+    const xl = path.join(tmp, 'ranking' + extra.join('') + '.xlsx');
+    execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), RK, xl, ...extra]);
+    return XLSX.read(fs.readFileSync(xl), { type: 'buffer', sheets: 'WEB' });
+  };
+  const wb = libroRk(), ws = wb.Sheets.WEB;
+  const sinPub = (o) => { const c = JSON.parse(JSON.stringify(o)); delete c.publicado; return c; };
+  ok('ranking: se reconoce por la hoja WEB (1.3, tipo ranking); los campeonatos no', () => {
+    assert.strictEqual(R.es(ws), true);
+    assert.strictEqual(R.es(hoja('sp-ejemplo').ws), false);
+  });
+  ok('ranking: solo se lee la hoja WEB', () => assert.deepStrictEqual(Object.keys(wb.Sheets), ['WEB']));
+  const r = R.leer(ws);
+  ok('ranking: JSON idéntico al de referencia (el de web_export.py)', () => assert.deepStrictEqual(sinPub(r.doc), sinPub(esperado)));
+  ok('ranking: orden de claves y texto idénticos', () => assert.strictEqual(R.aTexto({ ...r.doc, publicado: esperado.publicado }), fs.readFileSync(RK, 'utf8')));
+  ok('ranking: sin bloqueos', () => assert.deepStrictEqual(R.validar(r, {}), []));
+  const falla = (cod, cambia, pub) => { const x = JSON.parse(JSON.stringify(r)); cambia(x.doc, x); assert(R.validar(x, pub || {}).some((v) => v.cod === cod && v.gravedad === 'bloquea'), cod + ' no salta'); };
+  ok('VR0: versión, tipo, id, una columna de puntos por torneo y estructura de la hoja', () => {
+    falla('VR0', (d) => { d.version = '1.0'; });
+    falla('VR0', (d) => { d.torneo.id = 'Ranking 2026'; });
+    falla('VR0', (d) => { d.ranking[0].puntos.pop(); });
+    falla('VR0', (d, x) => { x.estructura.push('L3'); });
+  });
+  ok('VR0: el id ya lo usa un campeonato de otro tipo', () => falla('VR0', () => {}, { indice: { torneos: [{ id: 'ranking-ejemplo', tipo: 'sp' }] } }));
+  ok('VR0: el id lleva el nombre o el apellido de un jugador (las carpetas no se cifran)', () => falla('VR0', (d) => { d.torneo.id = 'ranking-roig-2026'; }));
+  ok('VR1: licencia con otra forma', () => { falla('VR1', (d) => { d.ranking[0].licencia = '9201'; }); falla('VR1', (d) => { d.ranking[1].licencia_ant = '46/ 12345'; }); });
+  ok('VR2: nombre, apellido o asociación con cifras, «@» o más de 60', () => {
+    falla('VR2', (d) => { d.ranking[0].nombre = 'Ana 2'; }); falla('VR2', (d) => { d.ranking[1].apellido1 = 'x@y'; }); falla('VR2', (d) => { d.ranking[2].asociacion = 'A'.repeat(61); });
+  });
+  ok('VR3: el total no es la suma de las mejores', () => falla('VR3', (d) => { d.ranking[0].total += 1; }));
+  ok('VR4: puestos en orden y empates coherentes', () => {
+    falla('VR4', (d) => { d.ranking[0].puesto = 9; }); falla('VR4', (d) => { d.ranking[1].empate = true; }); falla('VR4', (d) => { d.ranking[0].empate = true; });
+    const prov = JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', 'ranking-provisional', 'actual.json'), 'utf8'));          // este sí tiene dos empatados en el puesto 2
+    assert.deepStrictEqual(prov.ranking.filter((f) => f.empate).length, 2);
+  });
+  ok('VR5: más plazas del ranking de las que tocan, la marca de plaza que no es la suma de las tres y más de 4 plazas SP o 2 plazas Open', () => {
+    falla('VR5', (d) => { d.torneo.plazas_ranking = 2; });
+    falla('VR5', (d) => { d.ranking[0].plaza_ce = false; });
+    falla('VR5', (d) => { for (const f of d.ranking.slice(0, 5)) { f.plaza_sp = 1; f.plaza_ce = true; } });
+    falla('VR5', (d) => { for (const f of d.ranking.slice(0, 3)) { f.plaza_open = 1; f.plaza_ce = true; } });
+    falla('VR5', (d) => { d.ranking[0].plaza_sp = 0.3; });                       // solo 0, ½ o entera
+  });
+  ok('ranking 1.3: ½ plaza (dos medias suman una), plaza por repartir y plazas vacías del SP y del Open; un Excel 1.2 ya no se publica', () => {
+    const lee = (n) => { const x = path.join(tmp, n + '.xlsx'); execFileSync('python3', [path.join(__dirname, 'hacer_xlsx_ranking.py'), path.join(__dirname, 'datos', n, 'actual.json'), x]);
+      const w = XLSX.read(fs.readFileSync(x), { type: 'buffer', sheets: 'WEB' }); return { rr: R.leer(w.Sheets.WEB), json: JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', n, 'actual.json'), 'utf8')) }; };
+    const m = lee('ranking-medias');
+    assert.deepStrictEqual(R.validar(m.rr, {}), []);
+    assert.deepStrictEqual(sinPub(m.rr.doc), sinPub(m.json));
+    assert.deepStrictEqual(m.rr.doc.ranking.filter((f) => f.plaza_sp === 0.5).length, 2);
+    const p = lee('ranking-repartir');
+    assert.deepStrictEqual(R.validar(p.rr, {}), []);
+    assert.deepStrictEqual(sinPub(p.rr.doc), sinPub(p.json));
+    const pend = p.rr.doc.ranking.filter((f) => f.por_repartir);
+    assert.deepStrictEqual(pend.map((f) => [f.por_repartir, f.pareja_n]), [['sp', 6], ['sp', 6]]);      // los dos jugadores de la pareja 6 del SP: nada dicho aún
+    const v12 = lee('ranking-v12');                               // un Excel con la hoja WEB de antes: se reconoce, pero se pide el actualizado
+    assert(R.validar(v12.rr, {}).some((v) => v.cod === 'VR0'));
+  });
+  ok('ranking: las tres marcas de plaza y lo que dicen del SP y el Open (ejemplo con los dos jugados, con el Open sin jugar y con renuncias)', () => {
+    const cuenta = (d, k) => d.ranking.filter((f) => f[k]).length, t = r.doc.torneo;
+    assert.deepStrictEqual([cuenta(r.doc, 'plaza_sp'), cuenta(r.doc, 'plaza_open'), cuenta(r.doc, 'plaza_ranking'), t.sp_jugado, t.open_jugado, t.plazas_provisionales, t.plazas_vacias], [4, 2, 6, true, true, false, 0]);
+    const pr = JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', 'ranking-provisional', 'actual.json'), 'utf8')).torneo;
+    assert.deepStrictEqual([pr.sp_jugado, pr.open_jugado, pr.plazas_provisionales], [true, false, true]);
+    const va = JSON.parse(fs.readFileSync(path.join(__dirname, 'datos', 'ranking-vacias', 'actual.json'), 'utf8')).torneo;
+    assert.deepStrictEqual([va.plazas_vacias, va.plazas_ranking], [4, 6]);
+  });
+  ok('VR6: el Excel tiene errores', () => assert(R.validar(R.leer(libroRk(['--errores', '2']).Sheets.WEB), {}).some((v) => v.cod === 'VR6')));
+  ok('ranking: entrada de indice.json con tipo ranking y sin licencias', () => {
+    const e = R.entradaIndice(r.doc);
+    assert.deepStrictEqual(e, { id: 'ranking-ejemplo', nombre: 'Ranking FVD Jaume I', tipo: 'ranking', temporada: '2026-27', fecha: '2027-01-23', estado: 'en_juego',
+      jornada_actual: 5, n_jornadas: 5, n_participantes: 14, ganador: null });
+  });
+}
+
 fs.rmSync(tmp, { recursive: true, force: true });
 console.log(`\n${hechos} pruebas bien, ${fallos} con fallo`);
 process.exit(fallos ? 1 : 0);

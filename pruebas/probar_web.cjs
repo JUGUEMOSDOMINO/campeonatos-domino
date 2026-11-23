@@ -20,8 +20,10 @@ const D = 'd=datos/_prueba';
 
     await pg.goto(`${base}/index.html?${D}`);
     await pg.waitForSelector('.tarjeta');
-    assert.strictEqual(await pg.locator('.tarjeta').count(), 4);
-    await sinDesborde('portada'); bien('portada: 4 campeonatos sin desbordar');
+    assert.strictEqual(await pg.locator('.tarjeta').count(), 7);
+    assert.strictEqual((await pg.locator('#lista h2.seccion').first().textContent()).trim(), 'Ranking');
+    assert.strictEqual(await pg.getAttribute('#lista ul.tarjetas >> nth=0 >> a.tarjeta', 'href'), 'ranking.html?r=ranking-ejemplo&d=datos%2F_prueba');
+    await sinDesborde('portada'); bien('portada: el ranking en su propia sección, la primera, y los 5 campeonatos, sin desbordar');
     assert.strictEqual(await pg.locator('.fecha-ficha').count(), 0);
     assert(!/\b(oct|nov|ene|feb)\b/i.test(await pg.locator('#lista').innerText()), 'queda la marca de fecha');
     bien('portada: sin la fecha de inicio en las tarjetas');
@@ -63,22 +65,22 @@ const D = 'd=datos/_prueba';
     const ley = await pg.locator('.leyenda').innerText();
     assert.deepStrictEqual(COLS.slice(3).map((c) => ley.indexOf(c + ':')).every((x, i, v) => x >= 0 && (i === 0 || x > v[i - 1])), true, 'leyenda en el orden de las columnas: ' + ley);
     bien('clasificación: columnas CLAS., PAREJA, NOMBRE, ENC.J … PUNT. C. y leyenda en el mismo orden');
-    // parejas e individual: las columnas de la clasificación del Excel (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif., Desempate)
+    // parejas e individual: las columnas de la clasificación del Excel sin Desempate, que el árbitro no quiere en la web (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif.)
     for (const [t, unidad, nombre, zona, cifras] of [['parejas-ejemplo-2026-11-14', 'Pareja', 'Gemma Orts - Toni Ballester', 'Norte', ['2', '600', '512', '+88']], ['individual-ejemplo-2026-11-14', 'Jugador', 'Aitana Cebrián', 'Norte', ['2', '600', '505', '+95']]]) {
       await pg.goto(`${base}/torneo.html?t=${t}&ver=clasificacion&${D}`);
       await pg.waitForSelector('table.clasi tbody tr');
-      assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', unidad, 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.', 'Desempate'], t);
+      assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', unidad, 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.'], t);
       const celdas = await pg.locator('table.clasi tbody tr').first().locator('td').allInnerTexts();
       assert.strictEqual(celdas[1], t.startsWith('parejas') ? '1' : '6', t);
       assert(celdas[2].startsWith(nombre), `${t}: «${celdas[2]}»`);
       assert.deepStrictEqual(celdas.slice(3, 8), [zona, ...cifras], t);
-      assert.strictEqual(celdas.length, 9, t);
-      if (t.startsWith('individual')) assert((await pg.locator('table.clasi tbody tr').nth(4).locator('td').last().innerText()).includes('C.I. con 4'));
+      assert.strictEqual(celdas.length, 8, t);
+      if (t.startsWith('individual')) assert(!(await pg.locator('table.clasi tbody tr').nth(4).innerText()).includes('C.I.'), 'el desempate no se enseña');
       const ley = await pg.locator('.leyenda').innerText();
-      assert(['P.G.', 'P.F./P.C.', 'Dif.', 'Desempate'].map((c) => ley.indexOf(c)).every((x, i, v) => x >= 0 && (i === 0 || x > v[i - 1])), 'leyenda: ' + ley);
+      assert(['P.G.', 'P.F./P.C.', 'Dif.'].map((c) => ley.indexOf(c)).every((x, i, v) => x >= 0 && (i === 0 || x > v[i - 1])) && !/Desempate|E\.D\.|C\.I\./.test(ley), 'leyenda: ' + ley);
       await sinDesborde('clasificación ' + t);
     }
-    bien('clasificación de parejas e individual: columnas, orden y nombres del Excel (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif., Desempate)');
+    bien('clasificación de parejas e individual: columnas, orden y nombres del Excel, sin Desempate (Puesto, Nº, Pareja/Jugador, Zona, P.G., P.F., P.C., Dif.)');
     // la lista de jugadores del individual concuerda en género
     await pg.goto(`${base}/torneo.html?t=individual-ejemplo-2026-11-14&ver=parejas&${D}`);
     await pg.waitForSelector('.lista-parejas');
@@ -107,6 +109,123 @@ const D = 'd=datos/_prueba';
     await pg.waitForSelector('.calendario, .vacio');
     assert(!(await pg.locator('.dia-unico').count()), 'el SP no usa el día único');
     bien('calendario: un día (con lugar) en parejas e individual, aviso con la celda C37 si falta la fecha, y el SP sigue con su calendario');
+    // un campeonato publicado desde la Hoja de resumen (o el Excel o el PDF de Access) de un organizador: todo lo que se puede sacar de la clasificación final; solo falta Partidas
+    const OR = '1-campeonato-de-ejemplo-de-parejas-2027-02-06';
+    await pg.goto(`${base}/torneo.html?t=${OR}&${D}`);
+    await pg.waitForSelector('.podio-tarjeta');
+    assert.deepStrictEqual(await pg.locator('#pestanas a').allInnerTexts(), ['Resumen', 'Clasificación', 'Parejas', 'Calendario']);
+    assert.strictEqual(await pg.getAttribute('#pestanas a', 'aria-current'), 'page');
+    assert.deepStrictEqual(await pg.locator('.podio-tarjeta').evaluateAll((l) => l.map((x) => [x.dataset.puesto, x.textContent])).then((l) => l.map((x) => x[0])), ['1', '2', '3']);
+    assert((await pg.locator('#t-podio').innerText()).includes('Podio final'));
+    const podioTxt = await pg.locator('.podio').innerText();
+    assert(!/null|NaN|undefined/.test(podioTxt) && /ganadas|ganada/.test(podioTxt), podioTxt);
+    await pg.fill('#quien', 'Vicent');
+    await pg.waitForSelector('#quien-res .ficha');
+    const ficha = await pg.locator('#quien-res .ficha').first().innerText();
+    assert(ficha.includes('Puesto final: 1.º del grupo B') && ficha.includes('no hay historial partida a partida') && !/Ver su mesa/.test(ficha) && !/null|NaN/.test(ficha), ficha);
+    await pg.click('#quien-res .ficha button:has-text("Soy yo")');
+    await pg.waitForSelector('#quien-mia .ficha');
+    assert.strictEqual(await pg.locator('#quien-mia .ficha-hist').count(), 1);
+    await sinDesborde('campeonato solo con clasificación: resumen');
+    await pg.goto(`${base}/torneo.html?t=${OR}&ver=clasificacion&${D}`);
+    await pg.waitForSelector('table.clasi tbody tr');
+    assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'Zona', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
+    assert.strictEqual(await pg.locator('table.clasi tbody tr').count(), 4);
+    assert.strictEqual(await pg.locator('.jornadas').count(), 0);
+    const cab = await pg.locator('#cab .linea').innerText();
+    assert(/sábado|6 de febrero de 2027/i.test(cab) && cab.includes('Sala de ejemplo') && cab.includes('6 parejas') && cab.includes('7 partidas') && !/Partida 7 de 7/.test(cab), cab);
+    const filaRet = await pg.locator('table.clasi tbody tr', { hasText: 'Nuria Pons' }).innerText();
+    assert(/retirada/i.test(filaRet) && /[-−]700/.test(filaRet), filaRet);
+    await pg.click('.grupos button:has-text("Grupo B")');
+    await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 2);
+    assert((await pg.locator('table.clasi tbody tr').first().innerText()).includes('Vicent Vila'));
+    await pg.goto(`${base}/torneo.html?t=${OR}&ver=parejas&${D}`);
+    await pg.waitForSelector('table.lista-parejas tbody tr');
+    assert.strictEqual(await pg.locator('table.lista-parejas tbody tr').count(), 6);
+    await pg.goto(`${base}/torneo.html?t=${OR}&ver=folleto&${D}`);
+    await pg.waitForSelector('.dia-unico');
+    const dia = await pg.locator('.dia-unico').innerText();
+    assert(/sábado/i.test(dia) && dia.includes('6 de febrero de 2027') && dia.includes('Sala de ejemplo'), dia);
+    for (const ver of ['mesas', 'normativa']) {        // sin partidas, y sin normativa: esas direcciones llevan a la clasificación
+      await pg.goto(`${base}/torneo.html?t=${OR}&ver=${ver}&${D}`);
+      await pg.waitForSelector('table.clasi tbody tr');
+      assert.strictEqual(await pg.locator('#pestanas a').count(), 4, ver);
+    }
+    await pg.goto(`${base}/torneo.html?t=parejas-ejemplo-2026-11-14&${D}`);
+    await pg.waitForSelector('#pestanas a');
+    assert.strictEqual(await pg.locator('#pestanas a').count(), 6);
+    await pg.goto(`${base}/torneo.html?t=${OR}&ver=clasificacion&${D}`);
+    await pg.waitForSelector('table.clasi tbody tr');
+    await sinDesborde('campeonato solo con clasificación');
+    bien('campeonato de un organizador (Hoja de resumen, Excel o PDF de Access): pestañas Resumen, Clasificación, Parejas y Calendario (sin Partidas ni vacías); podio, «¿Quién eres?» con el puesto final y una frase de que no hay historial, clasificación con grupos A y B, parejas y fecha del torneo; los demás siguen con sus 6 pestañas');
+    // Ranking FVD: las tres plazas para el Campeonato de España por parejas (SP, Open y ranking), distinguibles sin color, con su frase si son provisionales o quedan vacías
+    {
+      const ir = async (r) => { await pg.goto(`${base}/ranking.html?${D}&r=${r}`); await pg.waitForSelector('table.rk tbody tr'); };
+      const chips = async (k) => pg.locator(`table.rk .plaza-${k}`).count();
+      await ir('ranking-ejemplo');
+      assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 2, 6]);
+      assert.strictEqual((await pg.locator('table.rk thead th').last().innerText()).toLowerCase(), 'plaza');
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza').evaluateAll((l) => [...new Set(l.map((x) => x.textContent))].sort()), ['Plaza Open', 'Plaza SP', 'Plaza ranking']);
+      const borde = (k) => pg.locator(`table.rk .plaza-${k}`).first().evaluate((x) => getComputedStyle(x).borderTopStyle);
+      assert.deepStrictEqual([await borde('sp'), await borde('open'), await borde('ranking')], ['solid', 'double', 'dashed']);
+      const leyenda = await pg.locator('#plazas-leyenda').innerText();
+      assert(leyenda.includes('los 4 jugadores de las 2 primeras parejas del Súper Prestigio') && leyenda.includes('los 2 de la pareja ganadora del Open de Valencia') && leyenda.includes('hasta el puesto 20'), leyenda);
+      const sueltas = await pg.locator('#plazas-sueltas').innerText();
+      assert(sueltas.includes('pasa a la siguiente pareja de ese torneo') && sueltas.includes('hasta la 10.ª') && sueltas.includes('cada uno tiene ½ plaza') && sueltas.includes('nunca va al ranking'), sueltas);
+      assert.strictEqual(await pg.locator('table.rk .plaza-por-repartir').count(), 0);
+      assert.strictEqual(await pg.locator('#plazas-provisionales, #plazas-vacias').count(), 0);
+      await sinDesborde('ranking con las tres plazas');
+      const ficha = async (n) => { await pg.click(`table.rk .nombre-rk:text-is("${n}")`); await pg.waitForSelector('#ficha:not([hidden])'); return pg.locator('#ficha').innerText(); };
+      assert((await ficha('Ana Roig')).includes('Plaza SP, del Súper Prestigio'));
+      assert((await ficha('Marta Puig')).includes('Plaza Open, del Open de Valencia'));
+      assert((await ficha('Pep Sala')).includes('Plaza ranking, por su puesto en el ranking'));
+      assert((await ficha('Lola Soler')).includes('Sin plaza'));                        // renuncia al ranking
+      assert((await ficha('María de los Ángeles Fernández-Villaverde')).includes('Sin plaza'));      // renuncia a la del SP: no pasa al ranking
+      bien('ranking: «Plaza SP», «Plaza Open» y «Plaza ranking» con su texto y su borde (lleno, doble, discontinuo), la frase de qué es cada una y de las plazas sueltas, y la ficha de cada jugador dice cuál tiene (o «Sin plaza»)');
+      // una plaza suelta del SP que la pareja que la recibe todavía no ha aceptado ni rechazado
+      await ir('ranking-repartir');
+      assert.deepStrictEqual([await chips('sp') - await chips('por-repartir'), await chips('por-repartir')], [3, 2]);
+      assert.strictEqual(await pg.locator('table.rk .plaza-por-repartir').first().evaluate((x) => getComputedStyle(x).borderTopStyle), 'dotted');
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza-frase').allInnerTexts(), ['1 plaza para la pareja N.º 6 (por repartir)', '1 plaza para la pareja N.º 6 (por repartir)']);
+      assert.strictEqual(await pg.locator('table.rk td.ce .plaza-por-repartir').first().innerText(), 'Plaza SP · por repartir');
+      const fr = await ficha('Marta Puig');
+      assert(fr.includes('Plaza SP · por repartir') && fr.includes('todavía no han dicho si van') && !fr.includes('Sin plaza'), fr);
+      await sinDesborde('ranking con una plaza por repartir');
+      // los dos de la pareja que recibe dicen «Va»: ½ plaza cada uno
+      await ir('ranking-medias');
+      assert.deepStrictEqual(await pg.locator('table.rk .plaza-sp:not(.plaza-por-repartir)').allInnerTexts().then((l) => l.sort()), ['Plaza SP', 'Plaza SP', 'Plaza SP', '½ Plaza SP', '½ Plaza SP']);
+      assert((await ficha('Joan Ferrer')).includes('Media plaza del Súper Prestigio: la comparte con su pareja, que también va'));
+      await sinDesborde('ranking con medias plazas');
+      // nadie quiere la plaza hasta la 10.ª pareja
+      await ir('ranking-vacias-sp-open');
+      assert.strictEqual(await pg.locator('#plazas-vacias-sp').innerText().then((x) => x.includes('Una plaza del SP queda vacía') && x.includes('hasta la 10.ª')), true);
+      assert.strictEqual(await pg.locator('#plazas-vacias-open').innerText().then((x) => x.includes('2 plazas del Open quedan vacías')), true);
+      await sinDesborde('ranking con plazas SP y Open vacías');
+      bien('ranking con plaza suelta: «Plaza SP · por repartir» con la frase «1 plaza para la pareja N.º 6 (por repartir)», ½ plaza cuando van los dos y aviso de las plazas SP y Open que queda vacías; sin cortar nada a 320 px');
+      await ir('ranking-provisional');
+      assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 0, 6]);
+      const prov = await pg.locator('#plazas-provisionales').innerText();
+      assert(prov.includes('todavía no se ha jugado el Open de Valencia') && prov.includes('no hay plazas Open') && prov.includes('el ranking marca sus 6'), prov);
+      assert.strictEqual(await pg.locator('table.rk td.ce .sub:text-is("provisional")').count(), 6);
+      assert((await ficha('Marta Puig')).includes('Plaza ranking provisional'));
+      await sinDesborde('ranking provisional');
+      bien('ranking provisional (el Open sin jugar): sin plazas Open, 6 del ranking marcadas «provisional» y una frase que lo explica');
+      await ir('ranking-vacias');
+      assert.strictEqual(await chips('ranking'), 2);
+      assert.strictEqual(await pg.locator('#plazas-provisionales').count(), 0);
+      const vac = await pg.locator('#plazas-vacias').innerText();
+      assert(vac.includes('4 plazas del ranking quedan vacías') && vac.includes('hasta el puesto 20'), vac);
+      await sinDesborde('ranking con plazas vacías');
+      bien('ranking con renuncias y nadie disponible hasta el puesto 20: las plazas que quedan vacías se avisan');
+      await ir('ranking-v12');
+      assert.deepStrictEqual([await chips('sp'), await chips('open'), await chips('ranking')], [4, 2, 6]);
+      assert.strictEqual(await pg.locator('#plazas-sueltas, .plaza-por-repartir, #plazas-vacias-sp').count(), 0);
+      bien('ranking publicado con el contrato 1.2 (plazas como sí o no): se sigue viendo, sin lo de plazas sueltas');
+      await ir('ranking-antiguo');
+      assert.strictEqual(await pg.locator('table.rk .plaza-ce').count(), 6); assert.strictEqual(await pg.locator('table.rk .plaza').count(), 0);
+      assert.strictEqual((await pg.locator('table.rk thead th').last().innerText()).toLowerCase(), 'ce');
+      bien('ranking publicado antes (contrato 1.1): se sigue viendo con la ficha CE de siempre');
+    }
     await pg.goto(`${base}/torneo.html?t=sp-ejemplo&ver=clasificacion&${D}`);
     await pg.waitForSelector('table.clasi tbody tr');
     const pendJ3 = JSON.parse(fs.readFileSync('pruebas/datos/sp-ejemplo/actual.json', 'utf8')).clasificacion.filter((r) => r.grupo === 'A' && r.pendiente).length;

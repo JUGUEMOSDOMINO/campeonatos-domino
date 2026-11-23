@@ -47,6 +47,7 @@
     sp: { nombre: 'Super-Prestigio', jornada: 'Jornada', unidad: 'pareja', unidades: 'parejas', gan: 'Encuentros ganados' },
     parejas: { nombre: 'Parejas', jornada: 'Partida', unidad: 'pareja', unidades: 'parejas', gan: 'Partidas ganadas' },
     individual: { nombre: 'Individual', jornada: 'Partida', unidad: 'jugador', unidades: 'jugadores', gan: 'Partidas ganadas' },
+    ranking: { nombre: 'Ranking', jornada: 'Torneos', unidad: 'jugador', unidades: 'jugadores', gan: 'Puntos' },
   };
   const tipoDe = (t) => TIPOS[t] || TIPOS.parejas;
 
@@ -55,7 +56,7 @@
   let BASE = 'datos';
   const d = qs.get('d');
   // torneo.html?t=<id>&borrador=1 lee de campeonatos-borradores por la API de GitHub, con el token de este navegador (assets/mesa.js).
-  const BORRADOR = qs.get('borrador') === '1' && document.body.dataset.pagina === 'torneo';
+  const BORRADOR = qs.get('borrador') === '1' && ['torneo', 'ranking'].includes(document.body.dataset.pagina);
   if (d && !BORRADOR && /^datos(\/[a-z0-9_-]+)+$/.test(d)) BASE = d;
   const ES_PRUEBA = BASE !== 'datos';
 
@@ -63,7 +64,7 @@
     const p = new URLSearchParams();
     for (const [k, v] of Object.entries(params || {})) if (v != null && v !== '') p.set(k, v);
     if (ES_PRUEBA) p.set('d', BASE);
-    if (BORRADOR && pagina === 'torneo.html') p.set('borrador', '1');
+    if (BORRADOR && (pagina === 'torneo.html' || pagina === 'ranking.html')) p.set('borrador', '1');
     const s = p.toString();
     return pagina + (s ? '?' + s : '');
   }
@@ -171,6 +172,16 @@
           tp.nombre + (t.temporada ? ' ' + t.temporada : '') + ' · ' + partes.join(' · ')))));
   }
 
+  function tarjetaRanking(t) {
+    const partes = [t.temporada && 'Temporada ' + t.temporada, `${t.jornada_actual} de ${t.n_jornadas} torneos`, `${t.n_participantes} jugadores`].filter(Boolean);
+    return el('li', null, el('a', { class: 'tarjeta', href: url('ranking.html', { r: t.id }) },
+      el('div', null,
+        el('h3', null, t.nombre),
+        el('div', { class: 'linea' },
+          el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado),
+          partes.join(' · ')))));
+  }
+
   async function portada() {
     const lista = $('#lista');
     let indice;
@@ -180,12 +191,14 @@
       lista.replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha podido cargar la lista de campeonatos. Prueba otra vez dentro de un minuto.'));
       return;
     }
-    const ts = indice.torneos || [];
+    const todos = indice.torneos || [];
+    const rks = todos.filter((t) => t.tipo === 'ranking'), ts = todos.filter((t) => t.tipo !== 'ranking');
+    const ranking = rks.length ? [el('h2', { class: 'seccion' }, 'Ranking'), el('ul', { class: 'tarjetas' }, rks.map(tarjetaRanking))] : [];
     if (!ts.length) {
-      lista.replaceChildren(el('p', { class: 'vacio' }, 'Todavía no hay campeonatos publicados.'));
+      lista.replaceChildren(...ranking, el('p', { class: 'vacio' }, 'Todavía no hay campeonatos publicados.'));
     } else {
       const grupos = [['en_juego', 'En juego'], ['proximo', 'Próximos'], ['terminado', 'Terminados']];
-      lista.replaceChildren(...grupos.flatMap(([est, tit]) => {
+      lista.replaceChildren(...ranking, ...grupos.flatMap(([est, tit]) => {
         const g = ts.filter((t) => t.estado === est);
         return g.length ? [el('h2', { class: 'seccion' }, tit), el('ul', { class: 'tarjetas' }, g.map(tarjeta))] : [];
       }));
@@ -302,7 +315,18 @@
      ===================================================================== */
   const PESTANAS = [['resumen', 'Resumen'], ['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario'], ['normativa', 'Bases del campeonato']];
   const ANTIGUAS = { emparejamientos: 'mesas', resultados: 'mesas', linea: 'folleto' }; // enlaces de antes del cambio de pestañas
-  const E = { id: null, actual: null, cache: new Map(), ver: 'resumen', j: null, g: 'A', p: null, q: '', quien: '' };
+  const E = { id: null, actual: null, cache: new Map(), ver: 'resumen', j: null, g: 'A', p: null, q: '', quien: '', tabs: PESTANAS };
+  // Un campeonato publicado solo con su clasificación final (de la Hoja de resumen, el Excel o el PDF de Access de un organizador) no trae mesas: no tiene Partidas.
+  // Lo demás se saca de la clasificación: Resumen (podio y ficha con el puesto final), Parejas, Calendario (la fecha del torneo) y Normativa si la hay.
+  const soloClasificacion = (a) => Array.isArray(a.emparejamientos) && a.emparejamientos.length === 0;
+  // ¿hay normativa? Se pregunta una vez (un 404 es lo normal: el campeonato no tiene)
+  const hayNormativa = () => (E.normativa = E.normativa || (BORRADOR ? Promise.resolve(false) : fetch(`${BASE}/${E.id}/normativa.pdf.cifrado`, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false)));
+  // Las pestañas con algo que enseñar. Se calcula antes de pintar porque Bases del campeonato necesita preguntar.
+  async function pestanasVisibles() {
+    if (!soloClasificacion(E.actual)) return PESTANAS;
+    const hay = await hayNormativa(), conFecha = !!partesFecha(E.actual.torneo.fecha);
+    return PESTANAS.filter(([k]) => k !== 'mesas' && (k !== 'normativa' || hay) && (k !== 'folleto' || conFecha));    // sin pestañas vacías
+  }
 
   function leerUrl() {
     const x = new URLSearchParams(location.search);
@@ -339,7 +363,8 @@
   function cabecera() {
     const a = E.actual, t = a.torneo, tp = tipoDe(t.tipo);
     document.title = t.nombre;
-    const datos = [t.tipo === 'sp' ? null : fechaLarga(t.fecha), t.temporada && 'Temporada ' + t.temporada, t.lugar, `${t.n_participantes} ${tp.unidades}`, `${tp.jornada} ${a.jornada.numero} de ${t.n_jornadas}`].filter(Boolean);
+    const datos = [t.tipo === 'sp' ? null : fechaLarga(t.fecha), t.temporada && 'Temporada ' + t.temporada, t.lugar, `${t.n_participantes} ${tp.unidades}`,
+      soloClasificacion(a) ? `${t.n_jornadas} ${tp.jornada.toLowerCase()}s` : `${tp.jornada} ${a.jornada.numero} de ${t.n_jornadas}`].filter(Boolean);
     $('#cab').replaceChildren(
       el('div', null, el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado), el('span', { class: 'etiqueta' }, tp.nombre)),
       el('h1', null, t.nombre),
@@ -349,7 +374,7 @@
 
   function pestanas() {
     const ind = E.actual.torneo.tipo === 'individual';
-    $('#pestanas').replaceChildren(...PESTANAS.map(([k, txt]) => el('a', {
+    $('#pestanas').replaceChildren(...E.tabs.map(([k, txt]) => el('a', {
       href: url('torneo.html', { t: E.id, ver: k === 'resumen' ? '' : k, p: E.p }), 'aria-current': E.ver === k ? 'page' : null,
       onclick: (ev) => { if (ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.button) return; ev.preventDefault(); irA({ ver: k, j: null }, true); },
     }, k === 'parejas' && ind ? 'Jugadores' : txt)));
@@ -374,7 +399,9 @@
   const nombresDe = (p) => [[p.j1_nombre, p.j1_apellido1], [p.j2_nombre, p.j2_apellido1]].filter((x) => x[0]).map((x) => x.join(' '));
   // La misma jornada que enseña Clasificación: la que está en juego con algún resultado, o la última cerrada.
   const jornadaClasif = (a) => (conResultado(a) ? a.jornada.numero : ultimaCompleta(a));
-  const cifraCorta = (r, sp, tp) => `${r.gan} de ${r.jug} ${sp ? 'encuentros' : 'partidas'} · ${signo(r.dt)} puntos`;
+  // De la clasificación final de un organizador no consta cuántas partidas jugó cada pareja (jug es null): se dicen las ganadas.
+  const cifraCorta = (r, sp, tp) => (r.jug == null ? `${r.gan} ${sp ? 'encuentros ganados' : r.gan === 1 ? 'partida ganada' : 'partidas ganadas'} · ${signo(r.dt)} puntos`
+    : `${r.gan} de ${r.jug} ${sp ? 'encuentros' : 'partidas'} · ${signo(r.dt)} puntos`);
 
   function tarjetaPodio(r, byId, tp, sp) {
     const p = byId.get(r.id) || { corto: '#' + r.id };
@@ -440,14 +467,15 @@
 
   function fichaPersona(a, p, fila, jn, byIdActual, mia, alElegir, alOlvidar) {
     const tp = tipoDe(a.torneo.tipo), sp = a.torneo.tipo === 'sp';
-    const subs = (a.sustituciones || []).filter((s) => s.id === p.id);
+    const subs = (a.sustituciones || []).filter((s) => s.id === p.id), solo = soloClasificacion(a);
+    const delGrupo = a.clasificacion.some((r) => r.grupo === 'B') && fila ? ' del grupo ' + fila.grupo : '';
     const puesto = fila
-      ? `${ORD(fila.puesto)}${a.clasificacion.some((r) => r.grupo === 'B') ? ' del grupo ' + fila.grupo : ''} tras la ${tp.jornada.toLowerCase()} ${jn}. ${cifraCorta(fila, sp, tp)}.`
+      ? (solo ? `Puesto final: ${ORD(fila.puesto)}${delGrupo}. ${cifraCorta(fila, sp, tp)}.` : `${ORD(fila.puesto)}${delGrupo} tras la ${tp.jornada.toLowerCase()} ${jn}. ${cifraCorta(fila, sp, tp)}.`)
       : 'Todavía no tiene clasificación.';
-    const mesa = lineaMesa(a, p.id, byIdActual);
+    const mesa = solo ? null : lineaMesa(a, p.id, byIdActual);
     const enlace = (ver, txt) => el('a', { href: url('torneo.html', { t: E.id, ver, p: p.id }) }, txt);
-    const hist = el('div', { class: 'ficha-hist' }, el('p', { class: 'nota sin-margen' }, 'Cargando el historial…'));
-    cargarHistorial(a, p.id, hist);
+    const hist = el('div', { class: 'ficha-hist' }, el('p', { class: 'nota sin-margen' }, solo ? 'Este campeonato se ha publicado con la clasificación final: no hay historial partida a partida.' : 'Cargando el historial…'));
+    if (!solo) cargarHistorial(a, p.id, hist);
     return el('li', { class: 'ficha' + (mia ? ' mia' : ''), 'data-id': p.id },
       el('div', { class: 'ficha-cab' },
         el('span', { class: 'ficha-num' }, el('i', null, cap(tp.unidad)), el('b', null, p.id)),
@@ -457,7 +485,7 @@
       mesa ? el('p', null, mesa) : null,
       hist,
       subs.map((s) => el('p', { class: 'nota sin-margen' }, `Cambio en la ${tp.jornada.toLowerCase()} ${s.desde}: entra ${s.entra_nombre} ${s.entra_apellido1} por ${s.sale_nombre} ${s.sale_apellido1}.`)),
-      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), enlace('mesas', 'Ver su mesa'),
+      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), solo ? null : enlace('mesas', 'Ver su mesa'),
         mia ? el('button', { type: 'button', class: 'boton sec', onclick: alOlvidar }, 'No soy yo')
           : el('button', { type: 'button', class: 'boton sec', onclick: () => alElegir(p.id) }, 'Soy yo')));
   }
@@ -551,12 +579,14 @@
     const filas = jd.clasificacion.filter((r) => r.grupo === g);
     const subs = (jd.sustituciones || []);
 
-    // Como en el Excel de cada programa. SP: CLAS., PAREJA, NOMBRE y las cifras. Parejas e individual: Puesto, Nº, Pareja o Jugador, Zona, P.G., P.F., P.C., Dif. y Desempate.
+    // Como en el Excel de cada programa. SP: CLAS., PAREJA, NOMBRE y las cifras. Parejas e individual: Puesto, Nº, Pareja o Jugador, Zona, P.G., P.F., P.C. y Dif.
+    // El Desempate del Excel no se enseña (lo pidió el árbitro); sigue en el JSON.
     // Las tres primeras columnas quedan fijas al desplazar. Cada columna: [clave, rótulo, significado].
+    const hayZona = jd.participantes.some((p) => p.zona); // sin ninguna zona (p. ej. un PDF de Access), la columna iría vacía: no se enseña
     const cols = sp
       ? [['jug', 'ENC.J', 'Encuentros jugados'], ['gan', 'ENC.G', tp.gan], ['dp', 'DIF. P.', 'Diferencia de partidas'], ['dt', 'DIF. PUNT.', 'Diferencia de puntos'], ['pg', 'P. G.', 'Partidas ganadas'], ['pp', 'P. P.', 'Partidas perdidas'], ['tf', 'PUNT. F.', 'Puntos a favor'], ['tc', 'PUNT. C.', 'Puntos en contra']]
-      : [['zona', 'Zona', 'Zona'], ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos'], ['desempate', 'Desempate', 'Desempate']];
-    const TEXTO = new Set(['zona', 'desempate']);
+      : [...(hayZona ? [['zona', 'Zona', 'Zona']] : []), ['gan', 'P.G.', tp.gan], ['tf', 'P.F.', 'Tantos a favor'], ['tc', 'P.C.', 'Tantos en contra'], ['dt', 'Dif.', 'Diferencia de tantos']];
+    const TEXTO = new Set(['zona']);
     const cabeceras = sp ? ['CLAS.', tp.unidad.toUpperCase(), 'NOMBRE'] : ['Puesto', 'Nº', cap(tp.unidad)];
 
     const cuerpo = filas.map((r) => {
@@ -581,10 +611,10 @@
       el('tbody', null, cuerpo));
     // Leyenda: en el SP, una por columna; en parejas e individual, la del Excel.
     const leyenda = sp ? cols.map(([, t, ab]) => `${t}: ${ab.toLowerCase()}`).join(' · ')
-      : 'P.G. partidas ganadas · P.F./P.C. tantos a favor/en contra · Dif. diferencia de tantos · Desempate: E.D. = enfrentamiento directo, C.I. = criterio informático';
+      : 'P.G. partidas ganadas · P.F./P.C. tantos a favor/en contra · Dif. diferencia de tantos';
 
     poner(cont,
-      selectorJornada(completas, n, tp, (x) => irA({ j: x }, false)),
+      soloClasificacion(a) ? null : selectorJornada(completas, n, tp, (x) => irA({ j: x }, false)),
       conB ? el('div', { class: 'grupos', role: 'group', 'aria-label': 'Grupo' }, ['A', 'B'].map((x) => el('button', { type: 'button', 'aria-pressed': String(g === x), onclick: () => irA({ g: x }, false) }, 'Grupo ' + x))) : null,
       plazo(jd, tp),
       n === vivo ? el('p', { class: 'nota caja' }, `${tp.jornada} ${n} en juego: la clasificación se actualiza con cada resultado. ⏳ = todavía no ha jugado esta ${tp.jornada.toLowerCase()} (lleva sus cifras de antes).`) : null,
@@ -683,15 +713,15 @@
     const a = E.actual, tp = tipoDe(a.torneo.tipo);
     const ps = a.participantes.slice().sort((x, y) => x.id - y.id);
     if (!ps.length) { cont.replaceChildren(el('p', { class: 'vacio' }, `Todavía no hay ${tp.unidades} publicadas.`)); return; }
-    const hayB = ps.some((p) => p.grupo === 'B');
+    const hayB = ps.some((p) => p.grupo === 'B'), hayZona = ps.some((p) => p.zona);
     cont.replaceChildren(el('div', { class: 'tabla-caja' }, el('table', { class: 'lista-parejas' },
       el('caption', { class: 'solo-lector' }, `${tp.unidades[0].toUpperCase() + tp.unidades.slice(1)} ${tp.unidades === 'jugadores' ? 'inscritos' : 'inscritas'}`),
-      el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Nº'), el('th', { scope: 'col' }, tp.unidades === 'jugadores' ? 'Jugador' : 'Jugadores'), el('th', { scope: 'col' }, 'Zona'))),
+      el('thead', null, el('tr', null, el('th', { scope: 'col' }, 'Nº'), el('th', { scope: 'col' }, tp.unidades === 'jugadores' ? 'Jugador' : 'Jugadores'), hayZona ? el('th', { scope: 'col' }, 'Zona') : null)),
       el('tbody', null, ps.map((p) => el('tr', { class: p.ret ? 'ret' : null },
         el('td', { class: 'n' }, p.id),
         el('td', null, [[p.j1_nombre, p.j1_apellido1], [p.j2_nombre, p.j2_apellido1]].filter((x) => x[0]).map((x) => el('span', { class: 'nom' }, x.join(' '))),
           p.ret ? el('span', { class: 'etq alerta' }, 'Retirada') : null, hayB ? el('span', { class: 'etq' }, 'Grupo ' + p.grupo) : null),
-        el('td', { class: 'zona' }, p.zona)))))));
+        hayZona ? el('td', { class: 'zona' }, p.zona) : null))))));
   }
 
   /* ----- calendario ----- */
@@ -769,9 +799,7 @@
   }
 
   async function pintarNormativa(cont) {
-    // ¿hay normativa? Se pregunta una vez y solo al abrir Normativa (un 404 aquí es lo normal: el campeonato no tiene)
-    E.normativa = E.normativa || (BORRADOR ? Promise.resolve(false) : fetch(`${BASE}/${E.id}/normativa.pdf.cifrado`, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false));
-    const hay = await E.normativa;
+    const hay = await hayNormativa();
     if (E.ver !== 'normativa') return;
     const aviso = el('p', { class: 'nota sin-margen', 'aria-live': 'polite' });
     const boton = hay ? el('button', { type: 'button', class: 'boton', onclick: () => descargarNormativa(boton, aviso) }, 'Descargar normativa (PDF)') : null;
@@ -782,9 +810,11 @@
   let pintando = 0;
   async function pintar() {
     const marca = ++pintando;
+    E.tabs = await pestanasVisibles();
+    if (marca !== pintando) return;
+    if (!E.tabs.some(([k]) => k === E.ver)) E.ver = 'clasificacion';
     cabecera(); pestanas();
     const cont = $('#contenido');
-    if (marca !== pintando) return;
     if (E.ver === 'resumen') await pintarResumen(cont);
     else if (E.ver === 'clasificacion') await pintarClasificacion(cont);
     else if (E.ver === 'mesas') await pintarMesas(cont);
@@ -817,6 +847,7 @@
     }
     try { E.actual = await leer(`${BASE}/${E.id}/actual.json`, true); }
     catch (e) { if (BORRADOR) borradorPrivado(); else $('#contenido').replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha encontrado este campeonato. Puede que todavía no esté publicado.')); return; }
+    if (E.actual.torneo && E.actual.torneo.tipo === 'ranking') { location.replace(url('ranking.html', { r: E.id })); return; }
     await pintar();
     window.addEventListener('popstate', () => { leerUrl(); pintar(); });
     if (E.actual.torneo.estado === 'en_juego' && !BORRADOR) {
@@ -825,14 +856,120 @@
     }
   }
 
+  /* =====================================================================
+     RANKING FVD (ranking.html?r=<id>): puesto, jugador, licencia, puntos de cada torneo jugado, total y plaza CE.
+     La asociación y el detalle, en la ficha del jugador.
+     ===================================================================== */
+  const RKE = { id: null, a: null };
+  // La plaza pagada para el Campeonato de España de Parejas es una ficha: C arriba, E abajo, como la ficha de la marca de la web.
+  const fichaCE = () => el('span', { class: 'plaza-ce', role: 'img', 'aria-label': 'Plaza para el Campeonato de España', title: 'Plaza para el Campeonato de España' },
+    el('span', { 'aria-hidden': 'true' }, 'C'), el('span', { 'aria-hidden': 'true' }, 'E'));
+  const nombreRk = (f) => [f.nombre, f.apellido1].filter(Boolean).join(' ');
+  /* Plazas del Campeonato de España por parejas (contrato 1.3): SP, Open y ranking. Cada una es una etiqueta con su texto y su forma de borde (lleno, doble, discontinuo):
+     se distinguen sin depender del color. «½» delante: media plaza (la pareja que recibe una plaza suelta y en la que van los dos). Un ranking de antes sigue viéndose:
+     el 1.2 trae plaza_sp y plaza_open como sí o no, sin «por repartir» ni plazas vacías del SP y el Open; el 1.1 solo trae plaza_ce y se enseña con la ficha CE de siempre. */
+  const PLAZAS = { sp: ['Plaza SP', 'del Súper Prestigio'], open: ['Plaza Open', 'del Open de Valencia'], ranking: ['Plaza ranking', 'por su puesto en el ranking'] };
+  const valorPlaza = (x) => (x === true ? 1 : x === false || x == null ? 0 : x);
+  // [clave, valor] de cada plaza que tiene: valor 1 (entera) o 0.5 (media)
+  const marcasDe = (f) => (f.plaza_sp === undefined ? (f.plaza_ce ? [['ce', 1]] : [])
+    : [['sp', valorPlaza(f.plaza_sp)], ['open', valorPlaza(f.plaza_open)], ['ranking', f.plaza_ranking ? 1 : 0]].filter(([, v]) => v > 0));
+  const nombrePlaza = (k, v) => (v === 0.5 ? '½ ' : '') + PLAZAS[k][0];
+  const etiquetaPlaza = (k, prov, v) => (k === 'ce' ? fichaCE() : el('span', { class: 'plaza plaza-' + k, role: 'img', title: (v === 0.5 ? 'Media plaza: ' : '') + PLAZAS[k][0] + (prov && k === 'ranking' ? ' (provisional)' : ''),
+    'aria-label': (v === 0.5 ? 'Media plaza: ' : '') + PLAZAS[k][0] + (prov && k === 'ranking' ? ', provisional' : '') }, nombrePlaza(k, v)));
+  // La pareja que recibe una plaza suelta y todavía no ha dicho nada: sus dos jugadores llevan esta etiqueta y la frase de abajo.
+  const fraseRepartir = (f) => `1 plaza para la pareja N.º ${f.pareja_n} (por repartir)`;
+  const etiquetaRepartir = (f) => el('span', { class: 'plaza plaza-' + f.por_repartir + ' plaza-por-repartir', role: 'img', title: fraseRepartir(f) + ' del ' + (f.por_repartir === 'sp' ? 'Súper Prestigio' : 'Open de Valencia'),
+    'aria-label': PLAZAS[f.por_repartir][0] + ' por repartir: ' + fraseRepartir(f) }, PLAZAS[f.por_repartir][0] + ' · por repartir');
+  // Lo que cuenta la página debajo de la tabla: qué es cada plaza, si son provisionales y si alguna queda vacía.
+  function notaPlazas(t) {
+    if (t.plazas_ranking === undefined) return [el('p', { class: 'nota' }, fichaCE(), ` plaza pagada para el Campeonato de España de Parejas: los ${t.plazas_ce} primeros, o el siguiente si alguno renuncia.`)];
+    const sin = [!t.sp_jugado && 'el Súper Prestigio', !t.open_jugado && 'el Open de Valencia'].filter(Boolean);
+    const v13 = t.plazas_vacias_sp !== undefined;
+    const vacia = (n, de, quien) => (n > 0 ? el('p', { class: 'nota caja', id: 'plazas-vacias-' + quien }, `${n === 1 ? 'Una plaza' : n + ' plazas'} del ${de} ${n === 1 ? 'queda vacía' : 'quedan vacías'}: ninguna pareja de ese torneo, hasta la 10.ª, la quiere.`) : null);
+    return [
+      el('p', { class: 'nota', id: 'plazas-leyenda' }, 'Plazas para el Campeonato de España de Parejas: ', etiquetaPlaza('sp'), ' los 4 jugadores de las 2 primeras parejas del Súper Prestigio; ', etiquetaPlaza('open'),
+        ' los 2 de la pareja ganadora del Open de Valencia; ', etiquetaPlaza('ranking'), ` los ${t.plazas_ce} primeros del ranking que no tengan ya otra plaza (si renuncian o ya tienen otra, pasa al siguiente, como mucho hasta el puesto 20).`),
+      v13 ? el('p', { class: 'nota', id: 'plazas-sueltas' }, 'Si un jugador renuncia a su plaza del SP o del Open, su pareja conserva la suya y la plaza suelta pasa a la siguiente pareja de ese torneo, de una en una y como mucho hasta la 10.ª; nunca va al ranking. ',
+        'Si en esa pareja van los dos, cada uno tiene ½ plaza; si va uno solo, la plaza es entera. Quien gana el SP y el Open se queda con la del SP, y la del Open pasa a la siguiente pareja.') : null,
+      t.plazas_provisionales ? el('p', { class: 'nota caja', id: 'plazas-provisionales' }, `Plazas provisionales: todavía no se ha jugado ${sin.join(' ni ')}. Hasta entonces no hay plazas ${[!t.sp_jugado && 'SP', !t.open_jugado && 'Open'].filter(Boolean).join(' ni ')} y el ranking marca sus ${t.plazas_ranking}.`) : null,
+      t.plazas_vacias > 0 ? el('p', { class: 'nota caja', id: 'plazas-vacias' }, `${t.plazas_vacias === 1 ? 'Una plaza del ranking queda vacía' : t.plazas_vacias + ' plazas del ranking quedan vacías'}: no hay nadie sin plaza hasta el puesto 20.`) : null,
+      v13 ? vacia(t.plazas_vacias_sp, 'SP', 'sp') : null, v13 ? vacia(t.plazas_vacias_open, 'Open', 'open') : null];
+  }
+
+  function fichaJugador(f) {
+    const a = RKE.a, t = a.torneo, caja = $('#ficha');
+    const fila = (k, v) => (v == null || v === '' ? null : [el('dt', null, k), el('dd', null, v)]);
+    const jugados = a.torneos.map((x, k) => [x, f.puntos[k]]).filter(([x]) => x.cargado);
+    poner(caja,
+      el('h2', { id: 't-ficha' }, nombreRk(f)),
+      el('dl', { class: 'datos-ficha' },
+        fila('Puesto', `${f.puesto}.º${f.empate ? ' (empatado)' : ''}`),
+        fila('Licencia', f.licencia), fila('Licencia anterior', f.licencia_ant), fila('Asociación', f.asociacion),
+        fila('Total', `${f.total} puntos (suman sus ${t.n_mejores} mejores puntuaciones)`),
+        f.plaza_sp === undefined ? (f.plaza_ce ? fila('Campeonato de España', 'Tiene plaza pagada') : null)
+          : fila('Campeonato de España', marcasDe(f).length || f.por_repartir ? el('span', { class: 'plazas-ficha' }, marcasDe(f).map(([k, v]) => el('span', null, etiquetaPlaza(k, t.plazas_provisionales, v), ' ',
+            (v === 0.5 ? 'Media plaza ' + PLAZAS[k][1] + ': la comparte con su pareja, que también va' : PLAZAS[k][0] + (k === 'ranking' && t.plazas_provisionales ? ' provisional' : '') + ', ' + PLAZAS[k][1]) + '.')),
+            f.por_repartir ? el('span', null, etiquetaRepartir(f), ' ', `Su pareja ha recibido una plaza ${f.por_repartir === 'sp' ? 'del Súper Prestigio' : 'del Open'} que quedó suelta: todavía no han dicho si van.`) : null)
+            : 'Sin plaza')),
+      el('h3', { class: 'sub' }, 'Puntos por torneo'),
+      el('ul', { class: 'puntos-ficha' }, jugados.map(([x, p]) => el('li', null, el('span', null, x.nombre), el('b', null, p == null ? '—' : p)))),
+      el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton sec', onclick: () => { caja.hidden = true; poner(caja); } }, 'Cerrar la ficha')));
+    caja.hidden = false;
+    caja.scrollIntoView({ block: 'start' });
+  }
+
+  function pintarRanking() {
+    const a = RKE.a, t = a.torneo;
+    document.title = t.nombre + (t.temporada ? ' ' + t.temporada : '');
+    const datos = [t.temporada && 'Temporada ' + t.temporada, `${t.n_torneos} de ${a.torneos.length} torneos jugados`, t.fecha && 'Último: ' + fechaLarga(t.fecha)].filter(Boolean);
+    $('#cab').replaceChildren(
+      el('div', null, el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado), el('span', { class: 'etiqueta' }, 'Ranking')),
+      el('h1', null, t.nombre), el('p', { class: 'linea' }, datos.join(' · ')));
+    const jugados = a.torneos.map((x, k) => [x, k]).filter(([x]) => x.cargado);
+    const porJugar = a.torneos.filter((x) => !x.cargado);
+    const tabla = el('table', { class: 'clasi rk' },
+      el('caption', { class: 'solo-lector' }, `${t.nombre}, temporada ${t.temporada || ''}`),
+      el('thead', null, el('tr', null,
+        el('th', { scope: 'col' }, 'Puesto'), el('th', { scope: 'col', class: 'izq' }, 'Jugador'), el('th', { scope: 'col', class: 'izq' }, 'Licencia'),
+        jugados.map(([x]) => el('th', { scope: 'col', class: 'tor' }, x.nombre)),
+        el('th', { scope: 'col' }, 'Total'), el('th', { scope: 'col' }, el('abbr', { title: 'Plaza para el Campeonato de España' }, t.plazas_ranking === undefined ? 'CE' : 'Plaza')))),
+      el('tbody', null, a.ranking.map((f) => el('tr', { class: f.plaza_ce ? 'con-plaza' : null },
+        el('td', null, el('span', { class: 'puesto' + (f.puesto <= 3 ? ' p' + f.puesto : '') }, f.puesto), f.empate ? el('abbr', { class: 'empate', title: 'Empatado' }, '=') : null),
+        el('td', { class: 'jug' }, el('button', { type: 'button', class: 'nombre-rk', onclick: () => fichaJugador(f) }, nombreRk(f))),
+        el('td', { class: 'lic' }, f.licencia || '', f.licencia_ant ? el('span', { class: 'sub' }, `(${f.licencia_ant})`) : null),
+        jugados.map(([, k]) => el('td', { class: f.puntos[k] === 0 ? 'cero' : null }, f.puntos[k] == null ? '' : f.puntos[k])),
+        el('td', { class: 'gan' }, f.total), el('td', { class: 'ce' }, marcasDe(f).map(([k, v]) => etiquetaPlaza(k, t.plazas_provisionales, v)),
+          f.por_repartir ? [etiquetaRepartir(f), el('span', { class: 'sub plaza-frase' }, fraseRepartir(f))] : null,
+          t.plazas_provisionales && marcasDe(f).some(([k]) => k === 'ranking') ? el('span', { class: 'sub' }, 'provisional') : null)))));
+    poner($('#contenido'),
+      el('p', { class: 'nota' }, `Suman las ${t.n_mejores} mejores puntuaciones de cada jugador. Pulsa un nombre para ver su ficha.`),
+      notaPlazas(t),
+      a.ranking.length ? marco(tabla) : el('p', { class: 'vacio' }, 'El ranking aparecerá cuando haya resultados del primer torneo.'),
+      porJugar.length ? el('p', { class: 'leyenda' }, 'Por jugar: ' + porJugar.map((x) => x.nombre + (x.fecha ? ` (${corta(x.fecha)})` : '')).join(' · ')) : null);
+  }
+
+  async function paginaRanking() {
+    RKE.id = new URLSearchParams(location.search).get('r');
+    if (!RKE.id || !/^[a-z0-9][a-z0-9-]{2,59}$/.test(RKE.id)) { $('#contenido').replaceChildren(el('p', { class: 'aviso alerta' }, 'Falta el ranking. Vuelve a la portada y elígelo.')); return; }
+    if (BORRADOR) {
+      document.body.prepend(el('div', { class: 'banda-prueba' }, 'Borrador privado: solo lo ves tú, con el token de este navegador. La web pública no lo enseña.'));
+      if (!window.Mesa || !window.Mesa.token.obtener()) { borradorPrivado(); return; }
+    }
+    try { RKE.a = await leer(`${BASE}/${RKE.id}/actual.json`, true); }
+    catch (e) { if (BORRADOR) borradorPrivado(); else $('#contenido').replaceChildren(el('p', { class: 'aviso alerta' }, 'No se ha encontrado este ranking. Puede que todavía no esté publicado.')); return; }
+    if (!RKE.a.torneo || RKE.a.torneo.tipo !== 'ranking') { location.replace(url('torneo.html', { t: RKE.id })); return; }
+    pintarRanking();
+  }
+
   window.TuMesa = { el, poner, instante, TIPOS, ESTADOS };
 
   document.addEventListener('DOMContentLoaded', async () => {
     bandaPrueba();
     const pagina = document.body.dataset.pagina;
-    if ((pagina === 'portada' || pagina === 'torneo') && !BORRADOR && !(await desbloquear())) return;
+    if ((pagina === 'portada' || pagina === 'torneo' || pagina === 'ranking') && !BORRADOR && !(await desbloquear())) return;
     if (pagina === 'portada') portada();
     else if (pagina === 'torneo') torneo();
+    else if (pagina === 'ranking') paginaRanking();
     document.querySelectorAll('a[data-conservar]').forEach((x) => { if (ES_PRUEBA) x.href = url(x.getAttribute('href')); });
   });
 })();

@@ -6,7 +6,7 @@ const { chromium } = require('playwright');
 const { recordarPrueba } = require('./cripto_prueba.cjs');
 const base = process.argv[2] || 'http://localhost:8765';
 const raiz = path.join(__dirname, '..');
-const PAGINAS = ['index.html', 'torneo.html', 'publicar.html'];
+const PAGINAS = ['index.html', 'torneo.html', 'ranking.html', 'publicar.html'];
 const SUELTAS = ['federacion-jaume-i.html', 'jugar.html', 'retos.html', 'ejemplos-libro.html'];
 const CSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self' https://api.github.com; object-src 'none'; base-uri 'none'; form-action 'none'";
 // La portada lleva además el chat de jugadores (un iframe de cbox.ws que solo se carga al abrir la ventana). Es la única página con frame-src.
@@ -32,7 +32,7 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
   const sigue = require('child_process').execFileSync('git', ['ls-files', '-z'], { cwd: raiz }).toString().split('\0').filter(Boolean);
   assert.deepStrictEqual(sigue.filter((f) => /\.(xlsx|xlsm|xls)$/i.test(f)), [], 'hay un Excel en el repositorio');
   bien('ningún .xlsx, .xlsm ni .xls versionado');
-  bien('las 3 páginas: CSP exacta, referrer, robots noindex/nofollow, googlebot noarchive/nosnippet, sin estilos/scripts/on* en línea ni frame-ancestors');
+  bien('las 4 páginas: CSP exacta, referrer, robots noindex/nofollow, googlebot noarchive/nosnippet, sin estilos/scripts/on* en línea ni frame-ancestors');
   // Las páginas sueltas (juego, retos, casos del libro y federación): sin conexión a GitHub, así que connect-src solo 'self'.
   const CSP_SUELTAS = CSP.replace(' https://api.github.com', '');
   for (const f of SUELTAS) {
@@ -89,7 +89,8 @@ let ok = 0; const bien = (t) => { ok++; console.log('  ok  ' + t); };
   assert(/Disallow: \//.test(await robots.text()));
   bien('robots.txt se sirve');
   const casos = [['index.html', '#candado'], ['torneo.html?t=sp-2026-27', '#candado'], ['index.html?d=datos/_prueba', '#lista li'], ['torneo.html?t=sp-ejemplo&d=datos/_prueba', '#cab h1, #cab h2'],
-    ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.normativa button'], ['index.html?d=datos/_prueba', '.libro img'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso']];
+    ['torneo.html?t=sp-ejemplo&ver=normativa&d=datos/_prueba', '.normativa button'], ['index.html?d=datos/_prueba', '.libro img'], ['publicar.html', '#token-estado p'], ['torneo.html?t=sp-2026-27&borrador=1', '#contenido .aviso'],
+    ['ranking.html?r=ranking-2026-27', '#candado'], ['ranking.html?r=ranking-ejemplo&d=datos/_prueba', 'table.rk .plaza'], ['ranking.html?r=ranking-2026-27&borrador=1', '#contenido .aviso']];
   for (const [url, esperado] of casos) {
     const pg = await ctx.newPage();
     const malos = []; const externas = [];

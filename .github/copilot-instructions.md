@@ -11,6 +11,7 @@ Cualquiera puede descargar cualquier archivo y todo su historial, sin contraseñ
 - Excel ni hojas de cálculo: `.xlsx`, `.xlsm`, `.xls`, `.ods`, `.csv`.
 - Documentos con datos de jugadores: Word, PDF sin cifrar, fotos de actas, capturas de pantalla.
 - Licencias federativas, teléfonos, correos, DNI ni direcciones de personas.
+  - **Única excepción:** las licencias del Ranking FVD pueden ir dentro del JSON cifrado de tipo «ranking» que genera `publicar.html`, y en ningún otro sitio. En los campeonatos (SP, parejas, individual), nunca: ni en su JSON, ni en el HTML, ni en las pruebas con datos reales.
 - Contraseñas, tokens o claves (la contraseña de la web tampoco, ni en un comentario).
 - Archivos en `datos/` que no estén cifrados (salvo `datos/clave.json` y `.gitkeep`).
 
