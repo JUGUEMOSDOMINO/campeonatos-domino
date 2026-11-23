@@ -161,13 +161,19 @@ function llegaAPuntC() {
     }
 
     // campeonato publicado desde la Hoja de resumen de un organizador: solo Clasificación, con sus dos grupos
-    await pg.goto(`${base}/torneo.html?${D}&t=1-campeonato-de-ejemplo-de-parejas-2027-02-06`); await pg.waitForSelector('table.clasi');
+    await pg.goto(`${base}/torneo.html?${D}&t=1-campeonato-de-ejemplo-de-parejas-2027-02-06&ver=clasificacion`); await pg.waitForSelector('table.clasi');
     await mira('organizador · clasificación grupo A', llegaAPuntC);
     await pg.click('.grupos button:has-text("Grupo B")'); await pg.waitForFunction(() => document.querySelectorAll('table.clasi tbody tr').length === 2);
     await mira('organizador · clasificación grupo B');
+    // y lo demás que se saca de la clasificación final: Resumen (podio y ficha), Parejas y Calendario
+    const OD = `${base}/torneo.html?${D}&t=1-campeonato-de-ejemplo-de-parejas-2027-02-06`;
+    await pg.goto(OD + '&ver=resumen'); await pg.waitForSelector('.podio-tarjeta'); await mira('organizador · resumen con el podio');
+    await pg.fill('#quien', 'Vicent'); await pg.waitForSelector('#quien-res .ficha'); await mira('organizador · ficha con el puesto final y sin historial');
+    await pg.goto(OD + '&ver=parejas'); await pg.waitForSelector('table.lista-parejas'); await mira('organizador · parejas');
+    await pg.goto(OD + '&ver=folleto'); await pg.waitForSelector('.dia-unico'); await mira('organizador · calendario con la fecha del torneo');
 
     // campeonato publicado desde el PDF de Access: sin zona (la columna no se enseña), con nombres cortados por Access y el grupo B con 3 partidas
-    await pg.goto(`${base}/torneo.html?${D}&t=torneo-de-ejemplo-villa-inventada-2027-03-12`); await pg.waitForSelector('table.clasi');
+    await pg.goto(`${base}/torneo.html?${D}&t=torneo-de-ejemplo-villa-inventada-2027-03-12&ver=clasificacion`); await pg.waitForSelector('table.clasi');
     assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
     await pg.evaluate(() => { window.__sinZona = true; });
     await mira('pdf · clasificación grupo A', llegaAPuntC);

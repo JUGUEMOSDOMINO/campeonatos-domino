@@ -1078,7 +1078,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert(!/licencia|"lic/i.test(JSON.stringify(j)));
     assert.deepStrictEqual(api.enClaro, []);
     bien('pdf: lo que se guarda es un campeonato de parejas terminado, solo clasificación, sin zona ni licencias, cifrado');
-    await pg.goto(base + `/torneo.html?t=${ID}&borrador=1`);
+    await pg.goto(base + `/torneo.html?t=${ID}&borrador=1&ver=clasificacion`);
     await pg.waitForSelector('table.clasi');
     assert.deepStrictEqual(await pg.locator('table.clasi thead th').allInnerTexts(), ['Puesto', 'Nº', 'Pareja', 'P.G.', 'P.F.', 'P.C.', 'Dif.']);
     assert.strictEqual(await pg.locator('table.clasi tbody tr').count(), 5);

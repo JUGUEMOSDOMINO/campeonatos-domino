@@ -316,15 +316,16 @@
   const PESTANAS = [['resumen', 'Resumen'], ['clasificacion', 'Clasificación'], ['mesas', 'Partidas'], ['parejas', 'Parejas'], ['folleto', 'Calendario'], ['normativa', 'Bases del campeonato']];
   const ANTIGUAS = { emparejamientos: 'mesas', resultados: 'mesas', linea: 'folleto' }; // enlaces de antes del cambio de pestañas
   const E = { id: null, actual: null, cache: new Map(), ver: 'resumen', j: null, g: 'A', p: null, q: '', quien: '', tabs: PESTANAS };
-  // Un campeonato publicado solo con su clasificación (de la Hoja de resumen de un organizador) no trae mesas: sin Resumen, Partidas, Parejas ni Calendario.
+  // Un campeonato publicado solo con su clasificación final (de la Hoja de resumen, el Excel o el PDF de Access de un organizador) no trae mesas: no tiene Partidas.
+  // Lo demás se saca de la clasificación: Resumen (podio y ficha con el puesto final), Parejas, Calendario (la fecha del torneo) y Normativa si la hay.
   const soloClasificacion = (a) => Array.isArray(a.emparejamientos) && a.emparejamientos.length === 0;
   // ¿hay normativa? Se pregunta una vez (un 404 es lo normal: el campeonato no tiene)
   const hayNormativa = () => (E.normativa = E.normativa || (BORRADOR ? Promise.resolve(false) : fetch(`${BASE}/${E.id}/normativa.pdf.cifrado`, { method: 'HEAD', cache: 'no-cache' }).then((r) => r.ok, () => false)));
   // Las pestañas con algo que enseñar. Se calcula antes de pintar porque Bases del campeonato necesita preguntar.
   async function pestanasVisibles() {
     if (!soloClasificacion(E.actual)) return PESTANAS;
-    const hay = await hayNormativa();
-    return PESTANAS.filter(([k]) => k === 'clasificacion' || (k === 'normativa' && hay));
+    const hay = await hayNormativa(), conFecha = !!partesFecha(E.actual.torneo.fecha);
+    return PESTANAS.filter(([k]) => k !== 'mesas' && (k !== 'normativa' || hay) && (k !== 'folleto' || conFecha));    // sin pestañas vacías
   }
 
   function leerUrl() {
@@ -398,7 +399,9 @@
   const nombresDe = (p) => [[p.j1_nombre, p.j1_apellido1], [p.j2_nombre, p.j2_apellido1]].filter((x) => x[0]).map((x) => x.join(' '));
   // La misma jornada que enseña Clasificación: la que está en juego con algún resultado, o la última cerrada.
   const jornadaClasif = (a) => (conResultado(a) ? a.jornada.numero : ultimaCompleta(a));
-  const cifraCorta = (r, sp, tp) => `${r.gan} de ${r.jug} ${sp ? 'encuentros' : 'partidas'} · ${signo(r.dt)} puntos`;
+  // De la clasificación final de un organizador no consta cuántas partidas jugó cada pareja (jug es null): se dicen las ganadas.
+  const cifraCorta = (r, sp, tp) => (r.jug == null ? `${r.gan} ${sp ? 'encuentros ganados' : r.gan === 1 ? 'partida ganada' : 'partidas ganadas'} · ${signo(r.dt)} puntos`
+    : `${r.gan} de ${r.jug} ${sp ? 'encuentros' : 'partidas'} · ${signo(r.dt)} puntos`);
 
   function tarjetaPodio(r, byId, tp, sp) {
     const p = byId.get(r.id) || { corto: '#' + r.id };
@@ -464,14 +467,15 @@
 
   function fichaPersona(a, p, fila, jn, byIdActual, mia, alElegir, alOlvidar) {
     const tp = tipoDe(a.torneo.tipo), sp = a.torneo.tipo === 'sp';
-    const subs = (a.sustituciones || []).filter((s) => s.id === p.id);
+    const subs = (a.sustituciones || []).filter((s) => s.id === p.id), solo = soloClasificacion(a);
+    const delGrupo = a.clasificacion.some((r) => r.grupo === 'B') && fila ? ' del grupo ' + fila.grupo : '';
     const puesto = fila
-      ? `${ORD(fila.puesto)}${a.clasificacion.some((r) => r.grupo === 'B') ? ' del grupo ' + fila.grupo : ''} tras la ${tp.jornada.toLowerCase()} ${jn}. ${cifraCorta(fila, sp, tp)}.`
+      ? (solo ? `Puesto final: ${ORD(fila.puesto)}${delGrupo}. ${cifraCorta(fila, sp, tp)}.` : `${ORD(fila.puesto)}${delGrupo} tras la ${tp.jornada.toLowerCase()} ${jn}. ${cifraCorta(fila, sp, tp)}.`)
       : 'Todavía no tiene clasificación.';
-    const mesa = lineaMesa(a, p.id, byIdActual);
+    const mesa = solo ? null : lineaMesa(a, p.id, byIdActual);
     const enlace = (ver, txt) => el('a', { href: url('torneo.html', { t: E.id, ver, p: p.id }) }, txt);
-    const hist = el('div', { class: 'ficha-hist' }, el('p', { class: 'nota sin-margen' }, 'Cargando el historial…'));
-    cargarHistorial(a, p.id, hist);
+    const hist = el('div', { class: 'ficha-hist' }, el('p', { class: 'nota sin-margen' }, solo ? 'Este campeonato se ha publicado con la clasificación final: no hay historial partida a partida.' : 'Cargando el historial…'));
+    if (!solo) cargarHistorial(a, p.id, hist);
     return el('li', { class: 'ficha' + (mia ? ' mia' : ''), 'data-id': p.id },
       el('div', { class: 'ficha-cab' },
         el('span', { class: 'ficha-num' }, el('i', null, cap(tp.unidad)), el('b', null, p.id)),
@@ -481,7 +485,7 @@
       mesa ? el('p', null, mesa) : null,
       hist,
       subs.map((s) => el('p', { class: 'nota sin-margen' }, `Cambio en la ${tp.jornada.toLowerCase()} ${s.desde}: entra ${s.entra_nombre} ${s.entra_apellido1} por ${s.sale_nombre} ${s.sale_apellido1}.`)),
-      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), enlace('mesas', 'Ver su mesa'),
+      el('p', { class: 'ficha-enlaces' }, enlace('clasificacion', 'Ver en la clasificación'), solo ? null : enlace('mesas', 'Ver su mesa'),
         mia ? el('button', { type: 'button', class: 'boton sec', onclick: alOlvidar }, 'No soy yo')
           : el('button', { type: 'button', class: 'boton sec', onclick: () => alElegir(p.id) }, 'Soy yo')));
   }
