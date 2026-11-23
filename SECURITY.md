@@ -21,11 +21,11 @@ Dos barreras lo impiden. `publicar.html` lee del Excel la hoja WEB y las hojas d
 
 ## Cómo se publica
 
-`publicar.html` es la mesa de control. Trabaja con dos repositorios para los campeonatos: `campeonatos-domino` (público, la web) y `campeonatos-borradores` (privado, con la misma estructura `datos/`). Para la sección «Archivos» toca también `programas-domino` (privado), solo dentro de `entregables/`.
+`publicar.html` es la mesa de control. Trabaja con tres repositorios: `campeonatos-domino` (público, la web), `campeonatos-borradores` (privado, con la misma estructura `datos/`) y `programas-domino` (privado: las copias de lo que se sube y la sección «Archivos», solo dentro de `entregables/`).
 
 1. La mesa abre `publicar.html` y elige el Excel guardado. La página lo lee en el navegador; el Excel no se sube a ningún sitio. Rechaza archivos de más de 25 MB y hojas WEB con más de 300 filas o 80 columnas, y los textos de más de 300 caracteres.
 2. La mesa elige el destino: borrador o web. Por defecto es la web si el torneo ya está en ella y borrador si es nuevo.
-3. La página escribe con la API de contenidos de GitHub, con el token guardado en el navegador. Solo puede escribir en los dos repositorios, y en ellos solo en `datos/indice.json`, `datos/clave.json`, `datos/<id>/jornada_NN.json`, `datos/<id>/actual.json` y `datos/<id>/normativa.pdf.cifrado`. El `<id>` tiene que cumplir `[a-z0-9][a-z0-9-]{2,59}`, y la validación V20 bloquea un `<id>` que lleve el nombre o el apellido de un participante, porque los nombres de carpeta no se cifran. Cualquier otra ruta u otro repositorio se rechaza antes de llamar a GitHub. Para borrar rige la misma lista de rutas.
+3. La página escribe con la API de contenidos de GitHub, con el token guardado en el navegador. Solo puede escribir en esos repositorios; en los dos de campeonatos, solo en `datos/indice.json`, `datos/clave.json`, `datos/<id>/jornada_NN.json`, `datos/<id>/actual.json` y `datos/<id>/normativa.pdf.cifrado`. El `<id>` tiene que cumplir `[a-z0-9][a-z0-9-]{2,59}`, y la validación V20 bloquea un `<id>` que lleve el nombre o el apellido de un participante, porque los nombres de carpeta no se cifran. Cualquier otra ruta u otro repositorio se rechaza antes de llamar a GitHub. Para borrar rige la misma lista de rutas.
 4. Lo que va a `campeonatos-domino` se cifra en el navegador antes de salir. La última comprobación antes de cada escritura rechaza, sin llamar a GitHub, cualquier archivo para la web que no sea un sobre cifrado (o un `clave.json` bien formado). Los borradores van en claro, porque su repositorio es privado.
 5. Cada commit sale con autor y committer «Mesa de control» y el correo noreply de la cuenta (`356692983+JUGUEMOSDOMINO@users.noreply.github.com`), para que no se vea el correo real. Los mensajes llevan solo la acción y el id (por ejemplo «Ocultar sp-2026-27»), nunca nombres de personas.
 6. El token solo se envía a `https://api.github.com`. Si GitHub responde 401, la página lo borra del navegador y lo avisa.
@@ -114,13 +114,13 @@ Límites que conviene conocer:
 
 Es un token fine-grained de GitHub con este alcance:
 
-- los repositorios `JUGUEMOSDOMINO/campeonatos-domino` y `JUGUEMOSDOMINO/campeonatos-borradores`, y ningún otro salvo `JUGUEMOSDOMINO/programas-domino` si se quiere usar la sección «Archivos», en «Repository access» (Only select repositories);
+- los tres repositorios `JUGUEMOSDOMINO/campeonatos-domino`, `JUGUEMOSDOMINO/campeonatos-borradores` y `JUGUEMOSDOMINO/programas-domino` (este, para las copias privadas y la sección «Archivos»), y ningún otro, en «Repository access» (Only select repositories);
 - permiso «Contents: Read and write» y ningún otro;
 - caduca en noviembre de 2027.
 
 Se pega una vez en `publicar.html`, en el equipo de la mesa, y se queda en el `localStorage` de ese navegador. No se manda por WhatsApp ni por correo, ni se escribe en el Excel o en el repositorio. Con el token se ven los borradores desde ese navegador. El token y la contraseña de la web son cosas distintas: la contraseña se reparte a los jugadores, el token no sale nunca del equipo de la mesa.
 
-Si el token no tiene acceso a `campeonatos-borradores`, la lista de borradores dice que falta «Repository access» y el resto de la página sigue funcionando: se puede subir a la web, ver, editar y eliminar lo que ya está en ella. Ocultar necesita los dos repositorios y se detiene en el primer paso, sin cambiar nada. Si solo puede leer, avisa de que falta «Contents: Read and write».
+Si el token no tiene acceso a `campeonatos-borradores` o a `programas-domino`, al guardarlo la página avisa de cuál falta («Repository access»); la lista de borradores y la sección «Archivos» lo repiten y el resto de la página sigue funcionando: se puede subir a la web, ver, editar y eliminar lo que ya está en ella. Ocultar necesita los dos repositorios y se detiene en el primer paso, sin cambiar nada. Si solo puede leer, avisa de que falta «Contents: Read and write».
 
 ### La sección «Archivos» (programas-domino)
 
@@ -135,8 +135,8 @@ Sirve para descargar lo que hay en `programas-domino/entregables/` sin entrar en
 
 Conviene hacerlo antes de que caduque, o si cambia el equipo de la mesa.
 
-1. En GitHub: Settings, Developer settings, Personal access tokens, Fine-grained tokens. Crea uno nuevo con el alcance de arriba (los dos repositorios) y una caducidad nueva, o usa «Regenerate token» en el existente.
-2. En `publicar.html`, pulsa «Quitar el token», pega el nuevo y pulsa «Guardar y comprobar». La página comprueba los dos repositorios.
+1. En GitHub: Settings, Developer settings, Personal access tokens, Fine-grained tokens. Crea uno nuevo con el alcance de arriba (los tres repositorios) y una caducidad nueva, o usa «Regenerate token» en el existente.
+2. En `publicar.html`, pulsa «Quitar el token», pega el nuevo y pulsa «Guardar y comprobar». La página comprueba los tres repositorios.
 3. Borra el token antiguo en la misma pantalla de GitHub.
 4. Anota la nueva fecha de caducidad en esta página y en la guía.
 
