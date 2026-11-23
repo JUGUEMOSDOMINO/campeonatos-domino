@@ -118,6 +118,24 @@ const lee = (md) => Ar.leerDescargas(md).map((f) => `${f.categoria} | ${f.ruta}`
     assert.deepStrictEqual(Ar.agrupar([]), []);
   });
 
+  console.log('Fecha al segundo en hora de Madrid');
+  await ok('fechaHora: invierno (+1) y verano (+2), con el cambio de hora y medianoche', () => {
+    assert.strictEqual(Ar.fechaHora('2026-11-23T14:05:09Z'), '23/11/2026 15:05:09');
+    assert.strictEqual(Ar.fechaHora('2026-07-15T21:59:59Z'), '15/07/2026 23:59:59');
+    assert.strictEqual(Ar.fechaHora('2026-03-29T00:59:59Z'), '29/03/2026 01:59:59');   // último segundo antes del cambio
+    assert.strictEqual(Ar.fechaHora('2026-03-29T01:00:00Z'), '29/03/2026 03:00:00');   // se salta la hora 02
+    assert.strictEqual(Ar.fechaHora('2026-10-25T00:30:00Z'), '25/10/2026 02:30:00');   // aún verano
+    assert.strictEqual(Ar.fechaHora('2026-10-25T01:30:00Z'), '25/10/2026 02:30:00');   // ya invierno: la hora 02 se repite
+    assert.strictEqual(Ar.fechaHora('2026-12-31T23:00:00Z'), '01/01/2027 00:00:00');   // medianoche: hh nunca es 24
+    assert.strictEqual(Ar.fechaHora('2026-11-23T14:05:09.000+00:00'), '23/11/2026 15:05:09');
+  });
+  await ok('fechaHora: lo que no es una fecha da texto vacío', () => { for (const x of ['', null, undefined, 'ayer', '2026-13-45T00:00:00Z', '2026-11-23']) assert.strictEqual(Ar.fechaHora(x), '', String(x)); });
+  await ok('agrupar: con la fecha del commit ordena por ella al segundo (no por la columna de DESCARGAS.md); sin ella, por esa columna', () => {
+    const f = (ruta, fecha, commit) => ({ ruta, descripcion: 'x', fecha, categoria: 'Ranking FVD', commit });
+    const g = Ar.agrupar([f('a/R.xlsx', '2026-11-30', '2026-11-23T08:09:05Z'), f('b/R.xlsx', '2026-01-01', '2026-11-23T08:09:07Z'), f('c', '2026-11-25', null), f('d', '2026-11-01', null)]);
+    assert.deepStrictEqual(g[0].filas.map((x) => x.ruta), ['c', 'b/R.xlsx', 'a/R.xlsx', 'd']);
+  });
+
   console.log('Copia de leer_pdf.js');
   await ok('assets/leerpdf.js es idéntico a tools/ranking/leer_pdf.js de programas-domino (si está al lado): si uno cambia, hay que copiarlo al otro', () => {
     const fs = require('fs'), path = require('path');
@@ -160,6 +178,62 @@ const lee = (md) => Ar.leerDescargas(md).map((f) => `${f.categoria} | ${f.ruta}`
       assert.ok(/solo se escribe|no permitida/i.test(await prueba('prog', r, 'PUT')), r);
     for (const r of ['/contents/entregables/del_arbitro/torneos/Lista.xlsx', '/contents/entregables/DESCARGAS.md']) assert.ok(/solo se escribe|no permitida/i.test(await prueba('prog', r, 'DELETE')), 'DELETE ' + r);
     assert.ok(/no permitida/i.test(await prueba('prog', '', 'PUT')));
+  });
+  await ok('fechasEntregables: una sola petición POST a /graphql, rutas como variables, solo rutas de entregables/, y un fallo no lanza', async () => {
+    llamadas = []; const cuerpos = [];
+    global.fetch = async (u, o) => { llamadas.push([String(u), (o && o.method) || 'GET']); cuerpos.push(JSON.parse(o.body)); return { ok: true, status: 200, json: async () => ({ data: { repository: { ref: { target: { f0: { nodes: [{ committedDate: '2026-11-23T08:09:05Z' }] }, f1: { nodes: [] } } } } } }) }; };
+    const r = await M.fechasEntregables(['ranking/a.xlsx', 'x/b.xlsx', '../src/secreto.xlsx', 'a%2Fb', 'ranking/a.xlsx']);
+    assert.deepStrictEqual(llamadas, [['https://api.github.com/graphql', 'POST']]);
+    assert.deepStrictEqual(cuerpos[0].variables, { p0: 'entregables/ranking/a.xlsx', p1: 'entregables/x/b.xlsx' });
+    assert.ok(!/entregables\//.test(cuerpos[0].query));
+    assert.deepStrictEqual([...r], [['ranking/a.xlsx', '2026-11-23T08:09:05Z']]);
+    const muchas = Array.from({ length: 120 }, (_, i) => `d/${i}.xlsx`); llamadas = [];
+    await M.fechasEntregables(muchas);
+    assert.strictEqual(llamadas.length, 3); // 50 + 50 + 20
+    global.fetch = async () => ({ ok: false, status: 502, json: async () => ({}) });
+    assert.deepStrictEqual([...await M.fechasEntregables(['a/b'])], []);
+    global.fetch = async () => { throw new Error('sin red'); };
+    assert.deepStrictEqual([...await M.fechasEntregables(['a/b'])], []);
+    global.fetch = async () => ({ ok: false, status: 401, json: async () => ({}) });
+    await assert.rejects(M.fechasEntregables(['a/b']), (e) => e.estado === 401);
+    M.token.usar('ghp_PRUEBA');
+    global.fetch = async (u, o) => { llamadas.push([String(u), (o && o.method) || 'GET']); return { ok: true, status: 200, json: async () => ({}) }; };
+  });
+  await ok('GraphQL no se abre a nada más: ni en los demás repositorios ni con GET ni con otra consulta cualquiera', async () => {
+    llamadas = [];
+    for (const [c, m] of [['web', 'POST'], ['borr', 'POST'], ['prog', 'GET'], ['prog', 'PUT']]) assert.ok(/no permitida/i.test(await prueba(c, '@graphql', m)), c + m);
+    assert.deepStrictEqual(llamadas, []);
+  });
+  await ok('GraphQL cerrado: desde fuera la marca no sirve (ni la cadena ni una mutation); la consulta se valida antes de enviar; nada sale a la red', async () => {
+    llamadas = [];
+    const mut = JSON.stringify({ query: 'mutation{createCommitOnBranch(input:{}){commit{oid}}}', variables: {} });
+    for (const marca of ['@graphql', '/graphql', Symbol('graphql')])
+      for (const c of ['prog', 'web', 'borr']) { const e = await M.llamar(c, marca, { method: 'POST', body: mut }).then(() => 'pasó', (x) => x.message); assert.ok(/no permitida/i.test(e), String(marca) + c + ' ' + e); }
+    assert.deepStrictEqual(llamadas, []);
+    // El validador (lo que corre dentro de llamar antes del fetch): solo vale lo que genera fechasEntregables.
+    let capt = null; global.fetch = async (u, o) => { capt = JSON.parse(o.body); return { ok: true, status: 200, json: async () => ({}) }; };
+    await M.fechasEntregables(['ranking/a.xlsx', 'x/b.xlsx']);
+    assert.ok(capt && M.graphqlPermitido(capt) && M.graphqlPermitido(JSON.stringify(capt)));
+    const malo = (o) => assert.strictEqual(M.graphqlPermitido(o), false, JSON.stringify(o).slice(0, 120));
+    malo({ query: 'mutation{createCommitOnBranch(input:{}){commit{oid}}}', variables: { p0: 'entregables/a' } });
+    malo({ query: capt.query.replace('query(', 'mutation('), variables: capt.variables });
+    malo({ query: capt.query + ' mutation{x}', variables: capt.variables });
+    malo({ query: capt.query + ' subscription{x}', variables: capt.variables });
+    malo({ query: capt.query.replace('first:1', 'first:100'), variables: capt.variables });
+    malo({ query: capt.query.replace('committedDate', 'author{email}'), variables: capt.variables });
+    malo({ query: capt.query.replace('programas-domino', 'otro-repo'), variables: capt.variables });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 'src/normativa.pdf' } });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 'entregables/../src/x' } });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 7 } });
+    malo({ query: capt.query, variables: { p0: 'entregables/a' } });
+    malo({ query: capt.query, variables: capt.variables, extra: 1 });
+    malo({ query: capt.query, variables: { p0: 'entregables/a', p1: 'entregables/b', p2: 'entregables/c' } });
+    malo({ query: capt.query, variables: {} }); malo('no es json'); malo(null);
+    // fechasEntregables nunca deja pasar una ruta fuera de entregables/: no sale ninguna petición
+    llamadas = []; global.fetch = async (u, o) => { llamadas.push(String(u)); return { ok: true, status: 200, json: async () => ({}) }; };
+    await M.fechasEntregables(['../src/x.xlsx', 'a%2Fb', 'a\\b', '']);
+    assert.deepStrictEqual(llamadas, []);
+    global.fetch = async (u, o) => { llamadas.push([String(u), (o && o.method) || 'GET']); return { ok: true, status: 200, json: async () => ({}) }; };
   });
   await ok('el token solo va a api.github.com y a /repos/JUGUEMOSDOMINO/programas-domino', async () => {
     llamadas = [];

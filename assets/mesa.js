@@ -2,7 +2,7 @@
    Reglas (SECURITY.md): el token solo viaja al servidor de la API de GitHub; solo se toca campeonatos-domino, campeonatos-borradores y, para la sección
    «Archivos», programas-domino (privado) en entregables/. En campeonatos-domino y borradores solo se escribe en datos/indice.json, datos/clave.json y
    datos/<id>/(jornada_NN|actual).json o normativa.pdf.cifrado, con id validado. En programas-domino solo se lee entregables/ y solo se escribe
-   entregables/del_arbitro/<archivo> y entregables/DESCARGAS.md; no se borra nada.
+   entregables/del_arbitro/<archivo> y entregables/DESCARGAS.md; no se borra nada. Única consulta GraphQL: las fechas de los commits de entregables/ (fechasEntregables).
    Todo lo que va a campeonatos-domino (público) sale cifrado con la contraseña de la web (assets/cifra.js); los borradores, en claro. */
 (function (raiz) {
   'use strict';
@@ -22,6 +22,8 @@
   // Las carpetas de categoría son las de Archivos.carpetaDe(CATEGORIAS_SUBIR) (assets/archivos.js); «mantenimiento» no está: no se sube ahí. probar_archivos.cjs vigila que coincidan.
   const PROG_ESCRIBIR = /^entregables\/(del_arbitro\/(programas-de-campeonato|ranking-fvd|rankings-publicados|torneos|manuales-y-guias|otros)\/(?!\.{1,2}$)[^/\\?#%]+|DESCARGAS\.md)$/;
   const ARBOL_OK = '/git/trees/main?recursive=1';
+  const GRAFQL = Symbol('graphql'); // marca privada (no sale de este archivo): la única consulta GraphQL permitida (fechas de los archivos de programas-domino), por POST a /graphql
+  const POR_CONSULTA = 50;   // rutas por consulta GraphQL
   const BLOB_OK = /^\/git\/blobs\/[0-9a-f]{40}$/; // archivos de más de 1 MB: la API de contenidos no trae el contenido
   const ARCHIVO_DATOS = /^(jornada_\d{2}|actual)\.json$/;
   const NORMATIVA = 'normativa.pdf.cifrado', CLAVE_JSON = 'datos/clave.json';
@@ -44,12 +46,23 @@
     prog: 'Con este token no se puede usar el repositorio programas-domino. En GitHub, edita el token y, en «Repository access», añade programas-domino; en «Permissions», deja «Contents: Read and write». Esta página no pide ni guarda ningún otro token.',
     borr: 'Con este token no se puede usar el repositorio campeonatos-borradores. En GitHub, edita el token y, en «Repository access», añade campeonatos-borradores; en «Permissions», deja «Contents: Read and write».',
   };
+  // La consulta de fechas, siempre igual: solo lee history(first:1, path:$pN){nodes{committedDate}} de la rama main de programas-domino. N es el número de rutas.
+  const consultaFechas = (n) => { const k = Array.from({ length: n }, (_, i) => i); return `query(${k.map((i) => `$p${i}:String!`).join(',')}){repository(owner:"${DUENO}",name:"${REPOS.prog}"){ref(qualifiedName:"refs/heads/${RAMA}"){target{...on Commit{${k.map((i) => `f${i}:history(first:1,path:$p${i}){nodes{committedDate}}`).join(' ')}}}}}}`; };
+  // ¿Es este cuerpo exactamente la consulta de fechas, con solo rutas de entregables/ como variables? Nada de mutaciones ni de otra consulta.
+  function graphqlPermitido(cuerpo) {
+    let c; try { c = typeof cuerpo === 'string' ? JSON.parse(cuerpo) : cuerpo; } catch (e) { return false; }
+    if (!c || typeof c !== 'object' || Object.keys(c).sort().join() !== 'query,variables' || typeof c.query !== 'string' || !c.variables || typeof c.variables !== 'object') return false;
+    const n = Object.keys(c.variables).length;
+    if (n < 1 || n > POR_CONSULTA || /mutation|subscription/i.test(c.query) || !c.query.startsWith('query(') || c.query !== consultaFechas(n)) return false;
+    return Array.from({ length: n }, (_, i) => c.variables['p' + i]).every((v) => typeof v === 'string' && v.startsWith('entregables/') && PROG_LEER.test(v) && v !== 'entregables/');
+  }
   // Único punto por el que sale el token. `sufijo` es '' (el repositorio) o '/contents/<ruta>' con ruta permitida.
   async function llamar(clave, sufijo, opciones) {
     const nombre = Object.prototype.hasOwnProperty.call(REPOS, clave) ? REPOS[clave] : null; // «__proto__» o «constructor» no son repositorios
     if (!nombre) throw new ErrorGH(0, 'Repositorio no permitido: ' + clave);
     const metodo = (opciones && opciones.method) || 'GET';
-    if (sufijo && !BLOB_OK.test(sufijo) && !(clave === 'prog' && sufijo === ARBOL_OK)) {
+    if ((typeof sufijo !== 'string' && sufijo !== GRAFQL) || sufijo === '@graphql' || (sufijo === GRAFQL && (clave !== 'prog' || metodo !== 'POST' || !graphqlPermitido(opciones && opciones.body)))) throw new ErrorGH(0, 'Operación no permitida: GraphQL');
+    if (sufijo && sufijo !== GRAFQL && !BLOB_OK.test(sufijo) && !(clave === 'prog' && sufijo === ARBOL_OK)) {
       const ruta = sufijo.replace(/^\/contents\//, '');
       const limpia = quitarQuery(ruta);
       const decodificada = (() => { try { return decodeURIComponent(limpia); } catch (e) { return '%'; } })();
@@ -57,13 +70,13 @@
       if (!sufijo.startsWith('/contents/') || !permitida) throw new ErrorGH(0, 'Ruta no permitida: ' + sufijo);
       if (clave === 'prog' && metodo !== 'GET' && (metodo !== 'PUT' || !PROG_ESCRIBIR.test(decodificada))) throw new ErrorGH(0, 'En programas-domino solo se escribe en entregables/del_arbitro/<categoría>/ y entregables/DESCARGAS.md: ' + sufijo);
     }
-    if (clave === 'prog' && metodo !== 'GET' && !(sufijo || '').startsWith('/contents/')) throw new ErrorGH(0, 'Operación no permitida en programas-domino.');
+    if (clave === 'prog' && metodo !== 'GET' && sufijo !== GRAFQL && !(sufijo || '').startsWith('/contents/')) throw new ErrorGH(0, 'Operación no permitida en programas-domino.');
     const t = token.obtener();
     if (!t) throw new ErrorGH(401, 'Falta el token de GitHub. Pégalo en el paso 1.', clave);
-    const ruta = `/repos/${DUENO}/${nombre}${sufijo}`;
+    const ruta = sufijo === GRAFQL ? '/graphql' : `/repos/${DUENO}/${nombre}${sufijo}`;
     const destino = API + ruta;
     let ok = false;
-    try { ok = new URL(destino).origin === API && ruta.startsWith(`/repos/${DUENO}/${nombre}`); } catch (e) { /* ok sigue en false */ }
+    try { ok = new URL(destino).origin === API && (ruta === '/graphql' || ruta.startsWith(`/repos/${DUENO}/${nombre}`)); } catch (e) { /* ok sigue en false */ }
     if (!ok) throw new ErrorGH(0, 'Dirección no permitida: el token solo se envía a GitHub.', clave);
     let r;
     try {
@@ -99,6 +112,26 @@
       if (!r || typeof r.content !== 'string') throw new ErrorGH(0, 'GitHub no ha devuelto el contenido de ' + ruta, clave);
       return { sha: r.sha, texto: new TextDecoder().decode(bytesDe(r.content)) };
     } catch (e) { if (noEncontrado(e)) return null; throw e; } // 404 de un archivo = no existe; el del repositorio entero se distingue antes con acceso()
+  }
+
+  /* Fecha del último commit que tocó cada archivo de programas-domino/entregables/: Map(ruta relativa a entregables/ → fecha ISO en UTC).
+     Una consulta GraphQL por cada 50 rutas, con un alias por ruta (history(first:1, path:…)); las rutas van como variables, nunca pegadas en el texto.
+     Si una consulta falla, esas rutas quedan fuera del Map (quien llama enseña «fecha no disponible»); no lanza nada salvo el 401 (token malo). */
+  async function fechasEntregables(rutas) {
+    const out = new Map();
+    const validas = [...new Set(rutas)].filter((r) => typeof r === 'string' && PROG_LEER.test('entregables/' + r));
+    for (let i = 0; i < validas.length; i += POR_CONSULTA) {
+      const lote = validas.slice(i, i + POR_CONSULTA);
+      const consulta = consultaFechas(lote.length);
+      const variables = Object.fromEntries(lote.map((r, k) => ['p' + k, 'entregables/' + r]));
+      try {
+        const r = await llamar('prog', GRAFQL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: consulta, variables }) });
+        const t = r && r.data && r.data.repository && r.data.repository.ref && r.data.repository.ref.target;
+        if (!t) continue;
+        lote.forEach((ruta, k) => { const n = t['f' + k] && t['f' + k].nodes && t['f' + k].nodes[0]; if (n && /^\d{4}-\d{2}-\d{2}T/.test(n.committedDate || '')) out.set(ruta, n.committedDate); });
+      } catch (e) { if (e.estado === 401) throw e; }
+    }
+    return out;
   }
 
   /* ---------- contraseña de la web ---------- */
@@ -432,7 +465,7 @@
     return (dirs || []).filter((x) => x.type === 'dir' && ID_OK.test(x.name) && !entradaDe(indice, x.name)).map((x) => x.name);
   }
 
-  const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
+  const Mesa = { REPOS, AUTOR, ID_OK, RUTA_OK, MAX_PDF, token, ErrorGH, llamar, graphqlPermitido, fechasEntregables, acceso, leer, listar, escribir, borrar, poner, quitar, archivosDe, leerTorneo, entradaDe,
     rutaCopia, shaEntregable, planCopia, rankingDeEntregables, planPublicarBorrador, planOcultar, planEliminar, planEditar, validarEdicion, ejecutar, restosWeb, ahora,
     estadoClave, abrirClave, olvidarClave, planRecifrar, planCifrarPublicado, empezarCambio, planNormativa, planQuitarNormativa, get pendiente() { return CL.pendiente; }, get claveAbierta() { return !!CL.clave; }, get claveJson() { return CL.cj; } };
   if (typeof module !== 'undefined' && module.exports) module.exports = Mesa; else raiz.Mesa = Mesa;

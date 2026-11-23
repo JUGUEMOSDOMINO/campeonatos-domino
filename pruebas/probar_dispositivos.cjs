@@ -248,13 +248,23 @@ function llegaAPuntC() {
       '## Mantenimiento', '', '| Archivo | Qué es | Fecha |', '|---|---|---|', '| `web/hacer_capturas_mesa.cjs` | Programa que hace las capturas de la mesa de control para el manual. Solo lo usa quien mantiene la web. | 2026-11-22 |', ''].join('\n'));
     api.poner('prog', `entregables/del_arbitro/programas-de-campeonato/${NL}`, Buffer.from('x')); api.poner('prog', 'entregables/ranking/leer_torneo.html', '<html></html>'); api.poner('prog', 'entregables/web/hacer_capturas_mesa.cjs', 'x');
     await pg.goto(`${base}/publicar.html`);
-    await pg.waitForSelector('#lista-web');
+    await pg.waitForSelector('#lista-web', { state: 'attached' });
     await mira('mesa · sin token');
     await pg.fill('#token', TOKEN); await pg.click('text=Guardar y comprobar'); await pg.waitForSelector('text=Hay un token guardado');
-    await pg.waitForSelector('#lista-web[data-listo]'); await pg.waitForSelector('#lista-borr[data-listo]');
+    await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' });
+    await mira('mesa · listas plegadas');
+    {
+      const t = await pg.$$eval('#plegable-web > summary, #plegable-borr > summary', (l) => l.map((x) => ({ t: x.textContent.trim(), ok: x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().height >= 40 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));
+      if (t.length !== 2 || t.some((x) => !/^(En la web|Borradores) \(\d+\)$/.test(x.t) || !x.ok)) throw new Error('mesa · listas plegadas: los títulos no se leen enteros o son pequeños para el dedo: ' + JSON.stringify(t));
+    }
+    await pg.evaluate(() => document.querySelectorAll('#plegable-web, #plegable-borr').forEach((d) => { d.open = true; }));
     await mira('mesa · listas');
     await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo');
     await mira('mesa · archivos');
+    {
+      const f = await pg.$$eval('#archivos-lista li.archivo .archivo-fecha', (l) => l.map((x) => ({ t: x.textContent, ok: x.getBoundingClientRect().width > 0 && x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));
+      if (!f.length || f.some((x) => !/^Actualizado: \d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}$/.test(x.t) || !x.ok)) throw new Error('mesa · archivos: la fecha no se lee entera: ' + JSON.stringify(f));
+    }
     await pg.click('#archivos-lista summary:has-text("Mantenimiento")'); await mira('mesa · archivos con Mantenimiento abierta');
     await pg.click('#archivos-lista summary:has-text("Ranking FVD")'); await mira('mesa · archivos con una categoría cerrada');
     await pg.setInputFiles('#archivo', { name: NL, mimeType: 'application/octet-stream', buffer: Buffer.from('y') });     // un archivo de ningún tipo conocido, con un nombre larguísimo
