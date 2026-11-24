@@ -1,0 +1,53 @@
+name: Pruebas
+# Sin secretos. Ejecuta todas las pruebas/probar_*.cjs (salvo probar_excel_real, que pide un Excel) contra un servidor local.
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pruebas-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/workflows/pruebas.yml
+      - name: Instalar openpyxl, reportlab, fuentes y Playwright (Chromium)
+        run: |
+          pip install openpyxl reportlab
+          sudo apt-get update -qq && sudo apt-get install -y -qq fonts-liberation
+          mkdir -p "$RUNNER_TEMP/pw" && cd "$RUNNER_TEMP/pw" && npm init -y >/dev/null && npm i playwright >/dev/null
+          npx playwright install --with-deps chromium
+      - name: Servidor local
+        run: |
+          nohup python3 -m http.server 8765 >"$RUNNER_TEMP/servidor.log" 2>&1 &
+          for i in $(seq 20); do curl -fs http://localhost:8765/index.html >/dev/null && exit 0; sleep 0.5; done
+          echo "::error::El servidor local no arranca"; exit 1
+      - name: Pruebas (todas; dice cuáles fallan)
+        env:
+          NODE_PATH: ${{ runner.temp }}/pw/node_modules
+        run: |
+          fallos=""
+          for f in pruebas/probar_*.cjs; do
+            [ "$f" = "pruebas/probar_excel_real.cjs" ] && continue
+            echo "::group::$f"
+            if node "$f" >"$RUNNER_TEMP/salida.txt" 2>&1; then cat "$RUNNER_TEMP/salida.txt"; echo "::endgroup::"
+            else cat "$RUNNER_TEMP/salida.txt"; echo "::endgroup::"; echo "::error::FALLA: $f"
+              { echo "----- $f: últimas líneas -----"; tail -25 "$RUNNER_TEMP/salida.txt"; } >>"$RUNNER_TEMP/resumen.txt"; fallos="$fallos\n  - $f"; fi
+          done
+          [ -f "$RUNNER_TEMP/resumen.txt" ] && cat "$RUNNER_TEMP/resumen.txt"
+          if [ -n "$fallos" ]; then printf "::error::Pruebas que fallan:$fallos\n"; exit 1; fi
+          echo "Todas las pruebas en verde."
