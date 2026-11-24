@@ -252,6 +252,17 @@ function llegaAPuntC() {
     await mira('mesa · sin token');
     await pg.fill('#token', TOKEN); await pg.click('text=Guardar y comprobar'); await pg.waitForSelector('text=Hay un token guardado');
     await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' });
+    {
+      // la ventana de espera, con una carga lenta: se ve entera en todos los tamaños y el resto de la página no responde
+      await ctx.route('https://api.github.com/repos/JUGUEMOSDOMINO/campeonatos-borradores/contents/datos/indice.json*', async (r) => { await new Promise((x) => setTimeout(x, 2500)); await r.fallback(); });
+      await pg.click('#actualizar');
+      await pg.waitForFunction(() => { const v = document.querySelector('.espera'); return v && !v.hidden; });
+      const dato = await pg.evaluate(() => { const iw = document.documentElement.clientWidth, ih = document.documentElement.clientHeight, c = document.querySelector('.espera-caja').getBoundingClientRect(), f = document.querySelector('.ficha-espera').getBoundingClientRect(), t = document.querySelector('#espera-frase');
+        return { dentro: c.left >= 0 && c.right <= iw && c.top >= 0 && c.bottom <= ih && f.left >= c.left - 1 && f.right <= c.right + 1, texto: t.scrollWidth <= t.clientWidth + 1 && t.getBoundingClientRect().right <= iw, bloqueado: document.querySelector('main').hasAttribute('inert') }; });
+      if (!dato.dentro || !dato.texto || !dato.bloqueado) throw new Error('mesa · ventana de espera no se ve entera o no bloquea: ' + JSON.stringify(dato));
+      await mira('mesa · ventana de espera');
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+    }
     await mira('mesa · listas plegadas');
     {
       const t = await pg.$$eval('#plegable-web > summary, #plegable-borr > summary', (l) => l.map((x) => ({ t: x.querySelector('.cat-nombre').textContent + ' | ' + x.querySelector('.cat-n').textContent, ok: x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().height >= 40 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));
@@ -259,7 +270,7 @@ function llegaAPuntC() {
     }
     await pg.evaluate(() => document.querySelectorAll('#plegable-web, #plegable-borr').forEach((d) => { d.open = true; }));
     await mira('mesa · listas');
-    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' });
+    await pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' });
     if ((await pg.$$eval('#archivos-lista details.categoria', (l) => l.filter((d) => d.open).length)) !== 0) throw new Error('mesa · archivos: tras «Ver los archivos» alguna categoría sale abierta');
     await mira('mesa · archivos plegadas');
     // El separador del recuento queda a la misma x en todas las filas (categorías de Archivos y plegables del paso 3), plegadas y abiertas, en pantallas de 768 px o más; en móvil, nada cortado (lo vigila mira).
