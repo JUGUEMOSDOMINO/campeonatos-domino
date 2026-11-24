@@ -927,17 +927,25 @@
     return mapaTorneos;
   }
 
-   function coincideJugador(pt, palabras) {
+     function coincideJugador(pt, palabras) {
+    const partesCorto = norm(pt.corto || '').split(/\s*[/\-]\s*/).filter(Boolean);
     const textos = [
       norm(`${pt.j1_nombre || ''} ${pt.j1_apellido1 || ''} ${pt.j1_apellido2 || ''}`),
       norm(`${pt.j2_nombre || ''} ${pt.j2_apellido1 || ''} ${pt.j2_apellido2 || ''}`),
-      norm(pt.corto || '')
+      ...partesCorto
     ].filter(Boolean);
+
+    // 1. Coincidencia exacta de todas las palabras (nombre + apellido, sin tildes)
     if (textos.some((txt) => palabras.every((w) => txt.includes(w)))) return true;
+
+    // 2. Si viene abreviado (ej. "D. VALCARCEL" o "DA. VALCARCEL"): apellido + inicial del nombre
+    const nombre = palabras || '';
     const ap = palabras.slice(1).join(' ');
-    if (ap.length >= 5) {
-      const re = new RegExp(`(^|[^a-z0-9])${ap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
-      return textos.some((txt) => re.test(txt));
+    if (nombre && ap.length >= 4) {
+      const escAp = ap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const reAp = new RegExp(`(^|[^a-z0-9])${escAp}([^a-z0-9]|$)`);
+      const reIni = new RegExp(`(^|[^a-z0-9])${nombre.slice(0, 2)}|(^|[^a-z0-9])${nombre}\\.?\\s`);
+      return textos.some((txt) => reAp.test(txt) && reIni.test(txt));
     }
     return false;
   }
