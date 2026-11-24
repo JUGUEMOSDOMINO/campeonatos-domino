@@ -140,9 +140,9 @@
 
   /* ---------- paso 3: lista de campeonatos ---------- */
   const marcarListo = (id) => { $(id).dataset.listo = '1'; };
-  // El título de cada lista plegable lleva el número también plegada: «En la web (5)». n: número, '…' mientras carga, null sin número.
-  const NOMBRE_LISTA = { web: 'En la web', borr: 'Borradores' };
-  const titular = (clave, n, falla) => { $('#titulo-' + clave).textContent = falla ? `${NOMBRE_LISTA[clave]}: no se pudo cargar` : n == null ? NOMBRE_LISTA[clave] : `${NOMBRE_LISTA[clave]} (${n})`; };
+  // El recuadro de la derecha de cada lista plegable lleva el recuento en palabras, también plegada: «6 campeonatos», «1 borrador». n: número, '…' mientras carga, null sin token.
+  const PALABRAS = { web: ['campeonato', 'campeonatos'], borr: ['borrador', 'borradores'] };
+  const titular = (clave, n, falla) => { $('#recuento-' + clave).textContent = falla ? 'no se pudo cargar' : n == null ? 'sin token' : n === '…' ? '…' : `${n} ${PALABRAS[clave][n === 1 ? 0 : 1]}`; };
   const desplegar = (clave) => { $('#plegable-' + clave).open = true; }; // tras guardar o publicar: la lista se abre y se ve lo nuevo
   function limpiarListas() {
     for (const id of ['#lista-web', '#lista-borr']) { poner($(id), el('p', { class: 'nota' }, 'Pega el token en el paso 1 para ver la lista.')); marcarListo(id); }

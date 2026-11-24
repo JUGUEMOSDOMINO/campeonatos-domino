@@ -9,21 +9,21 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Mesa de control · Campeonatos de dominó</title>
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns=%27http://www.w3.org/2000/svg%27%20viewBox=%270%200%2018%2032%27%3E%3Crect%20x=%271%27%20y=%271%27%20width=%2716%27%20height=%2730%27%20rx=%274%27%20fill=%27%230c3a38%27/%3E%3Cpath%20d=%27M1%2016h16%27%20stroke=%27%23fff%27%20stroke-width=%271.6%27/%3E%3Ccircle%20cx=%279%27%20cy=%278.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2719.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%279%27%20cy=%2723.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%275.3%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3Ccircle%20cx=%2712.7%27%20cy=%2727.5%27%20r=%271.7%27%20fill=%27%23fff%27/%3E%3C/svg%3E">
-<link rel="stylesheet" href="assets/estilo.css?v=20261124w2">
-<script src="assets/xlsx.mini.min.js?v=20261123w28" defer></script>
-<script src="assets/contrato.js?v=20261123w28" defer></script>
-<script src="assets/ranking.js?v=20261123w28" defer></script>
-<script src="assets/resumen.js?v=20261123w28" defer></script>
-<script src="assets/clasifpdf.js?v=20261123w28" defer></script>
-<script src="assets/clasifaccess.js?v=20261123w28" defer></script>
-<script src="assets/leerpdf.js?v=20261123w28" defer></script>
-<script src="assets/partidas.js?v=20261123w28" defer></script>
-<script src="assets/palabras.js?v=20261123w28" defer></script>
-<script src="assets/cifra.js?v=20261123w28" defer></script>
-<script src="assets/mesa.js?v=20261123w28" defer></script>
-<script src="assets/web.js?v=20261123w28" defer></script>
-<script src="assets/archivos.js?v=20261123w28" defer></script>
-<script src="assets/publicar.js?v=20261123w28" defer></script>
+<link rel="stylesheet" href="assets/estilo.css?v=20261124w3">
+<script src="assets/xlsx.mini.min.js?v=20261123w31" defer></script>
+<script src="assets/contrato.js?v=20261123w31" defer></script>
+<script src="assets/ranking.js?v=20261123w31" defer></script>
+<script src="assets/resumen.js?v=20261123w31" defer></script>
+<script src="assets/clasifpdf.js?v=20261123w31" defer></script>
+<script src="assets/clasifaccess.js?v=20261123w31" defer></script>
+<script src="assets/leerpdf.js?v=20261123w31" defer></script>
+<script src="assets/partidas.js?v=20261123w31" defer></script>
+<script src="assets/palabras.js?v=20261123w31" defer></script>
+<script src="assets/cifra.js?v=20261123w31" defer></script>
+<script src="assets/mesa.js?v=20261123w31" defer></script>
+<script src="assets/web.js?v=20261123w31" defer></script>
+<script src="assets/archivos.js?v=20261123w31" defer></script>
+<script src="assets/publicar.js?v=20261123w31" defer></script>
 </head>
 <body data-pagina="publicar">
 <header class="barra"><div class="barra-in">
@@ -51,17 +51,19 @@
     <h2 id="t-torneos">3. Campeonatos</h2>
     <div class="acciones sin-margen"><button class="boton sec" id="actualizar" type="button">Actualizar la lista</button></div>
     <div id="estado-mesa" class="nota sep-10" aria-live="polite"></div>
-    <details class="plegable" id="plegable-web">
-      <summary><span class="plegable-titulo" id="titulo-web">En la web</span></summary>
-      <p class="nota sin-margen">Lo que ve todo el mundo en la portada.</p>
-      <div id="lista-web"></div>
-    </details>
-    <div id="restos" hidden></div>
-    <details class="plegable" id="plegable-borr">
-      <summary><span class="plegable-titulo" id="titulo-borr">Borradores</span></summary>
-      <p class="nota sin-margen">Privados: solo se ven con el token, en este navegador.</p>
-      <div id="lista-borr"></div>
-    </details>
+    <div class="categorias-archivos">
+      <details class="categoria" id="plegable-web">
+        <summary><span class="cat-nombre">En la web</span><span class="cat-n" id="recuento-web">…</span></summary>
+        <p class="nota sin-margen">Lo que ve todo el mundo en la portada.</p>
+        <div id="lista-web"></div>
+      </details>
+      <div id="restos" hidden></div>
+      <details class="categoria" id="plegable-borr">
+        <summary><span class="cat-nombre">Borradores</span><span class="cat-n" id="recuento-borr">…</span></summary>
+        <p class="nota sin-margen">Privados: solo se ven con el token, en este navegador.</p>
+        <div id="lista-borr"></div>
+      </details>
+    </div>
     <pre class="registro" id="registro-mesa" hidden></pre>
     <div class="acciones" id="reintento-mesa" hidden></div>
   </section>
@@ -73,26 +75,27 @@
     <div id="lectura" aria-live="polite"></div>
   </section>
 
+  <section class="paso" id="paso-archivos" aria-labelledby="t-archivos">
+    <h2 id="t-archivos">5. Archivos para descargar</h2>
+    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que subes con «Subir archivo» (paso 4) se guarda aquí, en entregables/del_arbitro/ (una subcarpeta por categoría), y nunca en la web pública.</p>
+    <div class="acciones sin-margen"><button class="boton sec" id="archivos-ver" type="button">Ver los archivos</button></div>
+    <div id="archivos-estado" class="nota sep-10" aria-live="polite"></div>
+    <div id="archivos-lista" class="categorias-archivos"></div>
+  </section>
+
   <section class="paso" id="paso-revision" aria-labelledby="t-rev" hidden>
-    <h2 id="t-rev">5. Destino y revisión</h2>
+    <h2 id="t-rev">6. Destino y revisión</h2>
     <fieldset class="destino" id="destino"></fieldset>
     <div id="revision"></div>
   </section>
 
   <section class="paso" id="paso-publicar" aria-labelledby="t-pub" hidden>
-    <h2 id="t-pub">6. Confirmar</h2>
+    <h2 id="t-pub">7. Confirmar</h2>
     <div id="copia"></div>
     <div class="acciones"><button class="boton" id="publicar" type="button" disabled>Publicar en la web</button><button class="boton sec" id="guardar-solo" type="button" hidden>Guardar solo el archivo</button><button class="boton sec" id="cancelar" type="button">Cancelar</button><span id="pub-nota" class="nota sin-margen"></span></div>
     <pre class="registro" id="registro" hidden></pre>
     <div class="acciones" id="reintento" hidden></div>
     <p class="nota sep-10" id="resultado" hidden></p>
-  </section>
-  <section class="paso" id="paso-archivos" aria-labelledby="t-archivos">
-    <h2 id="t-archivos">Archivos para descargar</h2>
-    <p class="nota">Los programas y guías que tienes en programas-domino (privado), para descargarlos sin entrar en GitHub. Lo que subes con «Subir archivo» (paso 4) se guarda aquí, en entregables/del_arbitro/ (una subcarpeta por categoría), y nunca en la web pública.</p>
-    <div class="acciones sin-margen"><button class="boton sec" id="archivos-ver" type="button">Ver los archivos</button></div>
-    <div id="archivos-estado" class="nota sep-10" aria-live="polite"></div>
-    <div id="archivos-lista" class="categorias-archivos"></div>
   </section>
 </main>
 <footer class="pie"><div class="pie-in">

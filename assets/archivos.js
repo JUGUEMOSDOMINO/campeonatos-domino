@@ -128,7 +128,7 @@
       for (const g of agrupar(filas)) {
         const d = nodo('details', null, 'categoria'), n = g.filas.length;
         d.dataset.categoria = g.categoria;
-        d.open = E.abiertas.has(g.categoria) ? E.abiertas.get(g.categoria) : g.categoria !== 'Mantenimiento';
+        d.open = E.abiertas.has(g.categoria) ? E.abiertas.get(g.categoria) : false; // plegadas al pulsar «Ver los archivos»; lo que el árbitro abre se respeta al recargar
         const titulo = nodo('summary');
         titulo.append(nodo('span', g.categoria, 'cat-nombre'), nodo('span', `${n} ${n === 1 ? 'archivo' : 'archivos'}`, 'cat-n'));
         const ul = nodo('ul', null, 'lista-archivos');
