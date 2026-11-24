@@ -171,9 +171,7 @@
           el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado),
           tp.nombre + (t.temporada ? ' ' + t.temporada : '') + ' · ' + partes.join(' · ')))));
   }
-
   function tarjetaRanking(t) {
-      function tarjetaRanking(t) {
     const partes = [t.temporada && 'Temporada ' + t.temporada, `${t.jornada_actual} ${t.jornada_actual === 1 ? 'torneo completado' : 'torneos completados'}`, `${t.n_participantes} jugadores`].filter(Boolean);
     return el('li', null, el('a', { class: 'tarjeta', href: url('ranking.html', { r: t.id }) },
       el('div', null,
@@ -182,7 +180,6 @@
           el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado),
           partes.join(' · ')))));
   }
-
   async function portada() {
     const lista = $('#lista');
     let indice;
