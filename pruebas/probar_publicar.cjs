@@ -66,10 +66,10 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' });
     assert.deepStrictEqual(await nombres(pg, 'web'), ['sp-ejemplo']);
     assert.deepStrictEqual(await nombres(pg, 'borr'), ['parejas-ejemplo-2026-11-14']);
-    const gr = await pg.$$eval('#paso-torneos details.plegable > summary', (h) => h.map((x) => x.textContent.trim()));
-    assert.deepStrictEqual(gr, ['En la web (1)', 'Borradores (1)']);
-    bien('dos grupos: «En la web (1)» y «Borradores (1)», cada uno con sus torneos');
-    const abierto = () => pg.$$eval('#paso-torneos details.plegable', (l) => l.map((d) => d.open));
+    const gr = await pg.$$eval('#plegable-web > summary, #plegable-borr > summary', (h) => h.map((x) => x.querySelector('.cat-nombre').textContent + ' | ' + x.querySelector('.cat-n').textContent));
+    assert.deepStrictEqual(gr, ['En la web | 1 campeonato', 'Borradores | 1 borrador']);
+    bien('dos grupos: «En la web» (1 campeonato) y «Borradores» (1 borrador), cada uno con sus torneos');
+    const abierto = () => pg.$$eval('#plegable-web, #plegable-borr', (l) => l.map((d) => d.open));
     assert.deepStrictEqual(await abierto(), [false, false]);
     assert.strictEqual(await pg.isVisible('#lista-web li.torneo'), false); assert.strictEqual(await pg.isVisible('#lista-borr li.torneo'), false);
     assert.strictEqual(await pg.isVisible('#actualizar'), true);
@@ -171,41 +171,41 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
   /* ============ 2b. Paso 3: listas plegables ============ */
   {
     const listas = async (pg) => { await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' }); };
-    const titulos = (pg) => pg.$$eval('#paso-torneos details.plegable > summary', (h) => h.map((x) => x.textContent.trim()));
-    const abiertos = (pg) => pg.$$eval('#paso-torneos details.plegable', (l) => l.map((d) => d.open));
+    const titulos = (pg) => pg.$$eval('#plegable-web > summary, #plegable-borr > summary', (h) => h.map((x) => x.querySelector('.cat-nombre').textContent + ' | ' + x.querySelector('.cat-n').textContent));
+    const abiertos = (pg) => pg.$$eval('#plegable-web, #plegable-borr', (l) => l.map((d) => d.open));
     {
       const { pg, errores } = await escenario({ semilla: sembrarWeb });
       await listas(pg);
-      assert.deepStrictEqual(await titulos(pg), ['En la web (1)', 'Borradores (0)']);
+      assert.deepStrictEqual(await titulos(pg), ['En la web | 1 campeonato', 'Borradores | 0 borradores']);
       assert.deepStrictEqual(await abiertos(pg), [false, false]);
       await pg.click('#plegable-borr > summary');
       assert.strictEqual((await pg.textContent('#lista-borr')).trim(), 'No hay borradores.');
       assert.strictEqual(await pg.isVisible('#lista-borr .vacio'), true);
       assert.deepStrictEqual(await abiertos(pg), [false, true]);
       assert.strictEqual(await pg.locator('#lista-borr li').count(), 0);
-      bien('paso 3: «Borradores (0)» plegada y, al abrirla, una línea «No hay borradores»; «En la web» sigue plegada');
+      bien('paso 3: «Borradores» con «0 borradores» plegada y, al abrirla, una línea «No hay borradores»; «En la web» sigue plegada');
       assert.deepStrictEqual(errores, []);
     }
     for (const [caso, opc, preparar] of [['sin permiso sobre campeonatos-borradores', { acceso: { borr: false } }, null], ['con un error de GitHub al leer su índice', {}, (a) => { a.fallar = (m, c, r) => (c === 'borr' && r === 'datos/indice.json' ? 500 : null); }]]) {
       const { pg, api } = await escenario({ ...opc, semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
       if (preparar) preparar(api);
       await listas(pg);
-      assert.deepStrictEqual(await titulos(pg), ['En la web (1)', 'Borradores: no se pudo cargar']);
+      assert.deepStrictEqual(await titulos(pg), ['En la web | 1 campeonato', 'Borradores | no se pudo cargar']);
       assert.deepStrictEqual(await abiertos(pg), [false, false]);
       assert.strictEqual(await pg.isVisible('#lista-borr .nota'), false);
       await pg.click('#plegable-borr > summary');
       assert.strictEqual(await pg.isVisible('#lista-borr .nota.caja'), true);
       assert(/GitHub|campeonatos-borradores/.test(await pg.textContent('#lista-borr')));
       assert.strictEqual(await pg.locator('#lista-web li.torneo').count(), 1);
-      bien(`paso 3: ${caso}, el título dice «Borradores: no se pudo cargar» y el motivo se ve al desplegar; la otra lista sigue bien`);
+      bien(`paso 3: ${caso}, el recuadro dice «no se pudo cargar» y el motivo se ve al desplegar; la otra lista sigue bien`);
     }
     {
       const { ctx, pg } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
       await ctx.route('https://api.github.com/repos/JUGUEMOSDOMINO/campeonatos-borradores', async (r) => { await new Promise((x) => setTimeout(x, 1500)); await r.fallback(); });
       await pg.goto(base + '/publicar.html');
-      await pg.waitForFunction(() => document.querySelector('#titulo-web').textContent === 'En la web (…)' && document.querySelector('#titulo-borr').textContent === 'Borradores (…)');
-      await pg.waitForFunction(() => document.querySelector('#titulo-borr').textContent === 'Borradores (1)');
-      bien('paso 3: mientras carga, los títulos dicen «(…)»; luego el número');
+      await pg.waitForFunction(() => document.querySelector('#recuento-web').textContent === '…' && document.querySelector('#recuento-borr').textContent === '…');
+      await pg.waitForFunction(() => document.querySelector('#recuento-borr').textContent === '1 borrador');
+      bien('paso 3: mientras carga, los recuadros dicen «…»; luego el número');
     }
     {
       const { pg, api, errores } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); } });
@@ -215,7 +215,7 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
       assert.strictEqual(await pg.isChecked('input[name=destino][value=borr]'), true);
       assert.deepStrictEqual(await abiertos(pg), [false, false]);
       await pg.click('#publicar'); await pg.waitForSelector('text=Guardado como borrador');
-      await pg.waitForFunction(() => document.querySelector('#titulo-borr').textContent === 'Borradores (2)');
+      await pg.waitForFunction(() => document.querySelector('#recuento-borr').textContent === '2 borradores');
       assert.deepStrictEqual(await abiertos(pg), [false, true]);
       assert.strictEqual(await pg.isVisible('#lista-borr li.torneo[data-id="individual-ejemplo-2026-11-14"]'), true);
       assert.strictEqual(await pg.isVisible('#lista-web li.torneo'), false);
@@ -230,12 +230,40 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
       await pg.click('input[name=destino][value=web]');
       await pg.waitForFunction(() => document.querySelector('#publicar').textContent === 'Publicar en la web' && !document.querySelector('#publicar').disabled);
       await pg.click('#publicar'); await pg.waitForSelector('text=Publicado');
-      await pg.waitForFunction(() => document.querySelector('#titulo-web').textContent === 'En la web (2)');
+      await pg.waitForFunction(() => document.querySelector('#recuento-web').textContent === '2 campeonatos');
       assert.deepStrictEqual(await abiertos(pg), [true, false]);
       assert.strictEqual(await pg.isVisible('#lista-web li.torneo[data-id="individual-ejemplo-2026-11-14"]'), true);
       bien('paso 3: tras publicar en la web, «En la web» se despliega sola y se ve lo publicado; «Borradores» sigue plegada');
       assert.deepStrictEqual(errores, []);
     }
+  }
+
+  /* ============ 2c. Formato como las categorías de Archivos, recuento con su palabra y paso 5 ============ */
+  {
+    const { pg, errores } = await escenario({ semilla: (a) => { sembrarWeb(a); sembrar(a, 'web', 'nombres-largos'); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); a.poner('prog', 'entregables/DESCARGAS.md', '# Descargas\n\n## Otros\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `a.txt` | Una nota. | 2026-11-01 |\n'); a.poner('prog', 'entregables/a.txt', 'x'); } });
+    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' });
+    const recuadros = await pg.$$eval('#plegable-web > summary .cat-n, #plegable-borr > summary .cat-n', (l) => l.map((x) => x.textContent));
+    assert.deepStrictEqual(recuadros, ['2 campeonatos', '1 borrador']);
+    bien('paso 3: el recuento sale en su recuadro, con la palabra en plural («2 campeonatos») y en singular («1 borrador»)');
+    const clases = await pg.$$eval('#plegable-web, #plegable-borr', (l) => l.map((d) => [d.className, d.querySelector('summary').children[0].className, d.querySelector('summary').children[1].className]));
+    assert.deepStrictEqual(clases, [['categoria', 'cat-nombre', 'cat-n'], ['categoria', 'cat-nombre', 'cat-n']]);
+    await pg.setInputFiles('#archivo', xlsx('individual-ejemplo-2026-11-14')); await pg.waitForSelector('.tabla-caja');
+    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista details.categoria > summary');
+    const forma = (sel) => pg.$eval(sel, (e) => { const c = getComputedStyle(e), n = e.querySelector('.cat-n'), cn = getComputedStyle(n); return [c.borderTopWidth, c.borderRadius, c.backgroundColor, c.color, cn.borderLeftWidth, cn.fontSize, cn.borderLeftStyle, getComputedStyle(e.querySelector('.cat-nombre')).fontWeight].join(' '); });
+    for (const abierta of [false, true]) {
+      await pg.evaluate((o) => document.querySelectorAll('#plegable-web, #plegable-borr, #archivos-lista details.categoria').forEach((d) => { d.open = o; }), abierta);
+      const ref = await forma('#archivos-lista details.categoria > summary');
+      assert.strictEqual(await forma('#plegable-web > summary'), ref, 'web, abierta=' + abierta); assert.strictEqual(await forma('#plegable-borr > summary'), ref, 'borr, abierta=' + abierta);
+      const alto = (sel) => pg.$eval(sel, (e) => Math.round(e.getBoundingClientRect().height));
+      assert.strictEqual(await alto('#plegable-web > summary'), await alto('#archivos-lista details.categoria > summary'));
+    }
+    bien('paso 3: los dos plegables tienen el mismo borde, color, línea separadora y letra que las categorías de «Archivos para descargar»');
+    const h = await pg.$$eval('section.paso > h2', (l) => l.map((x) => x.textContent));
+    assert(h.includes('5. Archivos para descargar') && !h.includes('Archivos para descargar'), h.join('|'));
+    assert.deepStrictEqual(h.slice(0, 5), ['1. Conexión con GitHub', '2. Contraseña de la web', '3. Campeonatos', '4. Subir archivo', '5. Archivos para descargar']);
+    assert.strictEqual(new Set(h.map((x) => x.split('.')[0])).size, h.length);
+    bien('la sección de descargas se titula «5. Archivos para descargar», a continuación del paso 4 y sin repetir número (revisión y confirmación pasan a 6 y 7)');
+    assert.deepStrictEqual(errores, []);
   }
 
   /* ============ 3. Ver un borrador ============ */
@@ -1290,22 +1318,23 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.strictEqual(api.reqs.some((r) => /programas-domino/.test(r.ruta)), false);
     bien('archivos: al abrir la mesa no se llama a programas-domino hasta pulsar «Ver los archivos»');
     await pg.click('#archivos-ver');
-    await pg.waitForSelector('#archivos-lista li.archivo');
+    await pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' });
     const cats = await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => [d.querySelector('summary .cat-nombre').textContent, d.querySelector('summary .cat-n').textContent, d.open]));
-    assert.deepStrictEqual(cats, [['Programas de campeonato', '1 archivo', true], ['Ranking FVD', '2 archivos', true], ['Mantenimiento', '1 archivo', false]]);
-    bien('archivos: una sección por categoría, en su orden, con el número de archivos; las vacías no salen y Mantenimiento va la última y cerrada');
+    assert.deepStrictEqual(cats, [['Programas de campeonato', '1 archivo', false], ['Ranking FVD', '2 archivos', false], ['Mantenimiento', '1 archivo', false]]);
+    assert.strictEqual(await pg.locator('#archivos-lista li.archivo:visible').count(), 0);
+    bien('archivos: tras «Ver los archivos» ninguna categoría está abierta; una sección por categoría, en su orden, con el número de archivos; las vacías no salen');
     const nombresA = await pg.$$eval('#archivos-lista li.archivo .archivo-nombre', (l) => l.map((x) => x.textContent));
     assert.deepStrictEqual(nombresA, ['24_SP_sin_macros.xlsx', 'leer_torneo.html', 'Ranking_FVD_plantilla.xlsx', 'recortar.py']);
     bien('archivos: dentro de cada categoría, lo más reciente primero');
     assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("recortar.py")'), false);
     await pg.click('#archivos-lista summary:has-text("Mantenimiento")');
     assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("recortar.py")'), true);
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), false);
     await pg.click('#archivos-lista summary:has-text("Mantenimiento")');
     assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("recortar.py")'), false);
     await pg.click('#archivos-lista summary:has-text("Programas de campeonato")');
-    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), false);
-    await pg.click('#archivos-lista summary:has-text("Programas de campeonato")');
     assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("24_SP_sin_macros.xlsx")'), true);
+    await pg.click('#archivos-lista summary:has-text("Ranking FVD")');
     bien('archivos: cada categoría se abre y se cierra con un clic en su título');
     const txtA = await pg.textContent('#archivos-estado') + await pg.textContent('#archivos-lista');
     assert(txtA.includes('Página que se abre con doble clic') && txtA.includes('Actualizado: 22/11/2026 15:05:09') && txtA.includes('1,4 MB') && txtA.includes('Hay 1 archivo sin descripción'), txtA);
@@ -1340,7 +1369,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       lec.api.soloLectura.prog = true;
       await abrir(lec.pg);
       await lec.pg.click('#archivos-ver');
-      await lec.pg.waitForSelector('#archivos-lista li.archivo');
+      await lec.pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' }); await lec.pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
       assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);
       bien('archivos: con un token de solo lectura se puede descargar');
       await lec.ctx.close();
@@ -1365,7 +1394,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       const e2 = await escenario({ semilla: semilla2 });
       await abrir(e2.pg);
       await e2.pg.click('#archivos-ver');
-      await e2.pg.waitForSelector('#archivos-lista li.archivo');
+      await e2.pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' }); await e2.pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
       const fechas = await e2.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-ruta').textContent, x.querySelector('.archivo-fecha').textContent]));
       assert.deepStrictEqual(fechas, [
         ['Ranking_FVD_2026-27.xlsx', 'del_arbitro/ranking-fvd/', 'Actualizado: 23/11/2026 09:09:07'],
@@ -1390,7 +1419,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
         e3.api.fallarGraphql = fallo;
         await abrir(e3.pg);
         await e3.pg.click('#archivos-ver');
-        await e3.pg.waitForSelector('#archivos-lista li.archivo');
+        await e3.pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' }); await e3.pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
         const f3 = await e3.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-fecha').textContent]));
         assert.strictEqual(f3.length, 4);
         assert(f3.every((x) => x[1] === 'Fecha no disponible'), JSON.stringify(f3));
@@ -1481,7 +1510,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       assert.deepStrictEqual(api.enClaro, []);
       assert.deepStrictEqual(api.putsProg.map((x) => x.ruta), ['entregables/del_arbitro/torneos/Mi campeonato de ejemplo.xlsx', 'entregables/DESCARGAS.md']);
       bien('subir: al confirmar publica cifrado como antes y guarda la copia del original en programas-domino/entregables/del_arbitro/torneos/, con su línea en Torneos (descripción propuesta y editable); el Excel no va a la web');
-      await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li:has-text("Mi campeonato de ejemplo.xlsx")');
+      await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li:has-text("Mi campeonato de ejemplo.xlsx")', { state: 'attached' }); await pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
       bien('subir: la copia sale en la lista de Archivos sin recargar');
       assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []); assert.deepStrictEqual(errores, []);
       await ctx.close();

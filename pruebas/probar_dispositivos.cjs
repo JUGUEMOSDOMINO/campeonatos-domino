@@ -254,12 +254,23 @@ function llegaAPuntC() {
     await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' });
     await mira('mesa · listas plegadas');
     {
-      const t = await pg.$$eval('#plegable-web > summary, #plegable-borr > summary', (l) => l.map((x) => ({ t: x.textContent.trim(), ok: x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().height >= 40 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));
-      if (t.length !== 2 || t.some((x) => !/^(En la web|Borradores) \(\d+\)$/.test(x.t) || !x.ok)) throw new Error('mesa · listas plegadas: los títulos no se leen enteros o son pequeños para el dedo: ' + JSON.stringify(t));
+      const t = await pg.$$eval('#plegable-web > summary, #plegable-borr > summary', (l) => l.map((x) => ({ t: x.querySelector('.cat-nombre').textContent + ' | ' + x.querySelector('.cat-n').textContent, ok: x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().height >= 40 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));
+      if (t.length !== 2 || t.some((x) => !/^(En la web \| \d+ campeonatos?|Borradores \| \d+ borradores?)$/.test(x.t) || !x.ok)) throw new Error('mesa · listas plegadas: los títulos no se leen enteros o son pequeños para el dedo: ' + JSON.stringify(t));
     }
     await pg.evaluate(() => document.querySelectorAll('#plegable-web, #plegable-borr').forEach((d) => { d.open = true; }));
     await mira('mesa · listas');
-    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo');
+    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' });
+    if ((await pg.$$eval('#archivos-lista details.categoria', (l) => l.filter((d) => d.open).length)) !== 0) throw new Error('mesa · archivos: tras «Ver los archivos» alguna categoría sale abierta');
+    await mira('mesa · archivos plegadas');
+    // El separador del recuento queda a la misma x en todas las filas (categorías de Archivos y plegables del paso 3), plegadas y abiertas, en pantallas de 768 px o más; en móvil, nada cortado (lo vigila mira).
+    for (const abierta of [false, true]) {
+      await pg.evaluate((o) => document.querySelectorAll('#plegable-web, #plegable-borr, #archivos-lista details.categoria').forEach((d) => { d.open = o; }), abierta);
+      const xs = await pg.$$eval('#plegable-web > summary .cat-n, #plegable-borr > summary .cat-n, #archivos-lista summary .cat-n', (l) => l.map((x) => Math.round(x.getBoundingClientRect().left * 10) / 10));
+      if (w >= 768 && (xs.length < 5 || new Set(xs).size !== 1)) throw new Error(`mesa: el separador del recuento no está alineado (${abierta ? 'abiertas' : 'plegadas'}): ${xs.join(', ')}`);
+      await mira('mesa · recuentos ' + (abierta ? 'con todo abierto' : 'con todo plegado'));
+    }
+    await pg.evaluate(() => document.querySelectorAll('#plegable-web, #plegable-borr').forEach((d) => { d.open = true; }));
+    await pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = d.dataset.categoria !== 'Mantenimiento'; }));
     await mira('mesa · archivos');
     {
       const f = await pg.$$eval('#archivos-lista li.archivo .archivo-fecha', (l) => l.map((x) => ({ t: x.textContent, ok: x.getBoundingClientRect().width > 0 && x.scrollWidth <= x.clientWidth + 1 && x.getBoundingClientRect().right <= document.documentElement.clientWidth })));

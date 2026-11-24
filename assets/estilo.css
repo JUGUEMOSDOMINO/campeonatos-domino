@@ -458,14 +458,8 @@ table.rk { --f1: 4.2rem; --f2: 7.4rem; --f3: 5.6rem; }
   table.rk { --f2: 12rem; --f3: 6.6rem; }
 }
 
-/* Mesa de control, paso 3: las listas «En la web» y «Borradores» se pliegan. El título (con el número) se lee entero, en varias líneas si hace falta. */
-.plegable { margin-top: 14px; }
-.plegable > summary { display: flex; align-items: center; min-height: 44px; padding: 8px 14px; cursor: pointer; list-style: none; min-width: 0; border: 2px solid var(--barra); border-radius: 12px; background: var(--barra); color: var(--barra-texto); font-weight: 800; }
-.plegable > summary::-webkit-details-marker { display: none; }
-.plegable[open] > summary { background: var(--papel); color: var(--tinta); }
-.plegable-titulo { min-width: 0; overflow-wrap: anywhere; }
-.plegable[open] > summary + .nota { margin-top: 10px; }
-@media (prefers-color-scheme: dark) { .plegable > summary { border-color: var(--barra-suave); } }
+/* Mesa de control, paso 3: «En la web» y «Borradores» usan las mismas clases que las categorías de Archivos (.categoria, .cat-nombre, .cat-n). */
+.categoria > summary + .nota { margin-top: 10px; }
 /* Mesa de control: sección «Archivos» (descargar de programas-domino/entregables y subir a entregables/del_arbitro) */
 .categorias-archivos { display: grid; gap: 12px; margin-top: 8px; }
 /* Cada categoría es una ficha de dominó tumbada: el nombre en una mitad, el número de archivos en la otra, y la raya en medio.
@@ -474,7 +468,9 @@ table.rk { --f1: 4.2rem; --f2: 7.4rem; --f3: 5.6rem; }
 .categoria > summary::-webkit-details-marker { display: none; }
 .categoria[open] > summary { background: var(--papel); color: var(--tinta); }
 .cat-nombre { flex: 1 1 auto; min-width: 0; padding: 10px 14px; font-weight: 800; overflow-wrap: anywhere; }
-.cat-n { flex: none; display: flex; align-items: center; padding: 10px 14px; border-left: 2px solid currentColor; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.cat-n { flex: none; box-sizing: border-box; width: 11.5rem; display: flex; align-items: center; justify-content: center; text-align: center; padding: 10px 14px; border-left: 2px solid currentColor; font-size: .9rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* Con poco ancho el recuadro no se corta: ocupa el ancho de lo que haya y puede partir el texto. */
+@media (max-width: 480px) { .cat-n { width: auto; min-width: 6.5rem; white-space: normal; } }
 .categoria[open] > .lista-archivos { margin-top: 10px; }
 @media (prefers-color-scheme: dark) { .categoria > summary { border-color: var(--barra-suave); } }
 .lista-archivos { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 10px; }
