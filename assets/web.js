@@ -899,7 +899,7 @@
   const TEXTO_ABANDONO = 'Abandonó o fue expulsado: no puntuó en este torneo';
   const seFue = (f, k) => Array.isArray(f.abandonos) && f.abandonos.includes(k);
 
-    let mapaTorneos = null;
+  let mapaTorneos = null;
   async function obtenerMapaTorneos() {
     if (mapaTorneos) return mapaTorneos;
     mapaTorneos = new Map();
@@ -910,7 +910,10 @@
         const nx = norm(x.nombre);
         const lugar = nx.replace(/^\d+[ºª°.]*\s*/, '').trim();
         const hit = lista.find((t) => norm(t.nombre) === nx || (x.fecha && t.fecha === x.fecha) || (lugar.length >= 4 && norm(t.nombre).includes(lugar)));
-        if (hit) mapaTorneos.set(nx, hit.id);
+        if (hit) {
+          const act = await leer(`${BASE}/${hit.id}/actual.json`, true).catch(() => null);
+          mapaTorneos.set(nx, { id: hit.id, parts: (act && act.participantes) || [] });
+        }
       }
     } catch (e) { /* sin índice */ }
     return mapaTorneos;
@@ -932,8 +935,11 @@
             : 'Sin plaza')),
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
       el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => {
-        const tid = x.id || porNombre.get(norm(x.nombre));
-        const nombreEl = tid ? el('a', { href: url('torneo.html', { t: tid }) }, x.nombre) : x.nombre;
+                const info = x.id ? { id: x.id, parts: [] } : porNombre.get(norm(x.nombre));
+        const nj = norm(nombreRk(f));
+        const par = info && info.parts.find((pt) => norm(`${pt.j1_nombre} ${pt.j1_apellido1}`) === nj || norm(`${pt.j2_nombre} ${pt.j2_apellido1}`) === nj);
+        const nombreEl = info ? el('a', { href: url('torneo.html', par ? { t: info.id, ver: 'clasificacion', p: par.id } : { t: info.id }) }, x.nombre) : x.nombre;
+
         return el('li', null,
           el('span', null, nombreEl, seFue(f, k) ? el('span', { class: 'sub' }, TEXTO_ABANDONO) : null),
           el('b', null, p == null ? '—' : p));
