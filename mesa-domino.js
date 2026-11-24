@@ -1632,9 +1632,78 @@ function startNewHand() {
     dom.btnCloseRanking.addEventListener('click', () => {
         dom.rankingModal.classList.add('hidden');
     });
-
     window.addEventListener('resize', () => {
         if (state.board.length > 0) renderBoard();
     });
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'hidden') saveMatchState();
+    });
+    window.addEventListener('pagehide', saveMatchState);
+
+    (function restoreSavedMatch() {
+        try {
+            const raw = localStorage.getItem(STORAGE_MATCH_KEY);
+            if (!raw) return;
+            const s = JSON.parse(raw);
+            if (!s || !Array.isArray(s.hands) || s.hands.length !== 4) return;
+
+            setSelectedTargetScore(s.targetScore);
+            state.userName = s.userName || 'Tú';
+            state.userClub = s.userClub || '';
+            if (Array.isArray(s.botSeats) && s.botSeats.length === 4) {
+                state.botSeats = s.botSeats;
+            }
+            if (Array.isArray(s.playerNames) && s.playerNames.length === 4) {
+                PLAYER_NAMES = s.playerNames;
+            }
+
+            dom.lblUserName.textContent = state.userName;
+            dom.badgeUserName.textContent = state.userClub
+                ? `${state.userName} · ${state.userClub}`
+                : `${state.userName} (Tú)`;
+            if (dom.lblPartnerName) dom.lblPartnerName.textContent = state.botSeats.at(2);
+            if (dom.lblRivalsNames) dom.lblRivalsNames.textContent = `${state.botSeats.at(1)} & ${state.botSeats.at(3)}`;
+            for (let p = 1; p <= 3; p++) {
+                if (dom.nameLabels.at(p)) dom.nameLabels.at(p).textContent = PLAYER_NAMES.at(p);
+            }
+
+            state.scores = s.scores || { us: 0, them: 0 };
+            state.hands = s.hands;
+            state.board = s.board || [];
+            state.leftEnd = s.leftEnd;
+            state.rightEnd = s.rightEnd;
+            state.currentTurn = s.currentTurn || 0;
+            state.startingPlayer = s.startingPlayer;
+            state.isFirstHand = !!s.isFirstHand;
+            state.consecutivePasses = s.consecutivePasses || 0;
+            state.gameActive = !!s.gameActive;
+            state.revealHands = !!s.revealHands;
+
+            updateScoreboard();
+            if (dom.gameLog && s.logHtml) {
+                dom.gameLog.innerHTML = s.logHtml;
+                dom.gameLog.scrollTop = dom.gameLog.scrollHeight;
+            }
+
+            dom.loginModal.classList.add('hidden');
+            renderBoard();
+            renderHands();
+
+            if (s.summaryVisible || !state.gameActive) {
+                highlightActivePlayer(-1);
+                if (dom.summaryTitle) dom.summaryTitle.textContent = s.summaryTitle || 'Resultado de la Mano';
+                if (dom.summaryDetail) dom.summaryDetail.innerHTML = s.summaryDetailHtml || '';
+                if (dom.summaryScores) dom.summaryScores.textContent = s.summaryScoresText || '';
+                if (dom.btnNextHand) dom.btnNextHand.textContent = s.nextBtnText || '▶ Jugar Siguiente Mano';
+                if (dom.handSummaryModal) dom.handSummaryModal.classList.remove('hidden');
+            } else {
+                setLog('Partida recuperada.');
+                beginTurn();
+            }
+        } catch (e) {
+            clearMatchState();
+        }
+    })();
 });
 // === FIN BLOQUE 4B ===
