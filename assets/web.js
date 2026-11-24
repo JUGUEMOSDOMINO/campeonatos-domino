@@ -173,7 +173,8 @@
   }
 
   function tarjetaRanking(t) {
-    const partes = [t.temporada && 'Temporada ' + t.temporada, `${t.jornada_actual} de ${t.n_jornadas} torneos`, `${t.n_participantes} jugadores`].filter(Boolean);
+      function tarjetaRanking(t) {
+    const partes = [t.temporada && 'Temporada ' + t.temporada, `${t.jornada_actual} ${t.jornada_actual === 1 ? 'torneo completado' : 'torneos completados'}`, `${t.n_participantes} jugadores`].filter(Boolean);
     return el('li', null, el('a', { class: 'tarjeta', href: url('ranking.html', { r: t.id }) },
       el('div', null,
         el('h3', null, t.nombre),
@@ -926,7 +927,7 @@
   function pintarRanking() {
     const a = RKE.a, t = a.torneo;
     document.title = t.nombre + (t.temporada ? ' ' + t.temporada : '');
-    const datos = [t.temporada && 'Temporada ' + t.temporada, `${t.n_torneos} de ${a.torneos.length} torneos jugados`, t.fecha && 'Último: ' + fechaLarga(t.fecha)].filter(Boolean);
+        const datos = [t.temporada && 'Temporada ' + t.temporada, `${t.n_torneos} ${t.n_torneos === 1 ? 'torneo completado' : 'torneos completados'}`, t.fecha && 'Último: ' + fechaLarga(t.fecha)].filter(Boolean);
     $('#cab').replaceChildren(
       el('div', null, el('span', { class: 'etiqueta ' + (t.estado === 'en_juego' ? 'vivo' : t.estado === 'terminado' ? 'fin' : '') }, ESTADOS[t.estado] || t.estado), el('span', { class: 'etiqueta' }, 'Ranking')),
       el('h1', null, t.nombre), el('p', { class: 'linea' }, datos.join(' · ')));
