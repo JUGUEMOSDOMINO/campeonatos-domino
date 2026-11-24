@@ -899,7 +899,7 @@
   const TEXTO_ABANDONO = 'Abandonó o fue expulsado: no puntuó en este torneo';
   const seFue = (f, k) => Array.isArray(f.abandonos) && f.abandonos.includes(k);
 
-    let mapaTorneos = null;
+     let mapaTorneos = null;
   async function obtenerMapaTorneos() {
     if (mapaTorneos) return mapaTorneos;
     mapaTorneos = new Map();
@@ -912,7 +912,15 @@
         const hit = x.id ? { id: x.id } : lista.find((t) => norm(t.nombre) === nx || (x.fecha && t.fecha === x.fecha) || (lugar.length >= 4 && norm(t.nombre).includes(lugar)));
         if (hit) {
           const act = await leer(`${BASE}/${hit.id}/actual.json`, true).catch(() => null);
-          mapaTorneos.set(nx, { id: hit.id, parts: (act && act.participantes) || [], clasi: (act && act.clasificacion) || [] });
+          let clasi = (act && act.clasificacion) || [];
+          if (!clasi.length && act && Array.isArray(act.jornadas)) {
+            const ult = act.jornadas.filter((j) => j.completa).sort((a, b) => b.numero - a.numero)[0];
+            if (ult) {
+              const jd = await leer(rutaJornada(hit.id, ult.numero, ult.publicado), true).catch(() => null);
+              if (jd && jd.clasificacion) clasi = jd.clasificacion;
+            }
+          }
+          mapaTorneos.set(nx, { id: hit.id, parts: (act && act.participantes) || [], clasi });
         }
       }
     } catch (e) { /* sin índice */ }
