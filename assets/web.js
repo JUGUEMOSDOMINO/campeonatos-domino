@@ -899,8 +899,18 @@
   const TEXTO_ABANDONO = 'Abandonó o fue expulsado: no puntuó en este torneo';
   const seFue = (f, k) => Array.isArray(f.abandonos) && f.abandonos.includes(k);
 
-  function fichaJugador(f) {
+   let mapaTorneos = null;
+  async function obtenerMapaTorneos() {
+    if (mapaTorneos) return mapaTorneos;
+    try {
+      const idx = await leer(`${BASE}/indice.json`, true);
+      mapaTorneos = new Map((idx.torneos || []).filter((t) => t.tipo !== 'ranking').map((t) => [norm(t.nombre), t.id]));
+    } catch (e) { mapaTorneos = new Map(); }
+    return mapaTorneos;
+  }
+  async function fichaJugador(f) {
     const a = RKE.a, t = a.torneo, caja = $('#ficha');
+    const porNombre = a.torneos.some((x) => x.cargado && !x.id) ? await obtenerMapaTorneos() : new Map();
     const fila = (k, v) => (v == null || v === '' ? null : [el('dt', null, k), el('dd', null, v)]);
     poner(caja,
       el('h2', { id: 't-ficha' }, nombreRk(f)),
@@ -914,13 +924,17 @@
             f.por_repartir ? el('span', null, etiquetaRepartir(f), ' ', `Su pareja ha recibido una plaza ${f.por_repartir === 'sp' ? 'del Súper Prestigio' : 'del Open'} que quedó suelta: todavía no han dicho si van.`) : null)
             : 'Sin plaza')),
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
-      el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => el('li', null,
-        el('span', null, x.nombre, seFue(f, k) ? el('span', { class: 'sub' }, TEXTO_ABANDONO) : null), el('b', null, p == null ? '—' : p)))),
+      el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => {
+        const tid = x.id || porNombre.get(norm(x.nombre));
+        const nombreEl = tid ? el('a', { href: url('torneo.html', { t: tid }) }, x.nombre) : x.nombre;
+        return el('li', null,
+          el('span', null, nombreEl, seFue(f, k) ? el('span', { class: 'sub' }, TEXTO_ABANDONO) : null),
+          el('b', null, p == null ? '—' : p));
+      })),
       el('div', { class: 'acciones' }, el('button', { type: 'button', class: 'boton sec', onclick: () => { caja.hidden = true; poner(caja); } }, 'Cerrar la ficha')));
     caja.hidden = false;
     caja.scrollIntoView({ block: 'start' });
   }
-
   function pintarRanking() {
     const a = RKE.a, t = a.torneo;
     document.title = t.nombre + (t.temporada ? ' ' + t.temporada : '');
