@@ -927,9 +927,19 @@
     return mapaTorneos;
   }
 
+  function coincideJugador(pt, palabras) {
+    const textos = [
+      norm(`${pt.j1_nombre || ''} ${pt.j1_apellido1 || ''} ${pt.j1_apellido2 || ''}`),
+      norm(`${pt.j2_nombre || ''} ${pt.j2_apellido1 || ''} ${pt.j2_apellido2 || ''}`),
+      norm(pt.corto || '')
+    ];
+    return textos.some((txt) => txt && palabras.every((w) => txt.includes(w)));
+  }
+
   async function fichaJugador(f) {
     const a = RKE.a, t = a.torneo, caja = $('#ficha');
     const porNombre = await obtenerMapaTorneos();
+    const palabras = norm(nombreRk(f)).split(/\s+/).filter(Boolean);
     const fila = (k, v) => (v == null || v === '' ? null : [el('dt', null, k), el('dd', null, v)]);
     poner(caja,
       el('h2', { id: 't-ficha' }, nombreRk(f)),
@@ -945,8 +955,7 @@
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
       el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => {
         const info = porNombre.get(norm(x.nombre)) || (x.id ? { id: x.id, parts: [], clasi: [] } : null);
-        const nj = norm(nombreRk(f));
-        const par = info && info.parts.find((pt) => norm(`${pt.j1_nombre} ${pt.j1_apellido1}`) === nj || norm(`${pt.j2_nombre} ${pt.j2_apellido1}`) === nj || norm(pt.corto || '').includes(nj));
+        const par = info && info.parts.find((pt) => coincideJugador(pt, palabras));
         const filaClasi = par && info.clasi.find((r) => r.id === par.id);
         const params = par ? { t: info.id, ver: 'clasificacion', g: filaClasi && filaClasi.grupo === 'B' ? 'B' : '', p: par.id } : (info ? { t: info.id } : null);
         const nombreEl = info ? el('a', { href: url('torneo.html', params) }, x.nombre) : x.nombre;
@@ -958,6 +967,7 @@
     caja.hidden = false;
     caja.scrollIntoView({ block: 'start' });
   }
+
   function pintarRanking() {
     const a = RKE.a, t = a.torneo;
     document.title = t.nombre + (t.temporada ? ' ' + t.temporada : '');
