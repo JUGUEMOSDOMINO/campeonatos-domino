@@ -25,13 +25,13 @@
         el('p', null, 'Hay un token guardado en este navegador.'),
         msg ? el('p', { class: 'nota' + (malo ? ' caja' : '') }, msg) : null,
         el('div', { class: 'acciones' },
-          el('button', { type: 'button', class: 'boton sec', onclick: () => { M.token.borrar(); pintarToken(); cargarTorneos(); } }, 'Quitar el token')));
+          el('button', { type: 'button', class: 'boton sec', onclick: () => { M.token.borrar(); pintarToken(); cargarTorneos(); if (AR && AR.cargar) AR.cargar(); } }, 'Quitar el token')));
       return;
     }
     const campo = el('input', { type: 'password', id: 'token', autocomplete: 'off', 'aria-label': 'Token de GitHub', placeholder: 'Pega aquí el token de GitHub' });
     const nota = el('p', { class: 'nota' + (malo ? ' caja' : ''), 'aria-live': 'polite' }, msg || '');
     const boton = el('button', { type: 'button', class: 'boton' }, 'Guardar y comprobar');
-    boton.addEventListener('click', async () => {
+    boton.addEventListener('click', () => Espera.tarea('token', 'Comprobando el token…', async () => {
       const v = campo.value.trim();
       if (!v) { nota.textContent = 'Pega primero el token.'; return; }
       boton.disabled = true; nota.textContent = 'Comprobando…';
@@ -43,9 +43,9 @@
         const guardado = M.token.guardar(v);
         const faltan = [borr.ok ? null : 'campeonatos-borradores', prog.ok ? null : 'programas-domino'].filter(Boolean);
         pintarToken((guardado ? 'Token comprobado y guardado.' : 'El navegador no deja guardar el token (¿ventana privada?). Se usará solo hasta que cierres esta pestaña.') + (faltan.length ? ` Ojo: este token no tiene acceso a ${faltan.join(' ni a ')}. En GitHub, edítalo y añádelo en «Repository access»; mientras tanto, la parte de la página que lo usa no funcionará.` : ''), !guardado || faltan.length > 0);
-        cargarTorneos();
+        cargarTorneos(); if (AR && AR.cargar) AR.cargar();
       } catch (e) { M.token.borrar(); boton.disabled = false; nota.textContent = e.message; nota.className = 'nota caja'; }
-    });
+    }));
     poner($('#token-estado'),
       el('p', null, 'La primera vez hace falta un token de GitHub con acceso a tres repositorios: campeonatos-domino, campeonatos-borradores y programas-domino (las copias privadas y la sección «Archivos»). En los tres, el permiso «Contents: Read and write», y a nada más. Pégalo aquí. No lo escribas en ningún chat ni correo.'),
       campo, el('div', { class: 'acciones' }, boton), nota);
@@ -77,7 +77,9 @@
       const msg = el('p', { id: 'clave-web-msg', class: 'nota', 'aria-live': 'polite' });
       const abrir = btn('Abrir', async () => {
         abrir.disabled = true; msg.className = 'nota'; msg.textContent = 'Comprobando…';
-        if (await M.abrirClave(campo.value.trim(), recordar.checked)) { await cargarTorneos(); return; }
+        const abierta = await Espera.tarea('abrir-clave', 'Comprobando la contraseña…', () => M.abrirClave(campo.value.trim(), recordar.checked));
+        if (abierta === undefined) return;
+        if (abierta) { await cargarTorneos(); return; }
         abrir.disabled = false; msg.className = 'nota caja'; msg.textContent = 'Esa contraseña no es la correcta. Revísala y vuelve a probar.';
       }, true);
       campo.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') abrir.click(); });
@@ -109,9 +111,8 @@
     si.addEventListener('click', async () => {
       si.disabled = true; nota.className = 'nota'; nota.textContent = 'Preparando la clave…';
       try {
-        const nueva = await Cifra.crearClaveJson(campo.value);
-        await M.empezarCambio(nueva);
-        const plan = await M.planRecifrar(nueva);
+        const plan = await Espera.tarea('clave-nueva', 'Preparando la contraseña…', async () => { const nueva = await Cifra.crearClaveJson(campo.value); await M.empezarCambio(nueva); return M.planRecifrar(nueva); });
+        if (!plan) return;
         poner(panel);
         await correr(plan.pasos, salidaClave(), cambio ? 'Contraseña cambiada. Quien tenga guardada la de antes tendrá que escribir la nueva.' : 'Contraseña puesta. Todo lo publicado va cifrado: ya puedes dársela a los jugadores.', cargarTorneos);
       } catch (e) { if (!siCaduco(e)) { nota.className = 'nota caja'; nota.textContent = e.message; si.disabled = false; } }
@@ -167,7 +168,9 @@
     }));
     return { estado: 'ok', torneos, soloLectura: !ac.push, enClaro };
   }
-  async function cargarTorneos() { await pintarClave(); await cargarListas(); }
+  const leerTorneos = async () => { await pintarClave(); await cargarListas(); };
+  const cargarTorneos = () => Espera.tarea('lista', 'Cargando los campeonatos…', leerTorneos);
+  const recargarTorneos = () => Espera.tarea('lista-otra-vez', 'Cargando los campeonatos…', leerTorneos); // desde dentro de una carga (cifrar lo que estaba en claro): otra clave, para que el cerrojo no la ignore
   async function cargarListas() {
     if (!M.token.obtener()) { limpiarListas(); return; }
     for (const id of ['#lista-web', '#lista-borr']) { delete $(id).dataset.listo; poner($(id), el('p', { class: 'nota' }, 'Cargando…')); }
@@ -185,7 +188,7 @@
     E.cifradoSolo = true;
     try {
       const plan = await M.planCifrarPublicado();
-      if (await correr(plan.pasos, salidaClave(), 'Lo que estaba sin cifrar ya está cifrado.', cargarTorneos)) E.cifradoSolo = false;
+      if (await correr(plan.pasos, salidaClave(), 'Lo que estaba sin cifrar ya está cifrado.', recargarTorneos)) E.cifradoSolo = false;
     } catch (e) { if (!siCaduco(e)) { const s = salidaClave(); s.pre.hidden = false; s.pre.textContent = '✖ ' + e.message; } }
   }
   function pintarLista(clave, r) {
@@ -246,12 +249,19 @@
   const avisoOtros = (otros) => (otros && otros.length ? el('p', { class: 'nota caja' }, `Hay archivos que esta página no copia ni borra (${otros.join(', ')}). Se quedan donde están; si los quieres mover, hazlo a mano.`) : null);
 
   /* Ejecuta un plan y cuenta qué quedó hecho. Si falla, ofrece repetir solo lo que falta. */
-  async function correr(pasos, salida, final, alTerminar, repetido) {
+  // La frase de la ventana de espera, según lo que va a decir al terminar.
+  const FRASES = [[/elimin/i, 'Eliminando…'], [/ocult/i, 'Ocultando…'], [/quitad/i, 'Quitando la normativa…'], [/normativa/i, 'Subiendo la normativa…'], [/public/i, 'Publicando…'], [/borrador/i, 'Guardando el borrador…'],
+    [/contraseña/i, 'Cambiando la contraseña…'], [/cifrad/i, 'Cifrando lo publicado…'], [/programas-domino/i, 'Guardando el archivo…'], [/guardad/i, 'Guardando los cambios…']];
+  const fraseDe = (final) => (FRASES.find(([r]) => r.test(final || '')) || [0, 'Guardando…'])[1];
+  const correr = (pasos, salida, final, alTerminar, repetido) => Espera.tarea('escribir', fraseDe(final), () => correrPasos(pasos, salida, final, alTerminar, repetido), { escribe: true });
+  async function correrPasos(pasos, salida, final, alTerminar, repetido) {
     const { pre, acc } = salida;
+    const n = pasos.length, enPaso = (i) => Espera.paso(i < n ? (n > 1 ? `Paso ${i + 1} de ${n}: ` : '') + pasos[i].txt : '');
+    let hechosN = 0; enPaso(0);
     pre.hidden = false; acc.hidden = true; acc.replaceChildren();
     if (!repetido) pre.textContent = '';
     const anota = (txt) => { pre.textContent += txt + '\n'; };
-    const r = await M.ejecutar(pasos, (t) => anota('✔ ' + t));
+    const r = await M.ejecutar(pasos, (t) => { anota('✔ ' + t); enPaso(++hechosN); });
     if (!r.error) { anota('✔ ' + final); if (alTerminar) await alTerminar(); return true; }
     anota('✖ ' + (r.error.message || 'Algo ha fallado.'));
     if (siCaduco(r.error)) { anota('Pega un token nuevo en el paso 1 y vuelve a intentarlo.'); return false; }
@@ -263,10 +273,10 @@
     return false;
   }
 
-  async function conPlan(panel, hacerPlan, mostrar) {
+  const conPlan = (panel, hacerPlan, mostrar) => Espera.tarea('plan', 'Leyendo los archivos…', async () => {
     poner(panel, el('p', { class: 'nota' }, 'Leyendo los archivos…'));
     try { mostrar(await hacerPlan()); } catch (e) { if (!siCaduco(e)) poner(panel, el('p', { class: 'nota caja' }, e.message), cancelar(panel)); }
-  }
+  });
   const confirmar = (panel, plan, texto, rotulo, final, alTerminar, extra) => {
     const si = el('button', { type: 'button', class: 'boton', onclick: async () => { si.disabled = true; poner(panel); await correr(plan.pasos, reg(), final, alTerminar || cargarTorneos); } }, rotulo);
     poner(panel, el('div', { class: 'aviso-accion' }, texto), avisoOtros(plan.otros), extra, el('div', { class: 'acciones' }, si, cancelar(panel)));
@@ -392,7 +402,8 @@
     } catch (e) { return { tipo: 'error', motivo: 'No se ha podido leer ese archivo. ¿Está dañado o es de otro programa?' }; }
   }
 
-  async function alElegirArchivo(ev) {
+  const alElegirArchivo = (ev) => Espera.tarea('leer-archivo', 'Leyendo el archivo…', () => leerElegido(ev));
+  async function leerElegido(ev) {
     const f = ev.target.files[0];
     ev.target.value = ''; // así se puede volver a elegir el mismo archivo tras guardarlo de nuevo
     reiniciar();
@@ -1095,7 +1106,7 @@
     if (document.body.dataset.pagina !== 'publicar') return;
     pintarToken();
     $('#archivo').addEventListener('change', alElegirArchivo);
-    $('#publicar').addEventListener('click', publicar);
+    $('#publicar').addEventListener('click', () => Espera.tarea('publicar', E.modo === 'guardar' ? 'Guardando el archivo…' : E.dest === 'borr' ? 'Guardando el borrador…' : 'Publicando…', publicar, { escribe: true }));
     $('#cancelar').addEventListener('click', cancelarSubida);
     $('#guardar-solo').addEventListener('click', () => ofrecerGuardar('Lo guardo sin publicarlo.'));
     $('#actualizar').addEventListener('click', cargarTorneos);

@@ -41,7 +41,9 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
   }
   const sembrarWeb = (api) => { api.ponerCifrado('datos/indice.json', vacio()); sembrar(api, 'web', 'sp-ejemplo'); };
   const { sembrar } = require('./api_simulada.cjs');
-  const abrir = async (pg) => { await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' }); await desplegarListas(pg); };
+  const abrir = async (pg) => { await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' }); await pg.waitForSelector('#lista-borr[data-listo]', { state: 'attached' }); await sinEspera(pg); await desplegarListas(pg); };
+  // Sin ventana de espera ni bloqueo: la carga inicial (campeonatos y archivos) ha terminado.
+  const sinEspera = (pg) => pg.waitForFunction(() => !document.body.dataset.espera, null, { timeout: 30000 });
   // Las listas del paso 3 salen plegadas; los escenarios que pulsan sus botones las despliegan primero.
   const desplegarListas = (pg) => pg.evaluate(() => document.querySelectorAll('#plegable-web, #plegable-borr').forEach((d) => { d.open = true; }));
   const nombres = (pg, lista) => pg.$$eval(`#lista-${lista} li.torneo`, (l) => l.map((x) => x.dataset.id));
@@ -248,7 +250,7 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     const clases = await pg.$$eval('#plegable-web, #plegable-borr', (l) => l.map((d) => [d.className, d.querySelector('summary').children[0].className, d.querySelector('summary').children[1].className]));
     assert.deepStrictEqual(clases, [['categoria', 'cat-nombre', 'cat-n'], ['categoria', 'cat-nombre', 'cat-n']]);
     await pg.setInputFiles('#archivo', xlsx('individual-ejemplo-2026-11-14')); await pg.waitForSelector('.tabla-caja');
-    await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista details.categoria > summary');
+    await pg.waitForSelector('#archivos-lista details.categoria > summary');
     const forma = (sel) => pg.$eval(sel, (e) => { const c = getComputedStyle(e), n = e.querySelector('.cat-n'), cn = getComputedStyle(n); return [c.borderTopWidth, c.borderRadius, c.backgroundColor, c.color, cn.borderLeftWidth, cn.fontSize, cn.borderLeftStyle, getComputedStyle(e.querySelector('.cat-nombre')).fontWeight].join(' '); });
     for (const abierta of [false, true]) {
       await pg.evaluate((o) => document.querySelectorAll('#plegable-web, #plegable-borr, #archivos-lista details.categoria').forEach((d) => { d.open = o; }), abierta);
@@ -264,6 +266,185 @@ const hora = (iso) => new Intl.DateTimeFormat('es-ES', { timeZone: 'Europe/Madri
     assert.strictEqual(new Set(h.map((x) => x.split('.')[0])).size, h.length);
     bien('la sección de descargas se titula «5. Archivos para descargar», a continuación del paso 4 y sin repetir número (revisión y confirmación pasan a 6 y 7)');
     assert.deepStrictEqual(errores, []);
+  }
+
+  /* ============ 2d. Ventana de espera, bloqueo, cerrojos y aviso al cerrar ============ */
+  {
+    const lento = (ctx, ms, filtro) => ctx.route('https://api.github.com/**', async (r) => { if (filtro(r.request())) await new Promise((x) => setTimeout(x, ms)); await r.fallback(); });
+    const semillaB = (a) => { sembrarWeb(a); sembrar(a, 'borr', 'parejas-ejemplo-2026-11-14'); };
+    const visible = (pg) => pg.evaluate(() => { const v = document.querySelector('.espera'); return !!v && !v.hidden; });
+    const bloqueado = (pg) => pg.evaluate(() => [...document.body.children].filter((e) => !e.classList.contains('espera') && e.tagName !== 'SCRIPT').every((e) => e.hasAttribute('inert')));
+    const libre = (pg) => pg.evaluate(() => !document.body.dataset.espera && [...document.body.children].every((e) => !e.hasAttribute('inert')) && !(document.querySelector('.espera') && !document.querySelector('.espera').hidden));
+    const alCerrar = (pg) => pg.evaluate(() => { const e = new Event('beforeunload', { cancelable: true }); window.dispatchEvent(e); return e.defaultPrevented; });
+    const subirBorrador = async (pg) => { await pg.setInputFiles('#archivo', xlsx('individual-ejemplo-2026-11-14')); await pg.waitForSelector('.tabla-caja'); await sinEspera(pg); };
+    // a) tarea lenta de solo lectura: ventana, bloqueo, un clic fuera no hace nada, se cierra sola, sin aviso al cerrar (no escribe)
+    {
+      const { ctx, pg, api, errores } = await escenario({ semilla: semillaB });
+      await abrir(pg);
+      await lento(ctx, 1200, (q) => /campeonatos-borradores\/contents\/datos\/indice/.test(q.url()));
+      const antes = api.reqs.length;
+      await pg.click('#actualizar');
+      await pg.waitForFunction(() => { const v = document.querySelector('.espera'); return v && !v.hidden; });
+      const caja = pg.locator('.espera-caja');
+      assert.strictEqual(await caja.getAttribute('role'), 'alertdialog'); assert.strictEqual(await caja.getAttribute('aria-busy'), 'true'); assert.strictEqual(await caja.getAttribute('aria-modal'), 'true');
+      assert.strictEqual(await pg.textContent('#espera-frase'), 'Cargando los campeonatos…');
+      assert.strictEqual(await pg.getAttribute('#espera-frase', 'aria-live'), 'polite');
+      assert.strictEqual(await bloqueado(pg), true);
+      assert.strictEqual(await pg.evaluate(() => document.querySelector('.espera-caja').contains(document.activeElement) || document.activeElement === document.querySelector('.espera-caja')), true);
+      assert.strictEqual(await alCerrar(pg), false);
+      bien('espera: una carga lenta enseña la ventana (alertdialog, aria-busy, frase), bloquea el resto de la página y lleva el foco a la ventana; leer no avisa al cerrar la pestaña');
+      // un clic de verdad sobre otro botón no hace nada
+      const n0 = api.reqs.length;
+      const bb = await pg.evaluate(() => { const r = document.querySelector('#archivos-actualizar').getBoundingClientRect(); return [r.left + r.width / 2, r.top + r.height / 2]; });
+      await pg.mouse.click(bb[0], bb[1]); await pg.keyboard.press('Tab'); await pg.keyboard.press('Enter');
+      assert.strictEqual(api.reqs.length, n0);
+      assert.strictEqual(await pg.evaluate(() => document.querySelector('.espera-caja').contains(document.activeElement) || document.activeElement === document.body), true);
+      bien('espera: con la ventana, un clic o el teclado sobre otro botón no hace nada');
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+      assert.strictEqual(await libre(pg), true);
+      assert(api.reqs.length > antes);
+      assert.deepStrictEqual(errores, []);
+      bien('espera: al terminar la ventana se cierra, la página vuelve a responder y el foco no se pierde');
+    }
+    // b) tarea rápida: el bloqueo actúa desde el primer momento, pero la ventana no parpadea
+    {
+      const { pg } = await escenario({ semilla: semillaB });
+      await pg.addInitScript(() => { window.__veces = 0; document.addEventListener('DOMContentLoaded', () => new MutationObserver(() => { const v = document.querySelector('.espera'); if (v && !v.hidden) window.__veces++; }).observe(document.body, { subtree: true, attributes: true, childList: true })); });
+      await abrir(pg);
+      assert.strictEqual(await pg.evaluate(() => window.__veces), 0);
+      const r = await pg.evaluate(async () => { document.querySelector('#actualizar').click(); const inerte = document.querySelector('main').hasAttribute('inert') && document.body.dataset.espera === '1'; await new Promise((x) => setTimeout(x, 150)); return [inerte, window.__veces]; });
+      assert.deepStrictEqual(r, [true, 0]);
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+      assert.strictEqual(await pg.evaluate(() => window.__veces), 0);
+      bien('espera: una tarea que dura menos de ~300 ms bloquea desde el primer instante pero la ventana no aparece (sin parpadeo)');
+    }
+    // c) publicar con escrituras lentas: pasos, doble clic, aviso al cerrar solo mientras escribe
+    {
+      const { ctx, pg, api, errores } = await escenario({ semilla: semillaB });
+      await abrir(pg);
+      await subirBorrador(pg);
+      await lento(ctx, 700, (q) => q.method() === 'PUT');
+      api.puts.length = 0;
+      await pg.dblclick('#publicar');
+      await pg.waitForFunction(() => { const v = document.querySelector('.espera'); return v && !v.hidden; });
+      assert.strictEqual(await pg.textContent('#espera-frase'), 'Guardando el borrador…');
+      await pg.waitForFunction(() => /^Paso \d de \d+: /.test(document.querySelector('#espera-paso').textContent));
+      assert.strictEqual(await alCerrar(pg), true);
+      bien('espera: guardar como borrador enseña «Guardando el borrador…» y el avance «Paso k de n: …»; mientras escribe, el navegador avisa si se intenta cerrar');
+      await pg.waitForSelector('text=Guardado como borrador');
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+      assert.deepStrictEqual(api.puts.map((p) => p.clave + ' ' + p.ruta), ['borr datos/individual-ejemplo-2026-11-14/jornada_02.json', 'borr datos/individual-ejemplo-2026-11-14/actual.json', 'borr datos/indice.json']);
+      bien('espera: doble clic en «Guardar como borrador» → una sola publicación (los mismos 3 PUT y ninguno repetido)');
+      assert.strictEqual(await alCerrar(pg), false); assert.strictEqual(await libre(pg), true);
+      bien('espera: al terminar, el aviso al cerrar la pestaña se quita');
+      assert.deepStrictEqual(errores, []);
+    }
+    // d) publicar en la web: frase propia
+    {
+      const { ctx, pg } = await escenario({ semilla: semillaB });
+      await abrir(pg); await subirBorrador(pg);
+      await pg.click('input[name=destino][value=web]'); await pg.waitForFunction(() => document.querySelector('#publicar').textContent === 'Publicar en la web' && !document.querySelector('#publicar').disabled);
+      await lento(ctx, 500, (q) => q.method() === 'PUT');
+      await pg.click('#publicar');
+      await pg.waitForFunction(() => { const v = document.querySelector('.espera'); return v && !v.hidden; });
+      assert.strictEqual(await pg.textContent('#espera-frase'), 'Publicando…');
+      await pg.waitForSelector('text=Publicado.'); await pg.waitForFunction(() => !document.body.dataset.espera);
+      bien('espera: publicar en la web enseña «Publicando…»');
+    }
+    // e) con un error: la ventana se cierra y se ve el error
+    {
+      const { ctx, pg, api } = await escenario({ semilla: semillaB });
+      await abrir(pg); await subirBorrador(pg);
+      api.fallar = (m, c, r) => (m === 'PUT' && c === 'borr' && r === 'datos/indice.json' ? 500 : null);
+      await lento(ctx, 400, (q) => q.method() === 'PUT');
+      await pg.click('#publicar');
+      await pg.waitForSelector('#registro:has-text("✖")');
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+      assert.strictEqual(await libre(pg), true); assert.strictEqual(await alCerrar(pg), false);
+      assert.strictEqual(await pg.isVisible('#reintento button'), true);
+      bien('espera: si la tarea falla, la ventana se cierra, la página responde, se ve el error con «Reintentar» y no queda aviso al cerrar');
+    }
+    // f) pasa de 30 s
+    {
+      const { ctx, pg } = await escenario({ semilla: semillaB });
+      await pg.clock.install();
+      await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#lista-web[data-listo]', { state: 'attached' });
+      await pg.clock.runFor(1000);
+      await ctx.route('https://api.github.com/repos/JUGUEMOSDOMINO/campeonatos-borradores/contents/datos/indice.json*', () => { /* no contesta */ });
+      await pg.evaluate(() => document.querySelector('#actualizar').click());
+      await pg.clock.runFor(1000);
+      assert.strictEqual(await visible(pg), true);
+      assert(!(await pg.textContent('#espera-frase')).includes('Sigue trabajando'));
+      await pg.clock.runFor(31000);
+      assert((await pg.textContent('#espera-frase')).includes('Sigue trabajando, no cierres la página'));
+      bien('espera: pasados 30 s la frase añade «Sigue trabajando, no cierres la página»');
+    }
+    // g) subir normativa / contraseña / cifrar usan la misma ventana (correr y las tareas previas); descargar y archivos
+    {
+      const { ctx, pg } = await escenario({ semilla: (a) => { sembrarWeb(a); a.poner('prog', 'entregables/DESCARGAS.md', '# Descargas\n\n## Otros\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `a.txt` | Una nota. | 2026-11-01 |\n'); a.poner('prog', 'entregables/a.txt', 'x'); } });
+      await abrir(pg);
+      await pg.click('#archivos-lista summary'); 
+      await lento(ctx, 1000, (q) => /\/git\/blobs\//.test(q.url()));
+      const [d] = await Promise.all([pg.waitForEvent('download'), pg.click('#archivos-lista li:has-text("a.txt") button')]);
+      assert(d);
+      bien('espera: descargar un archivo también bloquea y se cierra al terminar');
+      await lento(ctx, 1000, (q) => /programas-domino\/git\/trees/.test(q.url()));
+      await pg.click('#archivos-actualizar');
+      await pg.waitForFunction(() => { const v = document.querySelector('.espera'); return v && !v.hidden && document.querySelector('#espera-frase').textContent === 'Cargando los archivos…'; });
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+      bien('espera: «Actualizar la lista» del paso 5 enseña «Cargando los archivos…»');
+    }
+    // h) con «reducir movimiento» la ficha no gira
+    {
+      const { ctx, pg } = await escenario({ semilla: semillaB });
+      await abrir(pg);
+      await lento(ctx, 1000, (q) => /campeonatos-borradores\/contents\/datos\/indice/.test(q.url()));
+      await pg.click('#actualizar');
+      await pg.waitForFunction(() => { const v = document.querySelector('.espera'); return v && !v.hidden; });
+      assert.strictEqual(await pg.$eval('.ficha-espera', (e) => getComputedStyle(e).animationName), 'ficha-giro');
+      await pg.emulateMedia({ reducedMotion: 'reduce' });
+      assert.strictEqual(await pg.$eval('.ficha-espera', (e) => getComputedStyle(e).animationName), 'none');
+      assert.strictEqual(await pg.$$eval('.ficha-espera .pip', (l) => l.filter((x) => getComputedStyle(x).opacity === '1').length), 12);
+      bien('espera: con «reducir movimiento» la ficha no gira ni se anima y se ve quieta en 6:6');
+      await pg.waitForFunction(() => !document.body.dataset.espera);
+    }
+  }
+
+  /* ============ 2e. Archivos: se cargan solas, «Actualizar la lista» respeta lo desplegado, avisos sin token o sin permiso ============ */
+  {
+    const DESCX = '# Descargas\n\n## Otros\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `a.txt` | Una nota. | 2026-11-01 |\n\n## Torneos\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `t.txt` | Otra. | 2026-11-02 |\n';
+    const semillaA = (a) => { sembrarWeb(a); a.poner('prog', 'entregables/DESCARGAS.md', DESCX); a.poner('prog', 'entregables/a.txt', 'x'); a.poner('prog', 'entregables/t.txt', 'x'); };
+    const { pg, api } = await escenario({ semilla: semillaA });
+    await abrir(pg);
+    assert.deepStrictEqual(await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => [d.querySelector('.cat-nombre').textContent, d.querySelector('.cat-n').textContent, d.open])), [['Torneos', '1 archivo', false], ['Otros', '1 archivo', false]]);
+    bien('archivos: al abrir la página con token, las categorías salen solas, plegadas y cada una con su recuento');
+    await pg.click('#archivos-lista summary:has-text("Otros")');
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("a.txt")'), true);
+    const n0 = api.reqs.filter((r) => /programas-domino|graphql/.test(r.ruta)).length;
+    api.poner('prog', 'entregables/t2.txt', 'x'); api.poner('prog', 'entregables/DESCARGAS.md', DESCX.replace('## Torneos', '## Torneos\n\n| Archivo | Qué es | Fecha |\n|---|---|---|\n| `t2.txt` | Tercera. | 2026-11-03 |\n\n## Torneos'));
+    await pg.click('#archivos-actualizar');
+    await pg.waitForFunction(() => document.querySelector('#archivos-lista .cat-n') && !document.body.dataset.espera);
+    assert(api.reqs.filter((r) => /programas-domino|graphql/.test(r.ruta)).length > n0);
+    assert.deepStrictEqual(await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => [d.querySelector('.cat-nombre').textContent, d.open])), [['Torneos', false], ['Otros', true]]);
+    assert.strictEqual(await pg.isVisible('#archivos-lista li:has-text("a.txt")'), true);
+    bien('archivos: «Actualizar la lista» vuelve a leer (con las fechas) y respeta lo que el árbitro tenía desplegado');
+    // «…» en el recuadro mientras carga
+    await pg.route('https://api.github.com/repos/JUGUEMOSDOMINO/programas-domino/git/trees/**', async (r) => { await new Promise((x) => setTimeout(x, 1500)); await r.fallback(); });
+    await pg.click('#archivos-actualizar');
+    await pg.waitForFunction(() => [...document.querySelectorAll('#archivos-lista .cat-n')].length > 0 && [...document.querySelectorAll('#archivos-lista .cat-n')].every((x) => x.textContent === '…'));
+    await pg.waitForFunction(() => !document.body.dataset.espera);
+    bien('archivos: mientras recarga, el recuadro de cada categoría dice «…»');
+    // sin token y sin permiso
+    const st = await escenario({ token: false, semilla: semillaA });
+    await st.pg.goto(base + '/publicar.html'); await sinEspera(st.pg);
+    assert((await st.pg.textContent('#archivos-estado')).includes('pega el token'));
+    assert.strictEqual(await st.pg.locator('#archivos-lista details').count(), 0); assert.strictEqual(await st.pg.isVisible('#archivos-actualizar'), true);
+    assert.strictEqual(st.api.reqs.some((r) => /programas-domino/.test(r.ruta)), false);
+    const sp = await escenario({ acceso: { prog: false }, semilla: semillaA });
+    await sp.pg.goto(base + '/publicar.html'); await sinEspera(sp.pg);
+    await sp.pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('programas-domino'));
+    assert.strictEqual(await sp.pg.locator('#archivos-lista details').count(), 0); assert.strictEqual(await sp.pg.isVisible('#archivos-actualizar'), true);
+    bien('archivos: sin token, o sin permiso sobre programas-domino, sale el aviso de siempre en lugar de la lista y el botón sigue a la vista');
   }
 
   /* ============ 3. Ver un borrador ============ */
@@ -793,8 +974,8 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     }
     bien('las rutas permitidas pasan el filtro en los dos repositorios');
     api.puts.length = 0; api.log.length = 0;
-    for (const x of api.reqs) assert(/^\/repos\/JUGUEMOSDOMINO\/(campeonatos-domino|campeonatos-borradores)(\/|$)/.test(x.ruta) && !x.ruta.includes(TOKEN), x.ruta);
-    bien('todas las llamadas con token van a api.github.com y a uno de los dos repositorios, sin el token en la dirección');
+    for (const x of api.reqs) assert((/^\/repos\/JUGUEMOSDOMINO\/(campeonatos-domino|campeonatos-borradores|programas-domino)(\/|$)/.test(x.ruta) || x.ruta === '/graphql') && !x.ruta.includes(TOKEN), x.ruta);
+    bien('todas las llamadas con token van a api.github.com y a uno de los tres repositorios (programas-domino por la sección «Archivos», que ahora carga sola) o a /graphql (las fechas), sin el token en la dirección');
   }
   // 401 en mitad de una acción: se borra el token y se avisa
   {
@@ -987,7 +1168,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
   // sin la contraseña abierta no se puede cifrar: espera a que se escriba y entonces lo hace solo
   {
     const { pg, api } = await escenario({ clave: false, semilla: (a) => { sembrarWeb(a); sembrar(a, 'web', PAR, { enClaro: true }); } });
-    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#clave-web');
+    await pg.goto(base + '/publicar.html'); await pg.waitForSelector('#clave-web'); await sinEspera(pg);
     assert.deepStrictEqual(api.puts.filter((x) => x.clave === 'web'), []);
     await pg.fill('#clave-web', CONTRASENA_WEB); await pg.click('#clave-estado button:text-is("Abrir")');
     await pg.waitForSelector('#registro-clave:has-text("ya está cifrado")');
@@ -1014,7 +1195,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
   {
     const { pg, api } = await escenario({ clave: false, semilla: semillaDos });
     await abrir(pg);
-    await pg.waitForSelector('#clave-web');
+    await pg.waitForSelector('#clave-web'); await sinEspera(pg);
     assert((await pg.textContent('#lista-web')).includes('contraseña'));
     await pg.fill('#clave-web', 'no es esta'); await pg.click('#clave-estado button:text-is("Abrir")');
     await pg.waitForSelector('#clave-web-msg:has-text("no es la correcta")');
@@ -1023,7 +1204,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     assert.strictEqual(await pg.evaluate(() => localStorage.getItem('tumesa.clave')), api.clave().toString('base64'));
     bien('sin clave guardada: la mesa pide la contraseña de la web (la errónea no vale) y después lista los campeonatos');
     await pg.click('#clave-estado button:text-is("Olvidar contraseña en este dispositivo")');
-    await pg.waitForSelector('#clave-web');
+    await pg.waitForSelector('#clave-web'); await sinEspera(pg);
     assert.strictEqual(await pg.evaluate(() => localStorage.getItem('tumesa.clave')), null);
     bien('«Olvidar contraseña en este dispositivo» también en la mesa');
   }
@@ -1314,10 +1495,11 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
     const subida = (n, bytes) => ({ name: n, mimeType: 'application/octet-stream', buffer: bytes });
     const { ctx, pg, api, errores } = await escenario({ semilla });
     await abrir(pg);
-    assert.strictEqual(await pg.locator('#archivos-lista li').count(), 0);
-    assert.strictEqual(api.reqs.some((r) => /programas-domino/.test(r.ruta)), false);
-    bien('archivos: al abrir la mesa no se llama a programas-domino hasta pulsar «Ver los archivos»');
-    await pg.click('#archivos-ver');
+    await pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' });
+    assert(api.reqs.some((r) => /programas-domino/.test(r.ruta)));
+    assert.strictEqual(await pg.locator('#archivos-actualizar').textContent(), 'Actualizar la lista');
+    assert.strictEqual(await pg.getAttribute('#archivos-actualizar', 'class'), await pg.getAttribute('#actualizar', 'class'));
+    bien('archivos: al abrir la mesa con token las categorías salen solas, sin pulsar nada, y el botón se llama «Actualizar la lista» como el del paso 3');
     await pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' });
     const cats = await pg.$$eval('#archivos-lista details.categoria', (l) => l.map((d) => [d.querySelector('summary .cat-nombre').textContent, d.querySelector('summary .cat-n').textContent, d.open]));
     assert.deepStrictEqual(cats, [['Programas de campeonato', '1 archivo', false], ['Ranking FVD', '2 archivos', false], ['Mantenimiento', '1 archivo', false]]);
@@ -1357,7 +1539,6 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       // sin permiso en programas-domino
       const sin = await escenario({ semilla, acceso: { prog: false } });
       await abrir(sin.pg);
-      await sin.pg.click('#archivos-ver');
       await sin.pg.waitForFunction(() => document.querySelector('#archivos-estado').textContent.includes('programas-domino'));
       const t = await sin.pg.textContent('#archivos-estado');
       assert(t.includes('Repository access') && t.includes('Contents: Read and write') && t.includes('ningún otro token'), t);
@@ -1368,7 +1549,6 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       const lec = await escenario({ semilla });
       lec.api.soloLectura.prog = true;
       await abrir(lec.pg);
-      await lec.pg.click('#archivos-ver');
       await lec.pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' }); await lec.pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
       assert.strictEqual(await lec.pg.locator('#archivos-lista li.archivo').count() > 0, true);
       bien('archivos: con un token de solo lectura se puede descargar');
@@ -1393,7 +1573,6 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       };
       const e2 = await escenario({ semilla: semilla2 });
       await abrir(e2.pg);
-      await e2.pg.click('#archivos-ver');
       await e2.pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' }); await e2.pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
       const fechas = await e2.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-ruta').textContent, x.querySelector('.archivo-fecha').textContent]));
       assert.deepStrictEqual(fechas, [
@@ -1418,7 +1597,6 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
         const e3 = await escenario({ semilla: semilla2 });
         e3.api.fallarGraphql = fallo;
         await abrir(e3.pg);
-        await e3.pg.click('#archivos-ver');
         await e3.pg.waitForSelector('#archivos-lista li.archivo', { state: 'attached' }); await e3.pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
         const f3 = await e3.pg.$$eval('#archivos-lista li.archivo', (l) => l.map((x) => [x.querySelector('.archivo-nombre').textContent, x.querySelector('.archivo-fecha').textContent]));
         assert.strictEqual(f3.length, 4);
@@ -1510,7 +1688,7 @@ exec(open(r'${path.join(__dirname, 'hacer_xlsx.py')}',encoding='utf-8').read())`
       assert.deepStrictEqual(api.enClaro, []);
       assert.deepStrictEqual(api.putsProg.map((x) => x.ruta), ['entregables/del_arbitro/torneos/Mi campeonato de ejemplo.xlsx', 'entregables/DESCARGAS.md']);
       bien('subir: al confirmar publica cifrado como antes y guarda la copia del original en programas-domino/entregables/del_arbitro/torneos/, con su línea en Torneos (descripción propuesta y editable); el Excel no va a la web');
-      await pg.click('#archivos-ver'); await pg.waitForSelector('#archivos-lista li:has-text("Mi campeonato de ejemplo.xlsx")', { state: 'attached' }); await pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
+      await pg.waitForSelector('#archivos-lista li:has-text("Mi campeonato de ejemplo.xlsx")', { state: 'attached' }); await pg.evaluate(() => document.querySelectorAll('#archivos-lista details.categoria').forEach((d) => { d.open = true; }));
       bien('subir: la copia sale en la lista de Archivos sin recargar');
       assert.deepStrictEqual(await pg.evaluate(() => window.__csp), []); assert.deepStrictEqual(errores, []);
       await ctx.close();
@@ -1774,4 +1952,4 @@ exec(src)`]);
   await b.close();
   fs.rmSync(tmp, { recursive: true, force: true });
   console.log(`\n${ok} comprobaciones bien`);
-})().catch((e) => { console.error('FALLA:', e.message); process.exit(1); });
+})().catch((e) => { console.error('FALLA:', e.stack || e.message); process.exit(1); });

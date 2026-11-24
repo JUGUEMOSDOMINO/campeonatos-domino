@@ -83,7 +83,7 @@
   if (typeof document === 'undefined') return;
   document.addEventListener('DOMContentLoaded', () => {
     if (document.body.dataset.pagina !== 'publicar' || !document.getElementById('paso-archivos')) return;
-    const M = raiz.Mesa, $ = (id) => document.getElementById(id);
+    const M = raiz.Mesa, Espera = raiz.Espera, $ = (id) => document.getElementById(id);
     const E = { listo: false, archivos: new Map(), abiertas: new Map() };
     const nodo = (tag, txt, clase) => { const e = document.createElement(tag); if (txt != null) e.textContent = txt; if (clase) e.className = clase; return e; };
     const decir = (t) => { $('archivos-estado').textContent = t || ''; };
@@ -97,9 +97,10 @@
       } catch (e) { if (e.estado === 404) return null; throw e; }
     }
 
-    async function cargar() {
-      if (!M.token.obtener()) { decir('Primero pega el token de GitHub en el paso 1.'); return false; }
-      decir('Leyendo los archivos…'); $('archivos-ver').disabled = true;
+    const cargar = () => Espera.tarea('archivos', 'Cargando los archivos…', leer);
+    async function leer() {
+      if (!M.token.obtener()) { $('archivos-lista').replaceChildren(); E.listo = false; decir('Primero pega el token de GitHub en el paso 1.'); return false; }
+      decir(''); for (const n of $('archivos-lista').querySelectorAll('.cat-n')) n.textContent = '…';
       try {
         const ac = await M.acceso('prog');
         if (!ac.ok) { $('archivos-lista').replaceChildren(); E.listo = false; decir(ac.msg); return false; }
@@ -118,7 +119,7 @@
       } catch (e) {
         decir(e instanceof M.ErrorGH ? e.message : 'No se han podido leer los archivos. Prueba otra vez dentro de un minuto.');
         return false;
-      } finally { $('archivos-ver').disabled = false; }
+      }
     }
 
     function pintar(filas, sinLinea, truncado) {
@@ -128,7 +129,7 @@
       for (const g of agrupar(filas)) {
         const d = nodo('details', null, 'categoria'), n = g.filas.length;
         d.dataset.categoria = g.categoria;
-        d.open = E.abiertas.has(g.categoria) ? E.abiertas.get(g.categoria) : false; // plegadas al pulsar «Ver los archivos»; lo que el árbitro abre se respeta al recargar
+        d.open = E.abiertas.has(g.categoria) ? E.abiertas.get(g.categoria) : false; // plegadas al cargar; lo que el árbitro abre se respeta al actualizar
         const titulo = nodo('summary');
         titulo.append(nodo('span', g.categoria, 'cat-nombre'), nodo('span', `${n} ${n === 1 ? 'archivo' : 'archivos'}`, 'cat-n'));
         const ul = nodo('ul', null, 'lista-archivos');
@@ -157,7 +158,8 @@
       decir('');
     }
 
-    async function descargar(ruta, nombre, bt) {
+    const descargar = (ruta, nombre, bt) => Espera.tarea('descargar', `Descargando ${nombre}…`, () => bajar(ruta, nombre, bt));
+    async function bajar(ruta, nombre, bt) {
       bt.disabled = true; decir(`Descargando ${nombre}…`);
       try {
         const r = await M.llamar('prog', `/git/blobs/${E.archivos.get(ruta).sha}`);
@@ -170,7 +172,9 @@
       } catch (e) { decir(e instanceof M.ErrorGH ? e.message : `No se ha podido descargar ${nombre}. Prueba otra vez.`); } finally { bt.disabled = false; }
     }
 
-    $('archivos-ver').addEventListener('click', cargar);
+    $('archivos-actualizar').addEventListener('click', cargar);
+    API.cargar = cargar;
+    cargar(); // al abrir la página: las categorías salen solas, plegadas (con token y permiso; si no, el aviso de siempre)
     // Lo que se guarda desde «Subir archivo» sale aquí en cuanto se guarda, si la lista ya estaba a la vista.
     API.refrescar = () => (E.listo ? cargar() : null);
   });
