@@ -926,8 +926,7 @@
     } catch (e) { /* sin índice */ }
     return mapaTorneos;
   }
-
-     function coincideJugador(pt, palabras) {
+  function coincideJugador(pt, palabras) {
     const partesCorto = norm(pt.corto || '').split(/\s*[/\-]\s*/).filter(Boolean);
     const textos = [
       norm(`${pt.j1_nombre || ''} ${pt.j1_apellido1 || ''} ${pt.j1_apellido2 || ''}`),
@@ -935,16 +934,16 @@
       ...partesCorto
     ].filter(Boolean);
 
-    // 1. Coincidencia exacta de todas las palabras (nombre + apellido, sin tildes)
+    // 1. Coincidencia de todas las palabras (nombre + apellido, sin tildes ni mayúsculas)
     if (textos.some((txt) => palabras.every((w) => txt.includes(w)))) return true;
 
-    // 2. Si viene abreviado (ej. "D. VALCARCEL" o "DA. VALCARCEL"): apellido + inicial del nombre
-    const nombre = palabras || '';
+    // 2. Si viene abreviado en el torneo (ej. "D. VALCARCEL"): apellido + inicial del nombre
+    const nombre = palabras[0] || '';
     const ap = palabras.slice(1).join(' ');
     if (nombre && ap.length >= 4) {
       const escAp = ap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const reAp = new RegExp(`(^|[^a-z0-9])${escAp}([^a-z0-9]|$)`);
-      const reIni = new RegExp(`(^|[^a-z0-9])${nombre.slice(0, 2)}|(^|[^a-z0-9])${nombre}\\.?\\s`);
+      const reIni = new RegExp(`(^|[^a-z0-9])${nombre.slice(0, 2)}|(^|[^a-z0-9])${nombre[0]}\\.?\\s`);
       return textos.some((txt) => reAp.test(txt) && reIni.test(txt));
     }
     return false;
@@ -969,7 +968,12 @@
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
       el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => {
         const info = porNombre.get(norm(x.nombre)) || (x.id ? { id: x.id, parts: [], clasi: [] } : null);
-        const par = info && info.parts.find((pt) => coincideJugador(pt, palabras));
+        const par = info && (
+          info.parts.find((pt) => {
+            const full = [norm(`${pt.j1_nombre || ''} ${pt.j1_apellido1 || ''}`), norm(`${pt.j2_nombre || ''} ${pt.j2_apellido1 || ''}`), norm(pt.corto || '')];
+            return full.some((txt) => palabras.every((w) => txt.includes(w)));
+          }) || info.parts.find((pt) => coincideJugador(pt, palabras))
+        );
         const filaClasi = par && info.clasi.find((r) => r.id === par.id);
         const params = par ? { t: info.id, ver: 'clasificacion', g: filaClasi && filaClasi.grupo === 'B' ? 'B' : '', p: par.id } : (info ? { t: info.id } : null);
         const nombreEl = info ? el('a', { href: url('torneo.html', params) }, x.nombre) : x.nombre;
@@ -981,7 +985,7 @@
     caja.hidden = false;
     caja.scrollIntoView({ block: 'start' });
   }
-
+     
   function pintarRanking() {
     const a = RKE.a, t = a.torneo;
     document.title = t.nombre + (t.temporada ? ' ' + t.temporada : '');
