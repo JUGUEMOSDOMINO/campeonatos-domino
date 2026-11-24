@@ -927,13 +927,19 @@
     return mapaTorneos;
   }
 
-  function coincideJugador(pt, palabras) {
+   function coincideJugador(pt, palabras) {
     const textos = [
       norm(`${pt.j1_nombre || ''} ${pt.j1_apellido1 || ''} ${pt.j1_apellido2 || ''}`),
       norm(`${pt.j2_nombre || ''} ${pt.j2_apellido1 || ''} ${pt.j2_apellido2 || ''}`),
       norm(pt.corto || '')
-    ];
-    return textos.some((txt) => txt && palabras.every((w) => txt.includes(w)));
+    ].filter(Boolean);
+    if (textos.some((txt) => palabras.every((w) => txt.includes(w)))) return true;
+    const ap = palabras.slice(1).join(' ');
+    if (ap.length >= 5) {
+      const re = new RegExp(`(^|[^a-z0-9])${ap.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^a-z0-9]|$)`);
+      return textos.some((txt) => re.test(txt));
+    }
+    return false;
   }
 
   async function fichaJugador(f) {
