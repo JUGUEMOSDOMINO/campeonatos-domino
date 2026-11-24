@@ -529,3 +529,32 @@ table.rk { --f1: 4.2rem; --f2: 7.4rem; --f3: 5.6rem; }
 /* Con «reducir movimiento»: la ficha quieta, en 6:6, sin giro. */
 @media (prefers-reduced-motion: reduce) { .ficha-espera, .ficha-espera .mitad .pip { animation: none; } .ficha-espera .mitad .pip:not(.c5) { opacity: 1; } }
 @media (prefers-color-scheme: dark) { .espera-caja, .ficha-espera { border-color: var(--barra-suave); } .ficha-espera .mitad + .mitad { border-left-color: var(--barra-suave); } .ficha-espera .pip { background: var(--barra-suave); } }
+.campo-clave {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.campo-clave input {
+  width: 100%;
+  padding-right: 2.8rem;
+}
+.btn-ojo {
+  position: absolute;
+  right: 0.35rem;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.4rem;
+  min-width: 2.2rem;
+  min-height: 2.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+}
+.btn-ojo:focus-visible {
+  outline: 2px solid currentColor;
+  border-radius: 4px;
+}
