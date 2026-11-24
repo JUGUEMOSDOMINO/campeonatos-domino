@@ -948,12 +948,13 @@
         el('td', { class: 'gan' }, f.total), el('td', { class: 'ce' }, marcasDe(f).map(([k, v]) => etiquetaPlaza(k, t.plazas_provisionales, v)),
           f.por_repartir ? [etiquetaRepartir(f), el('span', { class: 'sub plaza-frase' }, fraseRepartir(f))] : null,
           t.plazas_provisionales && marcasDe(f).some(([k]) => k === 'ranking') ? el('span', { class: 'sub' }, 'provisional') : null)))));
+        const pendientes = porJugar.filter((x) => !/cullera/i.test(x.nombre));
     poner($('#contenido'),
       el('p', { class: 'nota' }, `Suman las ${t.n_mejores} mejores puntuaciones de cada jugador. Pulsa un nombre para ver su ficha.`),
-      a.ranking.some((f) => (f.abandonos || []).length) ? el('p', { class: 'nota', id: 'nota-abandono' }, '«abandono»: ese jugador abandonó o fue expulsado y no puntuó en ese torneo. Su compañero, que no abandonó, sí puntúa.') : null,
-      notaPlazas(t),
       a.ranking.length ? marco(tabla) : el('p', { class: 'vacio' }, 'El ranking aparecerá cuando haya resultados del primer torneo.'),
-      porJugar.length ? el('p', { class: 'leyenda' }, 'Por jugar: ' + porJugar.map((x) => x.nombre + (x.fecha ? ` (${corta(x.fecha)})` : '')).join(' · ')) : null);
+      pendientes.length ? el('p', { class: 'leyenda' }, 'Por jugar: ' + pendientes.map((x) => x.nombre + (x.fecha ? ` (${corta(x.fecha)})` : '')).join(' · ')) : null,
+      a.ranking.some((f) => (f.abandonos || []).length) ? el('p', { class: 'nota', id: 'nota-abandono' }, '«abandono»: ese jugador abandonó o fue expulsado y no puntuó en ese torneo. Su compañero, que no abandonó, sí puntúa.') : null,
+      notaPlazas(t));
   }
 
   async function paginaRanking() {
