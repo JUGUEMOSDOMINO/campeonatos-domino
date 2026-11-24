@@ -899,7 +899,7 @@
   const TEXTO_ABANDONO = 'Abandonó o fue expulsado: no puntuó en este torneo';
   const seFue = (f, k) => Array.isArray(f.abandonos) && f.abandonos.includes(k);
 
-   let mapaTorneos = null;
+    let mapaTorneos = null;
   async function obtenerMapaTorneos() {
     if (mapaTorneos) return mapaTorneos;
     mapaTorneos = new Map();
@@ -918,13 +918,10 @@
     } catch (e) { /* sin índice */ }
     return mapaTorneos;
   }
-      }
-    } catch (e) { /* sin índice */ }
-    return mapaTorneos;
-  }
+
   async function fichaJugador(f) {
     const a = RKE.a, t = a.torneo, caja = $('#ficha');
-    const porNombre = a.torneos.some((x) => x.cargado && !x.id) ? await obtenerMapaTorneos() : new Map();
+    const porNombre = await obtenerMapaTorneos();
     const fila = (k, v) => (v == null || v === '' ? null : [el('dt', null, k), el('dd', null, v)]);
     poner(caja,
       el('h2', { id: 't-ficha' }, nombreRk(f)),
@@ -939,11 +936,12 @@
             : 'Sin plaza')),
       el('h3', { class: 'sub' }, 'Puntos por torneo'),
       el('ul', { class: 'puntos-ficha' }, a.torneos.map((x, k) => [x, f.puntos[k], k]).filter(([x]) => x.cargado).map(([x, p, k]) => {
-                const info = x.id ? { id: x.id, parts: [] } : porNombre.get(norm(x.nombre));
+        const info = porNombre.get(norm(x.nombre)) || (x.id ? { id: x.id, parts: [], clasi: [] } : null);
         const nj = norm(nombreRk(f));
-        const par = info && info.parts.find((pt) => norm(`${pt.j1_nombre} ${pt.j1_apellido1}`) === nj || norm(`${pt.j2_nombre} ${pt.j2_apellido1}`) === nj);
-        const nombreEl = info ? el('a', { href: url('torneo.html', par ? { t: info.id, ver: 'clasificacion', p: par.id } : { t: info.id }) }, x.nombre) : x.nombre;
-
+        const par = info && info.parts.find((pt) => norm(`${pt.j1_nombre} ${pt.j1_apellido1}`) === nj || norm(`${pt.j2_nombre} ${pt.j2_apellido1}`) === nj || norm(pt.corto || '').includes(nj));
+        const filaClasi = par && info.clasi.find((r) => r.id === par.id);
+        const params = par ? { t: info.id, ver: 'clasificacion', g: filaClasi && filaClasi.grupo === 'B' ? 'B' : '', p: par.id } : (info ? { t: info.id } : null);
+        const nombreEl = info ? el('a', { href: url('torneo.html', params) }, x.nombre) : x.nombre;
         return el('li', null,
           el('span', null, nombreEl, seFue(f, k) ? el('span', { class: 'sub' }, TEXTO_ABANDONO) : null),
           el('b', null, p == null ? '—' : p));
