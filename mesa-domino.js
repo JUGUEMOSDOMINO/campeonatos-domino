@@ -4,6 +4,45 @@ document.addEventListener('DOMContentLoaded', () => {
     const TURN_TIME_LIMIT = 20;
     const STORAGE_RANKING_KEY = 'domino_fed_ranking_v2';
     const STORAGE_MUTE_KEY = 'domino_fed_muted_v1';
+    const STORAGE_MATCH_KEY = 'domino_fed_active_match_v1';
+
+    function saveMatchState() {
+        try {
+            const summaryVisible = dom.handSummaryModal && !dom.handSummaryModal.classList.contains('hidden');
+            if (!state.gameActive && !summaryVisible) return;
+            const snapshot = {
+                targetScore: TARGET_SCORE,
+                userName: state.userName,
+                userClub: state.userClub,
+                botSeats: state.botSeats,
+                playerNames: PLAYER_NAMES,
+                scores: state.scores,
+                hands: state.hands,
+                board: state.board,
+                leftEnd: state.leftEnd,
+                rightEnd: state.rightEnd,
+                currentTurn: state.currentTurn,
+                startingPlayer: state.startingPlayer,
+                isFirstHand: state.isFirstHand,
+                consecutivePasses: state.consecutivePasses,
+                gameActive: state.gameActive,
+                revealHands: !!state.revealHands,
+                summaryVisible,
+                summaryTitle: dom.summaryTitle ? dom.summaryTitle.textContent : '',
+                summaryDetailHtml: dom.summaryDetail ? dom.summaryDetail.innerHTML : '',
+                summaryScoresText: dom.summaryScores ? dom.summaryScores.textContent : '',
+                nextBtnText: dom.btnNextHand ? dom.btnNextHand.textContent : '▶ Jugar Siguiente Mano',
+                logHtml: dom.gameLog ? dom.gameLog.innerHTML : ''
+            };
+            localStorage.setItem(STORAGE_MATCH_KEY, JSON.stringify(snapshot));
+        } catch (e) {}
+    }
+
+    function clearMatchState() {
+        try {
+            localStorage.removeItem(STORAGE_MATCH_KEY);
+        } catch (e) {}
+    }
 
     const PIP_MAP = {
         0: new Array(),
