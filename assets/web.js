@@ -108,16 +108,32 @@
       pie.append(el('p', null, el('button', { type: 'button', id: 'olvidar-clave', class: 'boton sec', onclick: () => { Cifra.olvidarClave(BASE); location.reload(); } }, 'Olvidar contraseña en este dispositivo')));
     }
   }
-  function pantallaClave(cj, cambio, listo) {
+    function pantallaClave(cj, cambio, listo) {
     const campo = el('input', { id: 'clave', type: 'password', autocomplete: 'current-password', autocapitalize: 'none', autocorrect: 'off', spellcheck: 'false', required: true });
+    const btnOjo = el('button', {
+      type: 'button',
+      class: 'btn-ojo',
+      'aria-label': 'Mostrar contraseña',
+      'aria-pressed': 'false',
+      onclick: () => {
+        const ver = campo.type === 'password';
+        campo.type = ver ? 'text' : 'password';
+        btnOjo.setAttribute('aria-pressed', String(ver));
+        btnOjo.setAttribute('aria-label', ver ? 'Ocultar contraseña' : 'Mostrar contraseña');
+        btnOjo.textContent = ver ? '🙈' : '👁️';
+        campo.focus();
+      }
+    }, '👁️');
+    const envoltorioClave = el('div', { class: 'campo-clave' }, campo, btnOjo);
     const recordar = el('input', { id: 'recordar', type: 'checkbox', checked: true });
     const msg = el('p', { id: 'clave-msg', class: 'nota', 'aria-live': 'polite' });
     const boton = el('button', { type: 'submit', class: 'boton' }, 'Entrar');
     const form = el('form', { id: 'form-clave' },
-      el('label', { for: 'clave' }, 'Contraseña'), campo,
+      el('label', { for: 'clave' }, 'Contraseña'), envoltorioClave,
       el('label', { class: 'opcion' }, recordar, el('span', null, 'Recordar en este dispositivo')),
       el('p', { class: 'nota sin-margen' }, 'Si este móvil u ordenador lo usa más gente, desmarca la casilla y la web te la volverá a pedir al cerrar la pestaña.'),
       el('div', { class: 'acciones' }, boton), msg);
+
     form.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       boton.disabled = true; msg.className = 'nota'; msg.textContent = 'Comprobando…';
